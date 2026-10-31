@@ -57,3 +57,13 @@ native list dimensions explicitly to one cell per line and six visible lines bef
 layout. The native cursor must remain inside the rebound window. Log cursor and
 capacity with each rebind for the next player run. Build only; no tests or game launch
 per the user's instruction. This fix remains unconfirmed until the player checks it.
+
+## Follow-up 20261031-214532: viewport capacity was insufficient
+
+405ed8d still failed, including on wrap from the first row to the last. Values also
+shifted independently from captions. Remove temporary record vectors, null widgets
+and retirement lists. Each logical row now owns its persistent movie clip and widget;
+only its Widgets child's Y and visibility are updated through GFx DisplayInfo.
+Native captions use six visible cells. Extra clip labels and cursors are hidden.
+This is a replacement implementation, not a confirmed runtime fix. Build only;
+player must check scrolling in both directions, wrap, dropdowns and reopening.

@@ -514,6 +514,25 @@ static int64_t open_section(Section *s, void *root, void *params, const void *ha
         memcpy(g_open.dialog + DIALOG_ROWS + 0x7c, &cells_per_line, sizeof(cells_per_line));
         memcpy(g_open.dialog + DIALOG_ROWS + 0x80, &visible_lines, sizeof(visible_lines));
         take_captions();
+        /* Extra logical clips supply values only. Their labels/cursors are not
+         * native visible slots and must never remain painted below the list. */
+        for (int r = 6; r < s->count; ++r) {
+            static const char *parts[] = {"Text_0", "Cursor"};
+            for (int part = 0; part < 2; ++part) {
+                char path[64];
+                snprintf(path, sizeof(path), "Item_%d_0/%s", r, parts[part]);
+                _Alignas(16) unsigned char wrapper[0x80] = {0};
+                fn(0x1edb220)(ptr(wrapper), ptr(g_open.dialog + 0xdf0), ptr(path), 0, 0, 0);
+                uint32_t type;
+                memcpy(&type, wrapper + 0x48, sizeof(type));
+                const uint64_t vt = rd64(wrapper);
+                if ((type & 0x8f) == 10 && vt)
+                    ((GuestFn)at(rd64(at(vt + 8))))(ptr(wrapper), 0, 0, 0, 0, 0);
+                const uint64_t owner = rd64(wrapper + 0x40);
+                if ((type & 0x40) && owner)
+                    ((GuestFn)at(rd64(at(rd64(at(owner)) + 0x18))))(owner, ptr(wrapper + 0x30), rd64(wrapper + 0x50), 0, 0, 0);
+            }
+        }
         graphics_rebind();
         printf("PC menu: %s opened\n", s->name);
     }

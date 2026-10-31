@@ -403,6 +403,37 @@ static void set_blank(int from) {
     fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
 }
 
+/* GFx DisplayInfo edit of a named Graphics clip. Positions are pixels; scale is percent.
+ * Update only the requested fields so text and cursor geometry keep their original scale. */
+static void graphics_clip(const char *path, double y, double scale_y, int visible, uint16_t flags) {
+    _Alignas(16) unsigned char wrapper[0x80] = {0}, value[0x60] = {0}, info[0xe0] = {0};
+    fn(0x1edb220)(ptr(wrapper), ptr(g_open.dialog + 0xdf0), ptr(path), 0, 0, 0);
+    /* Extract a managed GFx::Value through the same wrapper method SetVisible uses. */
+    const uint64_t wrapper_vtable = rd64(wrapper);
+    if (!wrapper_vtable) return;
+    ((GuestFn)at(rd64(at(wrapper_vtable))))(ptr(value), ptr(wrapper), 0, 0, 0, 0);
+    uint32_t type;
+    memcpy(&type, value + 0x20, sizeof(type));
+    const uint64_t interface = rd64(value + 0x18), data = rd64(value + 0x28);
+    if ((type & 0x8f) == 10 && interface && data) {
+        const uint64_t vt = rd64(at(interface));
+        ((GuestFn)at(rd64(at(vt + 0xe0))))(interface, data, ptr(info), 0, 0, 0);
+        memcpy(info + 8, &y, sizeof(y));
+        memcpy(info + 0x20, &scale_y, sizeof(scale_y));
+        memcpy(info + 0xd4, &flags, sizeof(flags));
+        info[0xd6] = visible != 0;
+        ((GuestFn)at(rd64(at(vt + 0xe8))))(interface, data, ptr(info), 0, 0, 0);
+    }
+    if ((type & 0x40) && interface)
+        ((GuestFn)at(rd64(at(rd64(at(interface)) + 0x18))))(interface, ptr(value + 8), data, 0, 0, 0);
+    uint32_t wrapper_type;
+    memcpy(&wrapper_type, wrapper + 0x48, sizeof(wrapper_type));
+    if (wrapper_type & 0x40) {
+        const uint64_t owner = rd64(wrapper + 0x40);
+        if (owner) ((GuestFn)at(rd64(at(rd64(at(owner)) + 0x18))))(owner, ptr(wrapper + 0x30), rd64(wrapper + 0x50), 0, 0, 0);
+    }
+}
+
 /* Value controls have persistent logical Item_<index>_0 clips. Native scrolling
  * virtualizes the captions into six cells; move only each logical clip's Widgets
  * child to the matching visible line. Never replace record/widget ownership. */
@@ -416,33 +447,7 @@ static void graphics_rebind(void) {
     for (int r = 0; r < g_open.section->count; ++r) {
         char path[64];
         snprintf(path, sizeof(path), "Item_%d_0/Widgets", r);
-        _Alignas(16) unsigned char wrapper[0x80] = {0}, value[0x60] = {0}, info[0xe0] = {0};
-        fn(0x1edb220)(ptr(wrapper), ptr(g_open.dialog + 0xdf0), ptr(path), 0, 0, 0);
-        /* Extract a managed GFx::Value through the same wrapper method SetVisible uses. */
-        const uint64_t wrapper_vtable = rd64(wrapper);
-        if (!wrapper_vtable) continue;
-        ((GuestFn)at(rd64(at(wrapper_vtable))))(ptr(value), ptr(wrapper), 0, 0, 0, 0);
-        uint32_t type;
-        memcpy(&type, value + 0x20, sizeof(type));
-        const uint64_t interface = rd64(value + 0x18), data = rd64(value + 0x28);
-        if ((type & 0x8f) == 10 && interface && data) {
-            const uint64_t vt = rd64(at(interface));
-            ((GuestFn)at(rd64(at(vt + 0xe0))))(interface, data, ptr(info), 0, 0, 0);
-            const double y = -11.0 - scroll * 57.15;
-            const uint16_t flags = 0x42; /* GFx DisplayInfo: Y and Visible only. */
-            memcpy(info + 8, &y, sizeof(y));
-            memcpy(info + 0xd4, &flags, sizeof(flags));
-            info[0xd6] = r >= scroll && r < scroll + 6;
-            ((GuestFn)at(rd64(at(vt + 0xe8))))(interface, data, ptr(info), 0, 0, 0);
-        }
-        if ((type & 0x40) && interface)
-            ((GuestFn)at(rd64(at(rd64(at(interface)) + 0x18))))(interface, ptr(value + 8), data, 0, 0, 0);
-        uint32_t wrapper_type;
-        memcpy(&wrapper_type, wrapper + 0x48, sizeof(wrapper_type));
-        if (wrapper_type & 0x40) {
-            const uint64_t owner = rd64(wrapper + 0x40);
-            if (owner) ((GuestFn)at(rd64(at(rd64(at(owner)) + 0x18))))(owner, ptr(wrapper + 0x30), rd64(wrapper + 0x50), 0, 0, 0);
-        }
+        graphics_clip(path, -11.0 - scroll * 57.15, 100.0, r >= scroll && r < scroll + 6, 0x42);
     }
     if (changed) {
         int cursor;
@@ -514,6 +519,21 @@ static int64_t open_section(Section *s, void *root, void *params, const void *ha
         memcpy(g_open.dialog + DIALOG_ROWS + 0x7c, &cells_per_line, sizeof(cells_per_line));
         memcpy(g_open.dialog + DIALOG_ROWS + 0x80, &visible_lines, sizeof(visible_lines));
         take_captions();
+        /* Each popup keeps evenly spaced text rows, with its backdrop fitted to
+         * the actual choice count instead of leaving unused six-row space. */
+        for (int r = 0; r < s->count; ++r) {
+            const Row *row = &s->rows[r];
+            if (row->kind != PICK) continue;
+            const int count = row->shown_count < 6 ? row->shown_count : 6;
+            char path[128];
+            snprintf(path, sizeof(path), "Item_%d_0/Widgets/DropdownList/ItemList/DropFrame", r);
+            graphics_clip(path, 0, 100.0 * (1.0 - (6 - count) * 56.2 / 385.0), 1, 0x50);
+            static const char *parts[] = {"DropTopArrow", "DropBottomArrow", "ScrollBarV"};
+            for (int part = 0; part < 3; ++part) {
+                snprintf(path, sizeof(path), "Item_%d_0/Widgets/DropdownList/ItemList/%s", r, parts[part]);
+                graphics_clip(path, 0, 100, row->shown_count > 6, 0x40);
+            }
+        }
         /* Extra logical clips supply values only. Their labels/cursors are not
          * native visible slots and must never remain painted below the list. */
         for (int r = 6; r < s->count; ++r) {

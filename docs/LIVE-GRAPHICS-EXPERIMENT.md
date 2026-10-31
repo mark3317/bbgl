@@ -67,3 +67,12 @@ only its Widgets child's Y and visibility are updated through GFx DisplayInfo.
 Native captions use six visible cells. Extra clip labels and cursors are hidden.
 This is a replacement implementation, not a confirmed runtime fix. Build only;
 player must check scrolling in both directions, wrap, dropdowns and reopening.
+
+## Player confirmation and layout refinement
+
+Player confirmed persistent controls, scrolling and dropdowns work in 658890d.
+Reduce System capacity to seven commands and shorten the frame/footer by one
+67.65-pixel row. Normalize popup row pitch to 56.2 pixels. Name popup background
+and arrow clips, size its background to the actual choice count, and hide unused
+scroll arrows/bar when all choices fit. Only popup artwork is scaled; text rows
+keep their native size and pitch. Build only; visual refinement awaits player check.

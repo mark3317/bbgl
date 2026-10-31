@@ -621,16 +621,36 @@ def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
 
 
 # The world adds Exit Game to the five front-end native commands.
-SYSTEM_VISIBLE_ROWS = 6 + len(NATIVE_SECTIONS)
+SYSTEM_VISIBLE_ROWS = 5 + len(NATIVE_SECTIONS)
 TITLE_VISIBLE_ROWS = 8  # native commands + online/offline variant + Information + Quit Game
 SYSTEM_ROW_PITCH = 67.65
 SYSTEM_ROW_OFFSET = -70
 SYSTEM_FRAME_TOP = -70
-SYSTEM_FRAME_BOTTOM = 140
+SYSTEM_FRAME_BOTTOM = 72.35
+
+
+def name_dropdown_parts(b):
+    """Expose popup art to runtime sizing without scaling its text rows."""
+    head, a, z = find_sprite(b, 92)
+    out = bytearray(b[a:a + 4])
+    wanted = {1: 'DropFrame', 67: 'DropTopArrow', 69: 'DropBottomArrow'}
+    seen = set()
+    for code, h, x, y in tags(b, a + 4, z):
+        if code == PLACE2:
+            place = Place2(b, x, y)
+            if place.depth in wanted:
+                out += tag_bytes(code, place.build(place.depth, place.mat, wanted[place.depth]))
+                seen.add(place.depth)
+                continue
+        out += b[h:y]
+    if seen != set(wanted):
+        raise Fail('unexpected dropdown frame layout')
+    return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, out) + b[z:])
 
 
 def build_option_movie(source):
-    movie = bytes(source)
+    movie = name_dropdown_parts(bytes(source))
+    movie = fit_command_list(movie, 'ItemList', 6, pitch=56.2)
     for name, title, depth, defaults_slot, drop in SECTIONS:
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)
     # One persistent value widget per logical row; native labels retain six visible cells.

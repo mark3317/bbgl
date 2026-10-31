@@ -124,7 +124,7 @@ class RealGameTests(unittest.TestCase):
                 if code == m.SHOW_FRAME:
                     result.append(current.copy())
             return result
-        self.assertEqual(m.SYSTEM_VISIBLE_ROWS, 8)  # six native in-world, six PC, Restart
+        self.assertEqual(m.SYSTEM_VISIBLE_ROWS, 7)  # six native in-world, six PC, Restart
         for before, after in zip(frames(source, 145), frames(movie, 145), strict=True):
             for depth, shift in ((11, m.SYSTEM_FRAME_TOP), (17, m.SYSTEM_FRAME_BOTTOM), (23, m.SYSTEM_FRAME_TOP), (27, m.SYSTEM_FRAME_BOTTOM)):
                 self.assertEqual(after[depth][5] - before[depth][5], shift * 20)

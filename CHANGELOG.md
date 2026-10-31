@@ -2,6 +2,8 @@
 
 ## Live-resolution defaults, 2026-10-31
 
+- Hide DLSS options on non-NVIDIA RTX adapters in both launcher and game; fall back from unsupported saved selections.
+
 - Enable live resolution by default and preserve it at 16:9 outputs above 1080p.
 - Expose resolution and upscaling controls when live resolution is enabled and supported by the current session.
 - Remove restart actions from the native System menu and the overlay.

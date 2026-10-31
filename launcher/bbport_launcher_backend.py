@@ -532,8 +532,9 @@ class LauncherBackend(QObject):
     @Slot(bool)
     def _set_dlss_supported(self, supported):
         self._dlss_supported = supported
-        if not supported and self.ini.get('upscaler') == 'dlss':
-            self.ini['upscaler'] = 'fsr3'
+        if not supported:
+            if self.ini.get('upscaler') == 'dlss': self.ini['upscaler'] = 'fsr3'
+            if self.ini.get('frame_gen') == 'dlss': self.ini['frame_gen'] = 'off'
             self._write()
         self._settings_revision += 1
         self.changed.emit()
@@ -578,6 +579,7 @@ class LauncherBackend(QObject):
         if not exe.is_file():
             exe = core.PORT_DIR / 'out' / 'bb-gpu-capabilities.exe'
         if not exe.is_file():
+            self.dlssDetected.emit(False)
             self.gpuDetected.emit('Graphics card check unavailable')
             return
         env = dict(os.environ)
@@ -594,6 +596,7 @@ class LauncherBackend(QObject):
             names = [line[5:].split(':')[0] for line in result.stderr.splitlines() if line.startswith('GPU: ')]
             self.gpuDetected.emit(names[0] if names else 'Vulkan graphics card not detected')
         except (OSError, subprocess.TimeoutExpired):
+            self.dlssDetected.emit(False)
             self.gpuDetected.emit('Graphics card check unavailable')
 
     @Property('QVariantList', notify=changed)
@@ -646,7 +649,7 @@ class LauncherBackend(QObject):
         return f'Now: the game renders at {rw} × {rh} and upscales it to {w} × {h}.'
 
     def live_field(self, field):
-        if field['key'] == 'upscaler' and not self._dlss_supported:
+        if field['key'] in ('upscaler', 'frame_gen') and not self._dlss_supported:
             field = {**field, 'options': [o for o in field['options'] if o['value'] != 'dlss']}
         if field['key'] == 'preset':
             field = {**field, 'hint': f"{T(field['hint'])} {T(self.scene_size_text())}".strip()}
@@ -813,7 +816,7 @@ class LauncherBackend(QObject):
 
     @Slot(str, 'QVariant')
     def setValue(self, key, value):
-        if key == 'upscaler' and str(value) == 'dlss' and not self._dlss_supported:
+        if key in ('upscaler', 'frame_gen') and str(value) == 'dlss' and not self._dlss_supported:
             return
         if key not in core.APP_DEFAULTS and key not in core.INI_DEFAULTS:
             return

@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
         VkPhysicalDeviceProperties props;
         vkGetPhysicalDeviceProperties(selected, &props);
         const int supported = props.vendorID == 0x10de && strstr(props.deviceName, "RTX") != NULL;
-        fprintf(stderr, "GPU: %s, DLSS hardware %s\n", props.deviceName, supported ? "supported" : "unavailable");
+        live_resolution_suits(selected); /* Preserve the launcher's GPU/memory status. */
         printf("%d\n", supported);
         free(devices);
         vkDestroyInstance(instance, NULL);

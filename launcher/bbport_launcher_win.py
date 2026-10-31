@@ -866,7 +866,7 @@ class Launcher:
 
     def choice(self, parent, key, store, options, width=38):
         """A combobox over (value, (english, russian)) pairs, kept in sync with its variable."""
-        if key == 'upscaler' and not dlss_hardware_supported():
+        if key in ('upscaler', 'frame_gen') and not dlss_hardware_supported():
             options = [o for o in options if o[0] != 'dlss']
         var = self.var(key, store)
         values = [v for v, _t in options]

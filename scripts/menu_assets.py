@@ -40,7 +40,7 @@ NATIVE_SECTIONS = SECTION_ROWS
 SECTIONS = [(name, title, 383 + i, rows, ['Item_6_0'] if name == 'PCGraphics' else [])
             for i, (name, title, rows) in enumerate(NATIVE_SECTIONS)]
 # Where the System list's scroll bar goes, in pixels (bbhost's placement).
-SCROLLBAR_AT = (1290, 354.5)
+SCROLLBAR_AT = (1370, 254.5)
 
 
 class Fail(FormatError):

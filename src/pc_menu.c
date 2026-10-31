@@ -208,13 +208,17 @@ static const Option LODS[] = {{-2, 125120}, {0, 125121}, {1, 125122}, {2, 125123
  * launcher and bbport.ini. */
 /* One scrollable Graphics list. Only rows with a live implementation are exposed. */
 static Row g_graphics_template[] = {
-    TOGGLE_ROW("fullscreen", 125004), TOGGLE_ROW("show_fps", 125000),
+    /* Display */
+    TOGGLE_ROW("fullscreen", 125004), PICK_ROW("output_res", 125001, OUTPUTS),
+    TOGGLE_ROW("show_fps", 125000),
+    /* Graphics */
+    PICK_ROW("upscaler", 117003, UPSCALERS), PICK_ROW("preset", 117004, PRESETS),
+    PICK_ROW("model_lod", 125003, LODS),
     TOGGLE_ROW("sharpen", 117000), TOGGLE_ROW("jitter", 117001), TOGGLE_ROW("object_motion", 117002),
+    /* Effects */
     TOGGLE_ROW("effect_chromatic_aberration", 120000), TOGGLE_ROW("effect_dof", 120001),
     TOGGLE_ROW("effect_motion_blur", 120002), TOGGLE_ROW("effect_ssao", 120003),
     TOGGLE_ROW("effect_game_aa", 120004), TOGGLE_ROW("effect_dynamic_shadows", 120005),
-    PICK_ROW("upscaler", 117003, UPSCALERS), PICK_ROW("preset", 117004, PRESETS),
-    PICK_ROW("output_res", 125001, OUTPUTS), PICK_ROW("model_lod", 125003, LODS),
 };
 static Row g_graphics[COUNT(g_graphics_template)];
 static Section g_sections[] = {
@@ -312,8 +316,9 @@ static struct {
     uint16_t caption[MAX_ROWS + 1][TEXT];     /* the rows' captions, then Defaults', ours */
     uint16_t caption_first[MAX_ROWS + 1];
     int records;                              /* rows laid out with our captions */
+    int scroll;
     int blank_from;                           /* the first row blanked, or -1 */
-} g_open = {NULL, NULL, {NULL}, {{0}}, {0}, 0, -1};
+} g_open = {NULL, NULL, {NULL}, {{0}}, {0}, 0, -1, -1};
 
 static unsigned char *record(int row) {
     return (unsigned char *)at(rd64(g_open.dialog + ITEMS_BEGIN)) + (size_t)row * ITEM_STRIDE;
@@ -333,7 +338,7 @@ static int open_alive(void) {
         Row *row = &g_open.section->rows[r];
         unsigned char *w = at(rd64(record(r) + ITEM_WIDGET));
         if (w != g_open.widget[r]) return 0;
-        if (row->kind == PICK && (rd64(w) != addr(DROPDOWN_VTABLE) || rd64(w + PICK_BOUND) != ptr(&row->pick)))
+        if (w && row->kind == PICK && (rd64(w) != addr(DROPDOWN_VTABLE) || rd64(w + PICK_BOUND) != ptr(&row->pick)))
             return 0;
     }
     return 1;
@@ -381,10 +386,52 @@ static void set_blank(int from) {
                     row->text[i][0] = row->first[i];
                 }
             }
-            fn(DROPDOWN_REDRAW)(ptr(g_open.widget[r]), 0, 0, 0, 0, 0);
+            if (g_open.widget[r]) fn(DROPDOWN_REDRAW)(ptr(g_open.widget[r]), 0, 0, 0, 0, 0);
         }
     }
     fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
+}
+
+static void graphics_rebind(void) {
+    if (!g_open.dialog || !g_open.section || !open_alive()) return;
+    int scroll;
+    memcpy(&scroll, g_open.dialog + DIALOG_ROWS + 0x24c, 4);
+    if (scroll == g_open.scroll || scroll < 0 || scroll > g_open.section->count) return;
+    g_open.scroll = scroll;
+    /* Offscreen widget objects must not keep updating a reused physical cell. */
+    for (int r = 0; r < g_open.section->count; ++r) {
+        unsigned char *rec = record(r);
+        release_ref(rd64(rec + ITEM_WIDGET));
+        wr64(rec + ITEM_WIDGET, 0);
+        g_open.widget[r] = NULL;
+    }
+    enum { VISIBLE = 6, VECTOR_CAPACITY = 0xe68 };
+    _Alignas(16) unsigned char cells[VISIBLE * ITEM_STRIDE];
+    memset(cells, 0, sizeof(cells));
+    const uint64_t begin = rd64(g_open.dialog + ITEMS_BEGIN), end = rd64(g_open.dialog + ITEMS_END);
+    const uint64_t capacity = rd64(g_open.dialog + VECTOR_CAPACITY);
+    wr64(g_open.dialog + ITEMS_BEGIN, ptr(cells));
+    wr64(g_open.dialog + ITEMS_END, ptr(cells));
+    wr64(g_open.dialog + VECTOR_CAPACITY, ptr(cells + sizeof(cells)));
+    const int count = g_open.section->count - scroll < VISIBLE ? g_open.section->count - scroll : VISIBLE;
+    for (int slot = 0; slot < count; ++slot) {
+        Row *row = &g_open.section->rows[scroll + slot];
+        if (row->kind == TOGGLE) add_toggle_row(g_open.dialog, row);
+        else add_pick_row(g_open.dialog, row);
+    }
+    wr64(g_open.dialog + ITEMS_BEGIN, begin);
+    wr64(g_open.dialog + ITEMS_END, end);
+    wr64(g_open.dialog + VECTOR_CAPACITY, capacity);
+    for (int slot = 0; slot < count; ++slot) {
+        unsigned char *cell = cells + slot * ITEM_STRIDE;
+        uint64_t widget = rd64(cell + ITEM_WIDGET);
+        wr64(record(scroll + slot) + ITEM_WIDGET, widget);
+        g_open.widget[scroll + slot] = at(widget);
+        free_wstring(cell + 0x08);
+        free_wstring(cell + 0x48);
+    }
+    fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
+    printf("PC menu: Graphics viewport %d..%d rebound\n", scroll, scroll + count - 1);
 }
 
 static void ach_list_update(unsigned char *comp);  /* the Achievements section's paging */
@@ -402,11 +449,13 @@ static BB_GUEST_ABI int64_t list_update(unsigned char *comp, unsigned char *inpu
             set_blank(-1);
         } else {
             for (int r = 0; r < g_open.section->count; ++r)
-                if (g_open.section->rows[r].kind == PICK && comp == g_open.widget[r] + PICK_ITEMS)
+                if (g_open.widget[r] && g_open.section->rows[r].kind == PICK && comp == g_open.widget[r] + PICK_ITEMS)
                     set_blank(r + 1);
         }
     }
-    return fn(LIST_UPDATE)(ptr(comp), ptr(input), 0, 0, 0, 0);
+    const int64_t result = fn(LIST_UPDATE)(ptr(comp), ptr(input), 0, 0, 0, 0);
+    if (g_open.dialog && comp == g_open.dialog + DIALOG_ROWS) graphics_rebind();
+    return result;
 }
 
 /* --- Opening a section -------------------------------------------------------------------- */
@@ -426,11 +475,22 @@ static int64_t open_section(Section *s, void *root, void *params, const void *ha
     snprintf(g_open_name, sizeof(g_open_name), "%s", s->name);
     g_open.dialog = NULL;
     g_open.blank_from = -1;
+    g_open.scroll = -1;
     const int64_t dialog = fn(OPEN_SECTION)(ptr(root), ptr(params), ptr(g_open_name), ptr(handler), 0, 0);
     if (dialog) {
         g_open.section = s;
         g_open.dialog = at((uint64_t)dialog);
+        /* Defaults is a fixed label-only cell in this movie. The live list uses
+         * widget cells throughout, so leave reset-to-defaults in the launcher. */
+        if (record_count() == s->count + 1) {
+            unsigned char *last = record(s->count);
+            free_wstring(last + 0x08);
+            free_wstring(last + 0x48);
+            release_ref(rd64(last + ITEM_WIDGET));
+            wr64(g_open.dialog + ITEMS_END, rd64(g_open.dialog + ITEMS_END) - ITEM_STRIDE);
+        }
         take_captions();
+        graphics_rebind();
         printf("PC menu: %s opened\n", s->name);
     }
     return dialog;

@@ -67,7 +67,6 @@ asm(".section .rodata\n"
 extern "C" const unsigned char bb_font_ttf[];
 extern "C" const unsigned char bb_font_ttf_end[];
 
-extern "C" void runtime_restart(void); // bb-probe (probe.c)
 
 namespace BbOverlay {
 
@@ -602,10 +601,6 @@ bool ExtrasRestartNeeded() {
 void RestartPrompt() {
     if (!RestartNeeded()) return;
     Note("Changes apply after restarting the game.", Ink::Warn);
-    if (PrimaryButton("Apply and restart")) {
-        BbSettings::Save();
-        runtime_restart();
-    }
 }
 
 void SettingsTab() {
@@ -1026,10 +1021,6 @@ void ModsTab() {
         (native ? ExtrasRestartNeeded() : RestartNeeded());
     if (needs_restart)
         Note("Changes are ready. Restart to apply them.", Ink::Warn);
-    if (needs_restart && PrimaryButton("Apply and restart")) {
-        BbSettings::Save();
-        runtime_restart();
-    }
     Note("Other mods and their load order are in the launcher.", Ink::Faint);
 }
 

@@ -1,5 +1,12 @@
 # BBGL changelog
 
+## Live-resolution defaults, 2026-10-31
+
+- Enable live resolution by default and preserve it at 16:9 outputs above 1080p.
+- Expose resolution and upscaling controls when live resolution is enabled and supported by the current session.
+- Remove restart actions from the native System menu and the overlay.
+
+
 ## Graphics menu update, 2026-10-31
 
 - Merge PC Graphics, Display and Effects into one native Graphics screen with scrolling.

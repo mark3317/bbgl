@@ -310,7 +310,7 @@ namespace {
 bool Read(const Values& v, const std::string& k, int& out) {
     if (k == "live_graphics_mask") out = v.live_graphics_mask.load();
     else if (k == "show_fps") out = v.show_fps.load();
-    else if (k == "live_render_resolution") out = !FixedRenderSession();
+    else if (k == "live_render_resolution") out = v.live_resolution != 0 && !FixedRenderSession();
     else if (k == "fullscreen") out = v.fullscreen.load();
     else if (k == "sharpen") out = v.sharpen.load();
     else if (k == "jitter") out = v.jitter.load();

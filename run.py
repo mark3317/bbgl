@@ -353,7 +353,7 @@ def main():
                 scaled_render, scaled_output = printed
         live = '0'
         if scaled_output:
-            live = env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '0'
+            live = env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '1'
             if live == 'auto' and auto_live_blurs_dof(scaled_output, config):
                 live = '0'
                 print(f'Output {scaled_output}: live resolution auto: startup patch (depth of field '
@@ -383,7 +383,7 @@ def main():
                 live = '0'
                 env['BB_UI_RES'] = movie_output
                 print('Aspect correction: centered 16:9 stage; aspect changes require restart')
-            elif (ow, oh) != (1920, 1080):
+            elif (ow, oh) != (1920, 1080) and live != '1':
                 # Native-resolution UI at 16:9 above 1080p (matches patches.py ui=out): text and
                 # menus at QHD/4K instead of a 1080p UI scaled up.
                 live = '0'
@@ -405,7 +405,7 @@ def main():
             env.setdefault('BB_GC_BUDGET_MB', str(max(2048, vram - VRAM_RESERVE_MB)))
             notes = [f'texture budget {env["BB_GC_BUDGET_MB"]} MiB']
             # At 1080p output the live path keeps the game's targets native; here they shrink too.
-            wants_live = (env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution')) == '1'
+            wants_live = (env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '1') == '1'
             if (patched and not scaled_output and not env.get('BB_RENDER_RES') and not wants_live
                     and ini_value(config, 'upscaler') != 'taa'):
                 size = run_script('patches.py', '--print-preset-size', '--settings', config, capture=True).strip()

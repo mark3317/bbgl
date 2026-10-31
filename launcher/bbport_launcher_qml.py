@@ -51,9 +51,10 @@ def run_ui(route=None):
         window = load('Main.qml')
         launcher_window.append(window)
         def close_after_launch():
-            # Hosting belongs to this process. Keep it and the log reader alive
-            # without a window until the game exits, then stop both servers.
-            if backend.coopHosting and backend.running:
+            # The pipe reader writes last_run.log and must survive window closure
+            # for every game, including guests and offline play. Hosted servers
+            # also stay alive until the game exits.
+            if backend.running:
                 app.setQuitOnLastWindowClosed(False)
                 backend.gameFinished.connect(lambda _code, _started: app.quit())
             window.close()

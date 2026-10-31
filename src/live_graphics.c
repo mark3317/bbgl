@@ -11,14 +11,16 @@ extern int bbgpu_setting_get(const char *, int *);
 extern void bbgpu_setting_set(const char *, int);
 static const char *keys[] = {"effect_chromatic_aberration", "effect_dof", "effect_motion_blur", "effect_ssao", "effect_game_aa", "effect_dynamic_shadows", "effect_ssr", "model_lod", "object_motion"};
 static int current[9];
+static unsigned long long visits[8];
 static int value(int index) { return __atomic_load_n(&current[index], __ATOMIC_RELAXED); }
 /* cmp byte,0 with a zero operand: PF=ZF=1; CF=AF=SF=OF=0. */
 static void mask(BbRegs *r, int index) {
+    __atomic_fetch_add(&visits[index], 1, __ATOMIC_RELAXED);
     if (!value(index)) r->flags = (r->flags & ~0x8d5ull) | 0x44;
 }
-static BB_GUEST_ABI void ca(BbRegs *r) { if (!value(0)) r->rax = 0; }
+static BB_GUEST_ABI void ca(BbRegs *r) { __atomic_fetch_add(&visits[0], 1, __ATOMIC_RELAXED); if (!value(0)) r->rax = 0; }
 static BB_GUEST_ABI void dof(BbRegs *r) { mask(r, 1); }
-static BB_GUEST_ABI void lod(BbRegs *r) { int v = value(7); if (v) r->rcx = (uint32_t)v; }
+static BB_GUEST_ABI void lod(BbRegs *r) { __atomic_fetch_add(&visits[7], 1, __ATOMIC_RELAXED); int v = value(7); if (v) r->rcx = (uint32_t)v; }
 static BB_GUEST_ABI void ssao(BbRegs *r) { mask(r, 3); }
 static BB_GUEST_ABI void blur(BbRegs *r) { mask(r, 2); }
 static BB_GUEST_ABI void aa(BbRegs *r) { mask(r, 4); }
@@ -53,8 +55,9 @@ static void report(void) {
         int v = 0; bbgpu_setting_get(keys[i], &v);
         __atomic_store_n(&current[i], v, __ATOMIC_RELAXED);
         if (v != last[i]) {
-            printf("Live graphics: %s = %d (hook %s)\n", keys[i], v,
-                   (mask_ready & (1 << i)) ? "ready" : "unavailable");
+            printf("Live graphics: %s = %d (hook %s, visits=%llu)\n", keys[i], v,
+                   (mask_ready & (1 << i)) ? "ready" : "unavailable",
+                   i < 8 ? __atomic_load_n(&visits[i], __ATOMIC_RELAXED) : 0ull);
             last[i] = v;
         }
     }

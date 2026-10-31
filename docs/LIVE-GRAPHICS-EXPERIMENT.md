@@ -4,7 +4,7 @@ Opt-in: `BB_LIVE_GRAPHICS=1` inherited by run.py, patches.py and bb-probe.
 Normal launches retain the existing startup patches. CUSA03173 1.09 only.
 
 The startup patch selector omits CA, DoF, blur, SSAO, game AA, dynamic-shadow and LOD patches;
-it always prepares the existing SSR patch set. All 21 engine hook sites are hash-checked before
+it always prepares the existing SSR patch set. All 20 engine hook sites are hash-checked before
 installation; a mismatch aborts the experimental launch. Engine hooks must be enabled.
 Mid-after hooks execute the original comparison before masking its flags; disabled means the
 comparison observes zero, enabled preserves the game's own decision. CA masks its output store;
@@ -41,4 +41,8 @@ OFF/ON/OFF. Inspect the Live graphics and PC menu lines in last_run logs.
 Labels that still say restart describe the normal build; this opt-in overrides only the nine
 settings listed above. Unsupported object-motion hardware still cannot enable that path.
 
-Status: implementation and automated validation in progress; player validation pending.
+Validation: engine hooks, output-settings C++ checks, 3 new Python tests and 7 graphics-preset tests PASS.
+All 20 fingerprints and whole-instruction boundaries verified against the installed 1.09 executable
+after 189 normal startup/SSR patch writes; none need RIP/branch relocation.
+The unrelated run.sh restart tests cannot run in the Windows Python environment (WSL bash and
+symlink privileges); this experiment uses run.py. Player validation pending.

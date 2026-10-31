@@ -94,7 +94,7 @@ class RealGameTests(unittest.TestCase):
     def setUpClass(cls):
         cls.files = m.make(GAME, log=lambda line: None)
 
-    def test_movie_gains_both_sections_and_the_scroll_bar(self):
+    def test_movie_gains_sections_and_system_rows_without_scrolling(self):
         source = (GAME / m.MOVIE).read_bytes()
         movie = self.files[m.MOVIE]
         self.assertEqual(int.from_bytes(movie[4:8], 'little'), len(movie))
@@ -106,20 +106,47 @@ class RealGameTests(unittest.TestCase):
         before = [s for code, _h, s, _e in m.tags(source, m.body_start(source), len(source)) if code == m.DEFINE_SPRITE]
         self.assertEqual(len(sprites), len(before) + 2 * len(m.SECTIONS))  # each: the section and its title
         self.assertEqual(len(m.symbol_classes(movie)), len(m.symbol_classes(source)) + len(m.SECTIONS))
-        # The System list ("Top") has its scroll bar now.
+        # The System list has room for every command; a scrollbar is unnecessary.
         top = next(m.placement(movie, code, s) for code, _h, s, _e in m.tags(movie, m.body_start(movie), len(movie))
                    if code in (m.PLACE2, m.PLACE3) and m.placement(movie, code, s)[3] == 'Top')
         head, s, e = m.find_sprite(movie, top[1])
         inside = [m.placement(movie, code, s2)[3] for code, _h, s2, _e in m.tags(movie, s + 4, e)
                   if code in (m.PLACE2, m.PLACE3)]
-        self.assertIn('ScrollBarV', inside)
+        self.assertNotIn('ScrollBarV', inside)
+        self.assertEqual({name for name in inside if name and name.startswith('Item_')},
+                         {f'Item_{i}_0' for i in range(m.SYSTEM_VISIBLE_ROWS)})
+        self.assert_row_animation(movie, top[1], m.SYSTEM_VISIBLE_ROWS, 800)
 
-    def test_title_lists_gain_a_line_for_quit_game(self):
+    def test_title_lists_fit_all_commands_in_both_editions(self):
         for relative in m.TITLE_MOVIES:
             source, movie = (GAME / relative).read_bytes(), self.files[relative]
             self.assertEqual(int.from_bytes(movie[4:8], 'little'), len(movie))
             self.assertNotIn('Item_5_0', placed_names(source, (m.PLACE2,)) + self.list_rows(source))
-            self.assertIn('Item_5_0', self.list_rows(movie))
+            for i in range(m.TITLE_VISIBLE_ROWS):
+                self.assertIn(f'Item_{i}_0', self.list_rows(movie))
+            cid = next(m.u16(movie, s) for code, _h, s, e in m.tags(movie, m.body_start(movie), len(movie))
+                       if code == m.DEFINE_SPRITE and any(
+                           c == m.PLACE2 and m.Place2(movie, s2, e2).name == 'Item_0_0'
+                           for c, _h2, s2, e2 in m.tags(movie, s + 4, e)))
+            self.assert_row_animation(movie, cid, m.TITLE_VISIBLE_ROWS, 797)
+
+    def assert_row_animation(self, movie, cid, count, pitch):
+        """Every opening/closing frame retains capacity, pitch and relative motion."""
+        _h, s, e = m.find_sprite(movie, cid)
+        depths, positions, frames = {}, {}, 0
+        for code, _h, s2, e2 in m.tags(movie, s + 4, e):
+            if code == m.PLACE2:
+                p = m.Place2(movie, s2, e2)
+                if p.name and p.name.startswith('Item_') and p.name.endswith('_0'):
+                    depths[p.depth] = int(p.name[5:-2])
+                if p.depth in depths and p.mat:
+                    positions[depths[p.depth]] = p.mat.ty
+            if code == m.SHOW_FRAME:
+                self.assertEqual(sorted(positions), list(range(count)))
+                self.assertEqual([positions[i] - positions[0] for i in range(count)],
+                                 [i * pitch for i in range(count)])
+                frames += 1
+        self.assertGreaterEqual(frames, 1)
 
     @staticmethod
     def list_rows(movie):

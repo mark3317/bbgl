@@ -7,13 +7,13 @@ engine/menu_assets.cpp):
 - menu/optionsetting.gfx: each PC section is a clone of the game's ControllSetting sprite under
   a new instance name and character id, retitled to the menu's message id, its static text
   dropped and its widget rows trimmed to the section's; it is placed on the main timeline
-  hidden (the game shows the section it opens). The System list gets the movie's own
-  ScrollBarV, since it now has more rows than lines.
+  hidden (the game shows the section it opens). The System list gains enough visible
+  rows for the native and PC commands, spaced to fit the full-height frame.
 - msg/<language>/menu.msgbnd.dcx: the menu's message ids added to the menu text (group 200),
   line help (201) and event text (30) FMGs of every language the game has. The game reads the
   folder its region and language pick, so all of them get the (English) strings. Dialog text
   (ids 920000..929999) goes to groups 78 and 204, the yes/no questions'.
-- menu/title.gfx and title_dlc.gfx: one more line in the title's command list, for Quit Game.
+- menu/title.gfx and title_dlc.gfx: expand the title command list, including Quit Game.
 """
 from pathlib import Path
 import struct
@@ -508,52 +508,76 @@ def add_scrollbar(b, list_name, ax, ay, name='ScrollBarV'):
     return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, sprite) + b[le:])
 
 
-def add_list_slot(b, list_name):
-    """One more line in a command list: the sprite placed as `list_name` gets an Item_<n>_0
-    placed like its last one, one pitch further down, at a free depth. The menu counts a list's
-    lines from its Item_*_0 children. (The title's CommandList: Item_0_0..Item_4_0.)"""
+def fit_command_list(b, list_name, count, pitch=None):
+    """Give a command list enough visible slots, including every animation frame.
+
+    Capacity comes from Item_<n>_0 children, not the scrollbar or the runtime row
+    count. Keep text/cursor sizes intact; only change row spacing. New rows follow
+    the last original row's timeline so opening/closing cannot restore old positions.
+    """
     sprites = {u16(b, s): (head, s, e) for code, head, s, e in tags(b, body_start(b), len(b))
                if code == DEFINE_SPRITE}
-    list_cid = None
-    for cid in sorted(sprites):
-        _h, s, e = sprites[cid]
-        for code, _h2, s2, _e2 in tags(b, s + 4, e):
-            if code in (PLACE2, PLACE3):
-                p = placement(b, code, s2)
-                if p[3] == list_name and p[1] is not None:
-                    list_cid = p[1]
-        if list_cid is not None:
-            break
-    if list_cid is None or list_cid not in sprites:
-        raise Fail(f'no sprite placed as {list_name}')
-    head, ls, le = sprites[list_cid]
-    rows, depths, first_show = {}, set(), None
-    for code, h, s, e in tags(b, ls + 4, le):
+    placements = [(code, s) for code, _h, s, _e in tags(b, body_start(b), len(b))]
+    for _cid, (_h, s, e) in sprites.items():
+        placements.extend((code, s2) for code, _h2, s2, _e2 in tags(b, s + 4, e))
+    targets = {placement(b, code, s)[1] for code, s in placements
+               if code in (PLACE2, PLACE3) and placement(b, code, s)[3] == list_name}
+    if len(targets) != 1 or next(iter(targets)) not in sprites:
+        raise Fail(f'no unique sprite placed as {list_name}')
+    head, ls, le = sprites[targets.pop()]
+    timeline = tags(b, ls + 4, le)
+    rows, depths = {}, set()
+    for code, _h, s, e in timeline:
+        if code in (PLACE2, PLACE3):
+            depths.add(placement(b, code, s)[0])
         if code == PLACE2:
             p = Place2(b, s, e)
-            depths.add(p.depth)
             if p.name and p.name.startswith('Item_') and p.name.endswith('_0') and p.mat:
-                rows[int(p.name[5:-2])] = p
-        elif code == PLACE3:
-            depths.add(u16(b, s + 2))
-        if code == SHOW_FRAME and first_show is None:
-            first_show = h
-    if len(rows) < 2 or first_show is None:
-        raise Fail(f'{list_name} has fewer than two Item_*_0 rows')
-    order = sorted(rows)
-    last, prev = rows[order[-1]], rows[order[-2]]
-    mat = last.mat.copy()
-    mat.ty += last.mat.ty - prev.mat.ty
-    place = last.build(max(depths) + 1, mat, f'Item_{order[-1] + 1}_0')
-    sprite = b[ls:first_show] + tag_bytes(PLACE2, place) + b[first_show:le]
-    return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, sprite) + b[le:])
+                rows.setdefault(int(p.name[5:-2]), p)
+    if sorted(rows) != list(range(len(rows))) or len(rows) < 2 or count < len(rows):
+        raise Fail(f'{list_name} has unexpected Item_*_0 rows')
+    old_count = len(rows)
+    first, last = rows[0], rows[old_count - 1]
+    old_pitch = last.mat.ty - rows[old_count - 2].mat.ty
+    new_pitch = old_pitch if pitch is None else round(pitch * 20)
+    row_depths = {p.depth: i for i, p in rows.items()}
+    new_depth = max(depths) + 1
+    out = bytearray(b[ls:ls + 4])
+    for code, h, s, e in timeline:
+        if code != PLACE2:
+            out += b[h:e]
+            continue
+        p = Place2(b, s, e)
+        index = row_depths.get(p.depth)
+        if index is None:
+            out += b[h:e]
+            continue
+        if p.mat is None:
+            raise Fail(f'{list_name} row animation without a matrix')
+        mat = p.mat.copy()
+        mat.ty += first.mat.ty + index * new_pitch - rows[index].mat.ty
+        out += tag_bytes(PLACE2, p.build(p.depth, mat, p.name))
+        if index == old_count - 1:
+            for i in range(old_count, count):
+                clone = mat.copy()
+                clone.ty += (i - index) * new_pitch
+                name = f'Item_{i}_0' if p.name else None
+                out += tag_bytes(PLACE2, p.build(new_depth + i - old_count, clone, name))
+    return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, out) + b[le:])
+
+
+# The native System list has five rows; six PC sections and Restart add seven.
+# Its existing full-height frame has room for twelve rows at 40 px, keeping the
+# original font size and the bottom rows above the frame's lower ornament.
+SYSTEM_VISIBLE_ROWS = 5 + len(NATIVE_SECTIONS) + 1
+TITLE_VISIBLE_ROWS = 8  # also covers the title's online/offline command variants
 
 
 def build_option_movie(source):
     movie = bytes(source)
     for name, title, depth, defaults_slot, drop in SECTIONS:
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)
-    return add_scrollbar(movie, 'Top', *SCROLLBAR_AT)
+    return fit_command_list(movie, 'Top', SYSTEM_VISIBLE_ROWS, pitch=40)
 
 
 # --- Messages --------------------------------------------------------------------------------
@@ -689,7 +713,7 @@ def make(dvdroot, log=print):
         return {}
     # Quit Game on the title: both title movies, or neither (the row needs its line).
     try:
-        titles = {relative: add_list_slot((dvdroot / relative).read_bytes(), 'CommandList')
+        titles = {relative: fit_command_list((dvdroot / relative).read_bytes(), 'CommandList', TITLE_VISIBLE_ROWS)
                   for relative in TITLE_MOVIES}
         files.update(titles)
     except (OSError, FormatError, IndexError, struct.error) as error:

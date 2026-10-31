@@ -250,6 +250,7 @@ Item {
                             Text { width: detailColumn.width - 20; text: modelData.label + ":  " + modelData.detail; color: Theme.text; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap }
                         }
                     }
+                    GameDownload { width: parent.width; visible: is("Game & Saves", "Game files") }
                     Row { visible: is("Game & Saves", "Game files"); spacing: 10
                         GlassButton { text: launcher.setupRunning ? launcher.tr("Installing…") : launcher.tr("Install from ZIP / PKG"); width: Math.max(196, implicitWidth); height: 38; enabled: !launcher.setupRunning && !launcher.running; onClicked: launcher.installFromArchive() }
                         GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 38; onClicked: launcher.refreshReadiness() }

@@ -9,6 +9,11 @@ The classic Tk launcher keeps its own table (bbport_i18n.py).
 import re
 
 RU = {
+    'Download game': 'Скачать игру',
+    'Cancel download': 'Отменить загрузку',
+    'Preparing download…': 'Подготовка загрузки…',
+    'Downloads into the game folder beside the launcher. Verified ZIP parts are reused when you retry.': 'Игра будет установлена в папку game рядом с лаунчером. При повторной попытке проверенные ZIP-части используются повторно.',
+
     "In the host's Hunter's Dream a guest sees its own Dream (own messengers, shops, Doll, workshop tools); off = the host's copy of the Dream": 'Гость видит собственный Сон охотника: своих посланников, магазины, Куклу и инструменты мастерской.',
     "Removes the summoned guest's 30% max HP cut": 'Убирает снижение максимального здоровья призванного гостя на 30%.',
     'A kept death still drops a bloodstain and echoes': 'При смерти остаются пятно крови и отголоски.',

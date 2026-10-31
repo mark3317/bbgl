@@ -144,6 +144,7 @@ Item {
 
         Column {
             id: step1; width: parent.width; spacing: 18; visible: wizard.step === 1
+            GameDownload { width: parent.width }
             Body { text: launcher.tr("Choose how to add Bloodborne 1.09. The installer creates a new game folder and never replaces an existing one.") }
             Row {
                 spacing: 12

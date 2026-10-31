@@ -24,6 +24,7 @@ import bbport_coop as coop
 import bbport_qml_ru
 import bbport_launcher_win as core
 import bbport_startup
+import bbport_game_download
 from bbport_pkg_setup import PackageSetupError, install_game
 from bbport_readiness import check_readiness, valid_trophy_key
 
@@ -284,6 +285,8 @@ class LauncherBackend(QObject):
     setupRunningChanged = Signal()
     setupCompleted = Signal(str)
     setupFailed = Signal(str)
+    gameDownloadChanged = Signal()
+    _gameDownloadProgress = Signal(float, str)
     coopChanged = Signal()
     _coopDone = Signal(str)
     _coopProgress = Signal(str)
@@ -319,6 +322,10 @@ class LauncherBackend(QObject):
         self._settings_revision = 0
         self._gpu_status = 'Checking graphics card…'
         self._setup_running = False
+        self._game_download_progress = 0.0
+        self._game_download_status = ''
+        self._game_download_cancel = threading.Event()
+        self._gameDownloadProgress.connect(self._show_game_download_progress)
         self.workerNotice.connect(self._set_notice)
         self.updateAvailable.connect(self._offer_update)
         self.gpuDetected.connect(self._set_gpu_status)
@@ -374,6 +381,43 @@ class LauncherBackend(QObject):
     @Property(bool, notify=setupRunningChanged)
     def setupRunning(self):
         return self._setup_running
+
+    @Property(float, notify=gameDownloadChanged)
+    def gameDownloadProgress(self):
+        return self._game_download_progress
+
+    @Property(str, notify=gameDownloadChanged)
+    def gameDownloadStatus(self):
+        return self._game_download_status
+
+    @Slot(float, str)
+    def _show_game_download_progress(self, value, message):
+        self._game_download_progress = value
+        self._game_download_status = message
+        self.gameDownloadChanged.emit()
+
+    @Slot()
+    def cancelGameDownload(self):
+        self._game_download_cancel.set()
+
+    @Slot()
+    def downloadGame(self):
+        if self._setup_running or self.running:
+            return
+        self._setup_running = True
+        self._game_download_cancel.clear()
+        self._show_game_download_progress(0.0, T('Preparing download…'))
+        self.setupRunningChanged.emit()
+
+        def work():
+            try:
+                folder = bbport_game_download.install(core.PORT_DIR, self._gameDownloadProgress.emit,
+                                                      self._game_download_cancel)
+                self.setupCompleted.emit(str(folder))
+            except Exception as error:
+                self._gameDownloadProgress.emit(self._game_download_progress, str(error))
+                self.setupFailed.emit(str(error))
+        threading.Thread(target=work, daemon=True).start()
 
     # --- First-run setup and start-up routing -------------------------------------------------
 

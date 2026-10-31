@@ -46,3 +46,14 @@ All 20 fingerprints and whole-instruction boundaries verified against the instal
 after 189 normal startup/SSR patch writes; none need RIP/branch relocation.
 The unrelated run.sh restart tests cannot run in the Windows Python environment (WSL bash and
 symlink privileges); this experiment uses run.py. Player validation pending.
+
+## Native menu scrolling failure (player log 20261031-214200)
+
+8dc52cb still crashed after rebinding viewport 8..13. The selected row lookup in
+sub_1f1a9a4 returned a null widget, then GetMember dereferenced wrapper+0x30.
+Retaining old widgets did not fix this. The stock dialog includes a seventh Defaults
+cell, while the Graphics movie and value-widget viewport have six cells. Set the
+native list dimensions explicitly to one cell per line and six visible lines before
+layout. The native cursor must remain inside the rebound window. Log cursor and
+capacity with each rebind for the next player run. Build only; no tests or game launch
+per the user's instruction. This fix remains unconfirmed until the player checks it.

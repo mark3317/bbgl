@@ -457,7 +457,9 @@ static void graphics_rebind(void) {
         free_wstring(cell + 0x48);
     }
     fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
-    printf("PC menu: Graphics viewport %d..%d rebound\n", scroll, scroll + count - 1);
+    int cursor;
+    memcpy(&cursor, g_open.dialog + DIALOG_ROWS + 0x74, sizeof(cursor));
+    printf("PC menu: Graphics viewport %d..%d rebound, cursor=%d, capacity=6\n", scroll, scroll + count - 1, cursor);
 }
 
 static void ach_list_update(unsigned char *comp);  /* the Achievements section's paging */
@@ -516,6 +518,13 @@ static int64_t open_section(Section *s, void *root, void *params, const void *ha
             release_ref(rd64(last + ITEM_WIDGET));
             wr64(g_open.dialog + ITEMS_END, rd64(g_open.dialog + ITEMS_END) - ITEM_STRIDE);
         }
+        /* The stock option dialog initializes its list for six controls PLUS a
+         * Defaults cell. Our movie deliberately has only six physical cells.
+         * Keep native cursor scrolling in the same viewport as the value widgets;
+         * otherwise the cursor may select an unbound seventh row. */
+        const int cells_per_line = 1, visible_lines = 6;
+        memcpy(g_open.dialog + DIALOG_ROWS + 0x7c, &cells_per_line, sizeof(cells_per_line));
+        memcpy(g_open.dialog + DIALOG_ROWS + 0x80, &visible_lines, sizeof(visible_lines));
         take_captions();
         graphics_rebind();
         printf("PC menu: %s opened\n", s->name);

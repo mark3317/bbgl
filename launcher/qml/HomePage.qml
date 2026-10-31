@@ -112,8 +112,8 @@ Item {
                     highlighted: true; serif: true
                     text: launcher.running ? launcher.tr("Game running") : launcher.setupRunning ? launcher.tr("Installing…") :
                           home.gameBlocked ? launcher.tr("Set up game files") : home.savesBlocked ? launcher.tr("Choose a saves folder") :
-                          home.onlineBlocked ? (launcher.playMode === "coop" ? launcher.tr("Set up co-op") : launcher.tr("Sign in with Discord")) :
-                          launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.playMode === "huntersdream" ? launcher.tr("Play online") : launcher.tr("Play offline")
+                          home.onlineBlocked ? launcher.tr("Set up co-op") :
+                          launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
                     enabled: !launcher.running && !launcher.setupRunning
                     onClicked: home.primaryRequested()
                 }
@@ -124,17 +124,16 @@ Item {
             }
             Item { width: 1; height: 12 }
 
-            // How PLAY starts the game: offline, online on The Hunter's Dream, or seamless co-op.
+            // How PLAY starts the game: offline or seamless co-op.
             Row {
                 id: modes
                 width: parent.width; spacing: 8
                 Repeater {
                     model: [{mode: "offline", label: launcher.tr("Offline")},
-                            {mode: "huntersdream", label: launcher.tr("Online · The Hunter's Dream")},
                             {mode: "coop", label: launcher.tr("Online · Seamless co-op")}]
                     delegate: Rectangle {
                         readonly property bool chosen: launcher.playMode === modelData.mode
-                        width: (modes.width - modes.spacing * 2) / 3; height: 40; radius: Theme.radius
+                        width: (modes.width - modes.spacing) / 2; height: 40; radius: Theme.radius
                         color: chosen ? Theme.surfaceHover : modeArea.containsMouse ? Theme.surfaceHover : "transparent"
                         border.width: 1; border.color: chosen ? Theme.accent : modeArea.containsMouse ? Theme.lineStrong : Theme.line
                         Text {

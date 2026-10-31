@@ -654,8 +654,6 @@ def co_op_environment(env, address, name, password, probe, save_copy=None):
     overrides.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps({
         'https://ss4.scej-network.jp:20443': f'http://{address}:{GAME_PORT}',
-        'http://thehuntersdream.com:18671/summon_messenger': f'http://{address}:{WEBAPI_PORT}',
-        'https://thehuntersdream.com:18671/summon_messenger': f'http://{address}:{WEBAPI_PORT}',
     }, indent=2) + '\n'
     overrides.write_text(text, encoding='utf-8')
     # BBSC reads the same file itself, but only from <folder the game starts in>\user (run.py
@@ -667,7 +665,7 @@ def co_op_environment(env, address, name, password, probe, save_copy=None):
     port_user.mkdir(parents=True, exist_ok=True)
     (port_user / 'host_overrides.json').write_text(text, encoding='utf-8')
     env = dict(env)
-    # Co-op runs on the shadNet backend against the host's servers, never The Hunter's Dream's,
+    # Co-op runs on the shadNet backend against the selected host,
     # whatever pool the main online settings choose (run.py drops these again for BB_COOP=1).
     for key in ('BB_NET_BACKEND', 'BB_THD_TOKEN', 'BB_THD_ONLINE_ID', 'BB_THD_SERVER', 'BB_THD_AUTH',
                 'BB_THD_RULESET'):

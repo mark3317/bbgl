@@ -20,9 +20,9 @@ RU = {
     'Preparing download…': 'Подготовка загрузки…',
     'Downloads into the game folder beside the launcher. Verified ZIP parts are reused when you retry.': 'Игра будет установлена в папку game рядом с лаунчером. При повторной попытке проверенные ZIP-части используются повторно.',
 
-    "In the host's Hunter's Dream a guest sees its own Dream (own messengers, shops, Doll, workshop tools); off = the host's copy of the Dream": 'Гость видит собственный Сон охотника: своих посланников, магазины, Куклу и инструменты мастерской.',
+    "In the host's Hunter's Dream a guest sees its own Dream (own messengers, shops, Doll, workshop tools); off = the host's copy of the Dream": 'Гость видит собственный Сон охотника: своих посланников, магазины, Куклу и инструменты мастерской. Если выключено — Сон хоста.',
     "Removes the summoned guest's 30% max HP cut": 'Убирает снижение максимального здоровья призванного гостя на 30%.',
-    'A kept death still drops a bloodstain and echoes': 'При смерти остаются пятно крови и отголоски.',
+    'A kept death still drops a bloodstain and echoes': 'После смерти отголоски крови остаются на месте гибели; их можно вернуть.',
     'The bell costs no Insight': 'Использование колокола не расходует озарение.',
     "Enemies and bosses get stronger for every guest (replaces the game's own boss buff)": 'Враги и боссы становятся сильнее за каждого гостя. Заменяет стандартное усиление боссов.',
     'Henryk, Djura and the other hostile hunters also get the enemy scaling (off = vanilla)': 'Усиление также применяется к Генрику, Джуре и другим враждебным охотникам.',
@@ -31,7 +31,7 @@ RU = {
     'Extra damage for enemies and bosses, per guest': 'Дополнительный урон врагов и боссов за каждого гостя.',
     'Harder to stagger normal enemies, per guest': 'Дополнительная устойчивость обычных врагов к ошеломлению за каждого гостя.',
     'Harder to stagger bosses, per guest': 'Дополнительная устойчивость боссов к ошеломлению за каждого гостя.',
-    "When a guest goes home, bosses, shortcuts, doors and lamps the host has done are added to the guest's own world (adds only, never removes; NPC quests and your character are not touched; saves backed up first)": 'После возвращения гостя домой прогресс боссов, проходов и фонарей хоста добавляется к его миру. Квесты NPC и персонаж не заменяются; сначала создаётся копия сохранения.',
+    "When a guest goes home, bosses, shortcuts, doors and lamps the host has done are added to the guest's own world (adds only, never removes; NPC quests and your character are not touched; saves backed up first)": 'После возвращения гостя домой прогресс боссов, проходов и фонарей хоста добавляется к его миру. Открытые двери также переносятся. Прогресс только добавляется; квесты NPC и персонаж не меняются. Сначала создаётся копия сохранения.',
     'Extra logs for the developers (key item census, item hooks, every flag in a session). Off = faster': 'Подробные журналы для диагностики. По умолчанию выключены.',
     'Enter a whole number within the setting range.': 'Введите целое число в допустимом диапазоне.',
     'Which buttons the game shows, from the next start. Xbox (by Dommo) and Keyboard (PCBButtons by JinkiJinn) are bundled. Select your game folder, then choose the buttons; no separate download is needed. Keyboard also binds the keys its images show: E interact, Left Shift dodge, R blood vial, Q item, F transform, mouse buttons to attack.': 'Значки кнопок меняются после перезапуска игры. Xbox от Dommo и PCBButtons от JinkiJinn уже включены: выберите папку игры и нужный набор. Клавиатура также настраивает соответствующие клавиши: E — действие, Shift — уклонение, R — флакон, Q — предмет, F — трансформация, кнопки мыши — атаки.',
@@ -44,8 +44,8 @@ RU = {
     'No guest HP cut': 'Без снижения здоровья гостя',
     'Bloodstain on death': 'Пятно крови после смерти',
     'Free Beckoning Bell': 'Колокол без расхода озарения',
-    'Enemy scaling': 'Масштабирование врагов',
-    'Scale NPC hunters': 'Масштабировать NPC-охотников',
+    'Enemy scaling': 'Усиление врагов',
+    'Scale NPC hunters': 'Усиление NPC-охотников',
     'Enemy HP per guest (%)': 'Здоровье врагов за гостя (%)',
     'Boss HP per guest (%)': 'Здоровье боссов за гостя (%)',
     'Enemy damage per guest (%)': 'Урон врагов за гостя (%)',
@@ -79,13 +79,11 @@ RU = {
     'Set up game files': 'Настроить файлы игры',
     'Choose a saves folder': 'Выбрать папку сохранений',
     'Set up co-op': 'Настроить совместную игру',
-    'Sign in with Discord': 'Войти через Discord',
     'Play co-op': 'Играть вместе',
     'Play online': 'Играть онлайн',
     'Play offline': 'Играть офлайн',
     'Stop': 'Остановить',
     'Offline': 'Офлайн',
-    "Online · The Hunter's Dream": "The Hunter's Dream",
     'Online · Seamless co-op': 'Совместная игра',
     'A new version is ready': 'Готова новая версия',
     'Install': 'Установить',
@@ -132,7 +130,6 @@ RU = {
     'Prompts, mouse & keyboard': 'Подсказки, мышь и клавиатура',
     'Game files, saves & language': 'Файлы, сохранения, язык',
     'Online': 'Онлайн',
-    "The Hunter's Dream sign-in": "Вход в The Hunter's Dream",
     'Co-op': 'Совместная игра',
     'Seamless co-op: host or join': 'Создать или присоединиться',
     'Mods, enhancements & tweaks': 'Моды, улучшения и настройки',
@@ -170,27 +167,11 @@ RU = {
     'Setup wizard': 'Мастер настройки',
     'Import trophy keys': 'Импорт ключей трофеев',
     'Open saves folder': 'Открыть папку сохранений',
-    "The Hunter's Dream": "The Hunter's Dream",
-    "The Hunter's Dream (thehuntersdream.com) is the public online server: messages, bloodstains, summons and "
-    "invasions with players on bbhost and the other Bloodborne ports. Sign in once with Discord: press the "
-    "button, sign in with Discord on the page that opens, and approve the code. Then choose \"Online · The "
-    "Hunter's Dream\" under Play on the Home page. Seamless co-op with your friends is separate: Settings → Co-op.":
-        "The Hunter's Dream (thehuntersdream.com) — общий онлайн-сервер: послания, пятна крови, призывы и "
-        "вторжения с игроками bbhost и других портов Bloodborne. Войдите один раз через Discord: нажмите кнопку, "
-        "войдите в Discord на открывшейся странице и подтвердите код. Затем на главной под «Играть» выберите "
-        "«Онлайн · The Hunter's Dream». Бесшовная совместная игра с друзьями — отдельно: Настройки → Совместная игра.",
     'Copy code': 'Скопировать код',
-    'Waiting for Discord…': 'Ожидание Discord…',
     'Sign in again': 'Войти снова',
     'Cancel': 'Отмена',
     'Sign out': 'Выйти',
     'Test connection': 'Проверить соединение',
-    "The connection to The Hunter's Dream is Awaken's port of bbhost's network code (GPL-3.0), as Supermedo's "
-    "port took it in; bbhost and The Hunter's Dream are by droogie and its team. Seamless co-op (the Co-op page) "
-    "does not use it.":
-        "Подключение к The Hunter's Dream — это порт сетевого кода bbhost от Awaken (GPL-3.0) в том виде, в "
-        "каком его взял порт Supermedo; bbhost и The Hunter's Dream созданы droogie и его командой. Бесшовная "
-        "совместная игра (страница «Совместная игра») его не использует.",
     'Seamless co-op': 'Бесшовная совместная игра',
     'Experimental. Seamless co-op is BBSC by CLS_AMG (Bloodborne Seamless Co-op): one session through deaths, '
     'lamps, areas and bosses, each hunter keeping their own character. Play on a co-op server (an invite code, '
@@ -321,7 +302,7 @@ RU = {
     'Atlas': 'Атлас',
     'Advanced': 'Дополнительно',
     'Diagnostics': 'Диагностика',
-    'Overlay': 'Оверлей',
+    'Overlay': 'Overlay',
     'Engine': 'Движок',
     'Developer': 'Для разработчиков',
     'Online connection': 'Онлайн-подключение',
@@ -331,7 +312,7 @@ RU = {
         'NVIDIA RTX, FSR 3.1 работает на любой.',
     'Upscaling preset': 'Пресет масштабирования',
     'How far below the output the game renders: higher factors are faster and softer.':
-        'Насколько ниже выходного разрешения рисует игра: больший множитель быстрее, но мягче.',
+        'Чем сильнее снижено внутреннее разрешение, тем выше скорость и менее чёткое изображение.',
     'Output resolution': 'Выходное разрешение',
     "The final image size, usually your display's.": 'Итоговый размер изображения, обычно как у вашего экрана.',
     'Frame generation': 'Генерация кадров',
@@ -354,31 +335,31 @@ RU = {
         'Позволяет менять пресет масштабирования в меню игры без перезапуска, ценой небольшой потери скорости.',
     'Model detail': 'Детализация моделей',
     'How soon distant models switch to simpler versions. Highest costs GPU time.':
-        'Как скоро дальние модели заменяются упрощёнными. «Максимальная» нагружает видеокарту.',
+        'Расстояние, на котором модели заменяются упрощёнными. «Максимальная» нагружает видеокарту.',
     'Video memory pressure target': 'Порог использования видеопамяти',
     'Starts clearing old textures and buffers before the chosen amount. This is not a hard VRAM cap; lower values '
     'may cause stutter. Restart the game to apply.':
         'Начинает выгружать старые текстуры и буферы до выбранного объёма. Это не жёсткий лимит видеопамяти; '
         'меньшие значения могут вызывать подтормаживания. Применяется после перезапуска игры.',
-    'Chromatic aberration': 'Хроматическая аберрация',
+    'Chromatic aberration': 'Хром. аберрация',
     'Colour fringes at the screen edges. Look only.': 'Цветная кайма по краям экрана. Только внешний вид.',
-    'Depth of field': 'Глубина резкости',
+    'Depth of field': 'Depth of Field (DoF)',
     'Blurs the background in cutscenes and close-ups. Look only.':
         'Размывает фон в катсценах и на крупных планах. Только внешний вид.',
-    'Motion blur': 'Размытие в движении',
+    'Motion blur': 'Motion Blur',
     'Blur while turning the camera. Look only.': 'Размытие при повороте камеры. Только внешний вид.',
-    'Ambient occlusion (SSAO)': 'Затенение окружения (SSAO)',
+    'Ambient occlusion (SSAO)': 'SSAO',
     'Soft shadows in corners and creases. Costs GPU time.': 'Мягкие тени в углах и складках. Нагружает видеокарту.',
     "The game's own anti-aliasing": 'Сглаживание самой игры',
     "The game's own edge smoothing, under the upscaler. Look only.":
-        'Собственное сглаживание краёв игры, под масштабированием. Только внешний вид.',
+        'Штатное сглаживание контуров до обработки апскейлером. Влияет только на изображение.',
     'Shadows of dynamic lights': 'Тени от динамического света',
     'Shadows cast by lamps, torches and other moving lights. Costs GPU time.':
         'Тени от ламп, факелов и других подвижных источников света. Нагружает видеокарту.',
-    'Screen-space reflections (not in the original)': 'Отражения в экранном пространстве (нет в оригинале)',
+    'Screen-space reflections (not in the original)': 'SSR (отражения)',
     'Reflections on wet streets; not in the original game. Costs GPU time.':
         'Отражения на мокрых улицах; в оригинальной игре их нет. Нагружает видеокарту.',
-    'Sharpening (RCAS)': 'Повышение резкости (RCAS)',
+    'Sharpening (RCAS)': 'RCAS',
     'Sharpens the upscaled image.': 'Делает масштабированное изображение резче.',
     'Sharpness (0.00–1.00)': 'Резкость (0.00–1.00)',
     'Object motion vectors': 'Векторы движения объектов',
@@ -386,8 +367,8 @@ RU = {
         'Данные о движении персонажей: меньше шлейфов при масштабировании.',
     'Show FPS counter': 'Показывать счётчик FPS',
     'Frame rate': 'Частота кадров',
-    'Frames ahead': 'Кадров наперёд',
-    'Unlocked mode limit': 'Предел в режиме без ограничения',
+    'Frames ahead': 'Кадры в очереди',
+    'Unlocked mode limit': 'Лимит FPS (без привязки к игре)',
     'Fullscreen': 'Полноэкранный режим',
     'Fullscreen type': 'Тип полноэкранного режима',
     'Exclusive switches the display to its own mode: notifications and other windows do not show over the game.':
@@ -488,16 +469,16 @@ RU = {
     'Unlocked': 'Без ограничения', 'Windowed': 'В окне',
     'Performance upscaling (×2), lower model detail, no SSAO or dynamic-light shadows, 60 FPS. For integrated '
     'graphics, the Steam Deck and cards with under 4 GB.':
-        'Масштабирование «Производительность» (×2), упрощённые модели, без SSAO и теней от динамического '
+        'Режим апскейлера Performance (×2), упрощённые модели, без SSAO и теней от динамического '
         'света, 60 FPS. Для встроенной графики, Steam Deck и видеокарт с памятью меньше 4 ГБ.',
     "Balanced upscaling (×1.7) and the game's own detail, 120 FPS. The default; for cards with 4-8 GB.":
-        'Масштабирование «Баланс» (×1.7) и исходная детализация игры, 120 FPS. По умолчанию; для видеокарт '
+        'Режим апскейлера Balanced (×1.7) и исходная детализация игры, 120 FPS. По умолчанию; для видеокарт '
         'с 4–8 ГБ.',
     "Quality upscaling (×1.5) and the game's own detail, 120 FPS. For cards with 8-12 GB.":
-        'Масштабирование «Качество» (×1.5) и исходная детализация игры, 120 FPS. Для видеокарт с 8–12 ГБ.',
+        'Режим апскейлера Quality (×1.5) и исходная детализация игры, 120 FPS. Для видеокарт с 8–12 ГБ.',
     'Native resolution, highest model detail and screen-space reflections (not in the original game), 120 FPS. '
     'For cards with 12 GB or more.':
-        'Родное разрешение, максимальная детализация моделей и отражения в экранном пространстве (нет в '
+        'Исходное разрешение, максимальная детализация моделей и отражения в экранном пространстве (нет в '
         'оригинальной игре), 120 FPS. Для видеокарт с 12 ГБ и больше.',
     'Your own combination. Choosing a preset changes only upscaling, model detail, SSAO, dynamic-light shadows, '
     'reflections and the frame rate.':
@@ -526,13 +507,12 @@ RU = {
     'Off (more stable)': 'Выключено (стабильнее)',
     'Relaxed (default)': 'Мягкий (по умолчанию)',
     'Precise': 'Точный',
-    "The Hunter's Dream (Discord sign-in)": "The Hunter's Dream (вход через Discord)",
     'shadNet server (address below)': 'Сервер shadNet (адрес ниже)',
-    'Performance (×2)': 'Производительность (×2)',
-    'Balanced (×1.7)': 'Баланс (×1.7)',
-    'Quality (×1.5)': 'Качество (×1.5)',
-    'Native AA (×1.0)': 'Родное сглаживание (×1.0)',
-    'Ultra Performance (×3)': 'Макс. производительность (×3)',
+    'Performance (×2)': 'Performance (×2)',
+    'Balanced (×1.7)': 'Balanced (×1.7)',
+    'Quality (×1.5)': 'Quality (×1.5)',
+    'Native AA (×1.0)': 'Native AA (×1.0)',
+    'Ultra Performance (×3)': 'Ultra Performance (×3)',
     'Russian': 'Русский', 'Japanese': 'Японский', 'French': 'Французский', 'Spanish': 'Испанский',
     'German': 'Немецкий', 'Italian': 'Итальянский', 'Portuguese (Brazil)': 'Португальский (Бразилия)',
     'Portuguese (Portugal)': 'Португальский (Португалия)', 'Spanish (Latin America)': 'Испанский (Латинская Америка)',
@@ -592,14 +572,9 @@ RU = {
     'Play co-op does it for you.':
         'Ещё не настроено: «Установить / обновить BBSC» скачает новейший BBSC из его релизов на GitHub (около '
         '100 МБ), или это сделает «Играть вместе».',
-    "Not signed in to The Hunter's Dream.": "Вход в The Hunter's Dream не выполнен.",
     'Offline: your own world, no servers.': 'Офлайн: ваш собственный мир, без серверов.',
-    'On the page that opened, sign in with Discord and approve this code (not in its "code from the game" box):':
-        'На открывшейся странице войдите через Discord и подтвердите этот код (не в поле «код из игры»):',
     'Online ID must be your account name, not an email address.': 'Онлайн-ID — это имя аккаунта, а не адрес почты.',
     'Online connection test finished.': 'Проверка онлайн-подключения завершена.',
-    "Online on The Hunter's Dream: sign in with Discord first (Settings → Online).":
-        "Онлайн на The Hunter's Dream: сначала войдите через Discord (Настройки → Онлайн).",
     'Preparing maps…': 'Подготовка карт…',
     'Preparing the game…': 'Подготовка игры…',
     'Preparing your game files. Keep the launcher open…': 'Подготовка файлов игры. Не закрывайте лаунчер…',
@@ -616,7 +591,6 @@ RU = {
         'Бесшовная совместная игра: запустите сервер или вставьте код приглашения хоста (Настройки → Совместная игра).',
     'Shader cache cleared. The next launch will rebuild it.': 'Кэш шейдеров очищен. Следующий запуск создаст его заново.',
     'Sign-in code copied.': 'Код входа скопирован.',
-    "Signed out of The Hunter's Dream on this PC.": "Выход из The Hunter's Dream на этом ПК выполнен.",
     'Starting the co-op servers…': 'Запуск серверов совместной игры…',
     'Starting the sign-in…': 'Начало входа…',
     'Steam did not close. Close it yourself and try again.': 'Steam не закрылся. Закройте его сами и попробуйте снова.',
@@ -627,9 +601,6 @@ RU = {
     'Step 2: choose the plain 1.09 UPDATE PKG (not 720p or 1080p)':
         'Шаг 2: выберите обычный PKG ОБНОВЛЕНИЯ 1.09 (не 720p и не 1080p)',
     'Stopped hosting.': 'Сервер остановлен.',
-    "Testing The Hunter's Dream…": "Проверка The Hunter's Dream…",
-    "The Hunter's Dream: sign in with Discord on the Online page first.":
-        "The Hunter's Dream: сначала войдите через Discord на странице «Онлайн».",
     'The game is running.': 'Игра запущена.',
     'This folder already contains keys.json. Replace it?': 'В этой папке уже есть keys.json. Заменить его?',
     'Trophy keys are already installed.': 'Ключи трофеев уже установлены.',
@@ -747,13 +718,10 @@ PATTERNS = [
     ('Now: the game renders at the output size, {} × {}.', 'Сейчас: игра рисует в выходном разрешении, {0} × {1}.'),
     ('Now: the game renders at {} × {} and upscales it to {} × {}.',
      'Сейчас: игра рисует в {0} × {1} и масштабирует до {2} × {3}.'),
-    ("Online on The Hunter's Dream as {}: messages, bloodstains and summons with everyone.",
-     "Онлайн на The Hunter's Dream как {0}: послания, пятна крови и призывы со всеми."),
     ('Preparing maps: {}% · {}', 'Подготовка карт: {0}% · {1}'),
     ('Preparing the maps failed: {}', 'Не удалось подготовить карты: {0}'),
     ('Seamless co-op: you host on {}; send your friends the invite code.',
      'Бесшовная совместная игра: вы хост на {0}; отправьте друзьям код приглашения.'),
-    ("Signed in to The Hunter's Dream as {}.", "Вход в The Hunter's Dream выполнен как {0}."),
     ('Starting co-op with {}. Host: ring the Hunt Bell. Guest: ring the Kin Bell.{}',
      'Запуск совместной игры с {0}. Хост: звоните в Колокол охоты. Гость: в Колокол родства.{1}'),
     ('The game could not start (exit code {}). See the log for details.',

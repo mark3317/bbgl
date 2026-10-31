@@ -2,12 +2,85 @@
 import os
 from pathlib import Path
 import shutil
+import json
+
+
+PROFILE_NAME = 'Bloodborne Game Launcher'
+
+
+def _copy_missing(source, target):
+    """Merge old data without replacing any files in the new profile."""
+    if not source.is_dir():
+        return
+    for item in source.rglob('*'):
+        destination = target / item.relative_to(source)
+        if item.is_file() and not destination.exists():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, destination)
+
+
+def _migrate_paths(root, legacy):
+    config = root / 'settings.json'
+    if not config.is_file():
+        return
+    try:
+        settings = json.loads(config.read_text(encoding='utf-8'))
+    except (ValueError, OSError):
+        return
+    if not isinstance(settings, dict):
+        return
+    for key in ('user_dir', 'mods_dir', 'patches_dir', 'coop_user_dir'):
+        value = settings.get(key)
+        if value:
+            try:
+                settings[key] = str(root / Path(value).relative_to(legacy))
+            except ValueError:
+                pass
+    for key in tuple(settings):
+        if key.startswith('thd_') or key in ('online_pool', 'online_community'):
+            del settings[key]
+    if settings.get('play_mode') not in ('offline', 'coop'):
+        settings['play_mode'] = 'offline'
+    settings['online'] = False
+    config.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding='utf-8')
 
 
 def profile_dir():
     local = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
     roaming = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
-    root = local / 'bbgl'
+    root = local / PROFILE_NAME
+    # Rename on the same volume: saves and large shader caches need no duplicate copy.
+    legacy_bbgl = local / 'bbgl'
+    marker = root / '.migrated-from-bbgl-v1'
+    if legacy_bbgl.is_dir() and not marker.exists():
+        if not root.exists():
+            legacy_bbgl.rename(root)
+        else:
+            _copy_missing(legacy_bbgl, root)
+        _migrate_paths(root, legacy_bbgl)
+        marker.write_text('1\n', encoding='utf-8')
+    # GPU cache belongs to the shared profile, independent of the selected save folder.
+    config = root / 'settings.json'
+    selected_user = ''
+    if config.is_file():
+        try:
+            settings = json.loads(config.read_text(encoding='utf-8'))
+            if isinstance(settings, dict):
+                selected_user = settings.get('user_dir', '')
+        except (ValueError, OSError):
+            pass
+    caches = [root / 'user' / 'cache']
+    if selected_user and Path(selected_user).is_relative_to(root):
+        caches.append(Path(selected_user) / 'cache')
+    for cache in dict.fromkeys(caches):
+        if cache.is_dir():
+            if not (root / 'cache').exists():
+                cache.rename(root / 'cache')
+            else:
+                cache_marker = root / ('.migrated-cache-' + '-'.join(cache.relative_to(root).parts) + '-v1')
+                if not cache_marker.exists():
+                    _copy_missing(cache, root / 'cache')
+                    cache_marker.write_text('1\n', encoding='utf-8')
     # Prefer the most recent Local profile, then fill gaps from the older Roaming one.
     # A new marker makes this independent of the previous Roaming-to-Local migration.
     for label, legacy in (('local', local / 'bbport-launcher'),

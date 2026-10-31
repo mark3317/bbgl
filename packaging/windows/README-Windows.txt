@@ -8,7 +8,7 @@ Read README.md (English) or README.ru.md (Russian) for setup and known limitatio
 Updates: https://github.com/mark3317/bbgl/releases
 
 BBSC-GL client and hosting binaries run directly from coop/client and coop/server.
-Settings, graphics, mod selection, saves and BBSC-GL journals: %LOCALAPPDATA%\bbgl.
+Settings, graphics, mod selection, saves and BBSC-GL journals: %LOCALAPPDATA%\Bloodborne Game Launcher.
 Mod files: mods inside the launcher folder.
-Default saves/cache: %LOCALAPPDATA%\bbgl\user. No separate BBSC-GL preparation.
+Default saves: %LOCALAPPDATA%\Bloodborne Game Launcher\user. Shader cache: %LOCALAPPDATA%\Bloodborne Game Launcher\cache. No separate BBSC-GL preparation.
 Ready-made Xbox/Keyboard mods are in the launcher mods folder; switching requires no extraction.

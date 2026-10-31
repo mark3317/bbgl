@@ -16,7 +16,6 @@ Item {
         {name: "Visuals", icon: "visuals", tile: "tile-visuals", detail: launcher.tr("Graphics, display & frame rate")},
         {name: "Controls", icon: "controls", tile: "tile-controls", detail: launcher.tr("Prompts, mouse & keyboard")},
         {name: "Game & Saves", icon: "folder", tile: "tile-game-and-saves", detail: launcher.tr("Game files, saves & language")},
-        {name: "Online", icon: "online", tile: "tile-online", detail: launcher.tr("The Hunter's Dream sign-in")},
         {name: "Co-op", icon: "online", tile: "tile-online", detail: launcher.tr("Seamless co-op: host or join")},
         {name: "Mods & Patches", icon: "puzzle", tile: "tile-mods-and-patches", detail: launcher.tr("Mods, enhancements & tweaks")},
         {name: "System", icon: "system", tile: "tile-system", detail: launcher.tr("Startup, updates & diagnostics")}
@@ -261,20 +260,6 @@ Item {
                         GlassButton { text: launcher.tr("Open saves folder"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("openSaves") }
                         GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 38; onClicked: launcher.refreshReadiness() }
                     }
-                    // The Hunter's Dream (hidden with BB_HUNTERS_DREAM=0): Discord sign-in by a code approved on its website.
-                    Note { visible: is("Online", "The Hunter's Dream"); text: launcher.tr("The Hunter's Dream (thehuntersdream.com) is the public online server: messages, bloodstains, summons and invasions with players on bbhost and the other Bloodborne ports. Sign in once with Discord: press the button, sign in with Discord on the page that opens, and approve the code. Then choose \"Online · The Hunter's Dream\" under Play on the Home page. Seamless co-op with your friends is separate: Settings → Co-op.") }
-                    Note { visible: is("Online", "The Hunter's Dream"); text: launcher.thdStatus; color: Theme.text; font.pixelSize: 13 }
-                    Row { visible: is("Online", "The Hunter's Dream") && launcher.thdCode !== ""; spacing: 14
-                        Text { text: launcher.thdCode; color: Theme.text; font.family: Theme.sans; font.pixelSize: 30; font.letterSpacing: 4; anchors.verticalCenter: parent.verticalCenter }
-                        GlassButton { text: launcher.tr("Copy code"); width: Math.max(120, implicitWidth); height: 38; anchors.verticalCenter: parent.verticalCenter; onClicked: launcher.thdCopyCode() }
-                    }
-                    Row { visible: is("Online", "The Hunter's Dream"); spacing: 10
-                        GlassButton { text: launcher.thdBusy ? launcher.tr("Waiting for Discord…") : (launcher.thdSignedIn ? launcher.tr("Sign in again") : launcher.tr("Sign in with Discord")); width: Math.max(200, implicitWidth); height: 38; enabled: !launcher.thdBusy; onClicked: launcher.thdSignIn() }
-                        GlassButton { visible: launcher.thdBusy; text: launcher.tr("Cancel"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.thdCancel() }
-                        GlassButton { visible: !launcher.thdBusy && launcher.thdSignedIn; text: launcher.tr("Sign out"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.thdSignOut() }
-                        GlassButton { text: launcher.tr("Test connection"); width: Math.max(148, implicitWidth); height: 38; onClicked: launcher.testConnection() }
-                    }
-                    Note { visible: is("Online", "The Hunter's Dream"); text: launcher.tr("The connection to The Hunter's Dream is Awaken's port of bbhost's network code (GPL-3.0), as Supermedo's port took it in; bbhost and The Hunter's Dream are by droogie and its team. Seamless co-op (the Co-op page) does not use it.") }
                     Note { visible: is("Co-op", "Seamless co-op"); text: launcher.tr("Experimental. This launcher includes the BBSC-GL fork: one session through deaths, lamps, areas and bosses, each hunter keeping their own character. Play on a co-op server (an invite code, or the one this launcher comes with), or host one on your PC for friends on Tailscale or your home network. BBSC-GL client and hosting files are included and ready to use. Your saves are backed up before every session. Normal play and online are unchanged.") }
                     Note { visible: is("Co-op", "Seamless co-op") || is("Co-op", "Host a session") || is("Co-op", "Join a host"); text: launcher.coopStatus }
                     Row { visible: is("Co-op", "Seamless co-op"); spacing: 10

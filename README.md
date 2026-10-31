@@ -18,7 +18,7 @@ Windows x64 and a compatible Vulkan driver are required. For graphics, hardware,
 - A matched launcher, BBSC-GL client and hosting server in one package, pinned to known source revisions.
 - Co-op focused on playing through the game together, with guest world recovery, personal NPC rewards and an own Hunter's Dream option. See [how BBSC-GL differs from BBSC](https://github.com/mark3317/bbsc-gl#readme).
 - PlayStation, Xbox and keyboard button prompts; the alternative packs are included.
-- Updates from **mark3317/bbgl**. Settings, saves managed by the launcher, co-op journals and host data live in `%LOCALAPPDATA%\bbgl`; existing launcher profiles are imported automatically without deleting the originals. A manually selected save folder remains where you chose it.
+- Updates from **mark3317/bbgl**. Settings, saves managed by the launcher, co-op journals and host data live in `%LOCALAPPDATA%\Bloodborne Game Launcher`; the previous bbgl profile is migrated automatically. A manually selected save folder remains where you chose it.
 
 Co-op is experimental. Chalice combat latency, uncommon death/disconnect recovery and larger parties still need further checks. Keep save backups; automatic backups do not replace them. [Current issues and test status](https://github.com/mark3317/bbsc-gl/blob/mark/bbport-fixes/docs/BACKLOG.md).
 

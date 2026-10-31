@@ -5,7 +5,7 @@
 Every setting of the port in one window: the game folder and saves, bbport.ini (upscaler,
 preset, output, effects), start-up options passed to run.py as environment variables
 (frame rate, presentation, HDR, ...), mods, third-party patches and the FSR 4 assets.
-Launcher options live in %LOCALAPPDATA%/bbgl/settings.json.
+Launcher options live in %LOCALAPPDATA%/Bloodborne Game Launcher/settings.json.
 
 Frozen with PyInstaller (packaging/windows/package.sh) the same Bloodborne.exe also runs the
 game without the window (`--play`), run.py (`--run`) and the preparation scripts (`--script`),
@@ -49,10 +49,6 @@ VERSION = '1.0.0'
 CURRENT_RELEASE_TAG = 'v1.0.0'
 HERO_ART = PORT_DIR / 'launcher' / 'art' / 'hero.png'
 STRIP_ART = PORT_DIR / 'launcher' / 'art' / 'strip.png'
-# Co-op: the community server that answers the game's own server requests.
-COMMUNITY_SERVER = 'https://thehuntersdream.com'
-# Its co-op service (bbhost's), as run.py's COMMUNITY_API_PORT sets the game's BB_THD_SERVER.
-COMMUNITY_API_PORT = 18671
 RELEASES_API = 'https://api.github.com/repos/mark3317/bbgl/releases/latest'
 RELEASES_PAGE = 'https://github.com/mark3317/bbgl/releases/latest'
 UPDATE_DIR = Path(tempfile.gettempdir()) / 'bbport-update'
@@ -112,7 +108,7 @@ def run_role(argv):
 def https_context():
     """Windows' trusted roots plus Mozilla's (certifi, shipped with the launcher). Python reads
     only the roots already in the Windows store, which may lack newer ones such as Let's
-    Encrypt's (The Hunter's Dream); Windows itself fetches those on demand."""
+    Encrypt's; Windows itself fetches those on demand."""
     import ssl
     context = ssl.create_default_context()
     try:
@@ -174,10 +170,10 @@ def windows_language():
 # launcher's own settings.json (passed to run.py as environment variables).
 
 EFFECTS = [
-    ('effect_chromatic_aberration', ('Chromatic aberration', 'Хроматическая аберрация'), True),
-    ('effect_dof', ('Depth of field', 'Глубина резкости (DoF)'), True),
+    ('effect_chromatic_aberration', ('Chromatic aberration', 'Хром. аберрация'), True),
+    ('effect_dof', ('Depth of field', 'Depth of Field (DoF)'), True),
     ('effect_motion_blur', ('Motion blur', 'Размытие в движении'), True),
-    ('effect_ssao', ('Ambient occlusion (SSAO)', 'Затенение SSAO'), True),
+    ('effect_ssao', ('Ambient occlusion (SSAO)', 'SSAO'), True),
     ('effect_game_aa', ("The game's own anti-aliasing", 'Собственное сглаживание игры'), True),
     ('effect_dynamic_shadows', ('Shadows of dynamic lights', 'Тени от динамических источников'), True),
     ('effect_ssr', ('Screen-space reflections (not in the original)', 'Отражения SSR (не было в игре)'), False),
@@ -262,10 +258,7 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'
                 'check_updates': True, 'online': False, 'online_server': 'srv.shadps4.net:31313',
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
-                'online_community': COMMUNITY_SERVER,
-                # The co-op pool: 'shadnet' (the server above) or 'huntersdream' (shown only with
-                # BB_HUNTERS_DREAM=0 hides it), and The Hunter's Dream account from its Discord sign-in.
-                'online_pool': 'shadnet', 'thd_online_id': '', 'thd_token': '', 'play_mode': '',
+                'play_mode': 'offline',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
                 # finished or skipped; launchDirectly starts the game without the launcher.
                 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,
@@ -273,11 +266,14 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'
                 **{'bbsc_' + item['id']: item['default'] for item in COOP_SETTINGS}}
 
 
-
 def app_settings(saved):
     """The launcher settings: APP_DEFAULTS under the saved ones. Settings saved before 120 FPS was
     the default and without a frame rate of their own ran unlocked: they keep that."""
+    saved = {key: value for key, value in saved.items()
+             if not key.startswith('thd_') and key not in ('online_pool', 'online_community')}
     settings = {**APP_DEFAULTS, **saved}
+    settings['play_mode'] = play_mode(settings)
+    settings['online'] = False
     if saved and 'fps_mode' not in saved:
         settings['fps_mode'] = 'uncap'
     return settings
@@ -465,7 +461,6 @@ def load_json(path, default):
         return default
 
 
-
 def ini_path():
     return Path(os.environ.get('BB_CONFIG', DATA_DIR / 'bbport.ini'))
 
@@ -523,191 +518,14 @@ def webapi_address(server):
     return f'http://{host}:31315'
 
 
-def community_address(value):
-    """The game server (messages, bloodstains, ghosts) as https://host, The Hunter's Dream by default."""
-    value = str(value).strip() or COMMUNITY_SERVER
-    scheme, _sep, rest = value.rpartition('://')
-    host = rest.split('/')[0].split(':')[0]  # the game picks the ports (20443, 18671)
-    return f'{scheme or "https"}://{host}'
-
-
-def webapi_setting(s):
-    """The WebAPI field, unless it holds the game server's address (a common mix-up): then the
-    co-op server's own WebAPI is used."""
-    webapi = str(s['online_webapi']).strip()
-    community_host = community_address(s['online_community']).split('://', 1)[1].split(':')[0]
-    if webapi and community_host in webapi:
-        webapi = ''
-    return webapi or webapi_address(str(s['online_server']).strip() or APP_DEFAULTS['online_server'])
-
-
-def server_check(server, webapi, community):
-    """A line about each online address: reachable, or why not (runs off the Tk thread)."""
-    import socket
-    lines = []
-    try:
-        with urllib.request.urlopen(community + ':20443/bb-eu/ss.info', timeout=6) as reply:
-            reply.read(64)
-        lines.append(_('Game server {0}: reachable').format(community))
-    except (OSError, ValueError) as error:
-        lines.append(_('Game server {0}: not reachable ({1})').format(community, error))
-    host, _sep, port = server.rpartition(':')
-    try:
-        socket.create_connection((host or server, int(port or 31313)), timeout=4).close()
-        lines.append(_('Server {0}: reachable').format(server))
-    except (OSError, ValueError) as error:
-        lines.append(_('Server {0}: not reachable ({1})').format(server, error))
-    try:
-        with urllib.request.urlopen(webapi.rstrip('/') + '/status', timeout=4) as reply:
-            ok = b'"ok":true' in reply.read(512).replace(b' ', b'')
-        lines.append(_('WebAPI {0}: reachable').format(webapi) if ok else
-                     _('WebAPI {0}: answered, but it is not a shadNet server').format(webapi))
-    except (OSError, ValueError) as error:
-        lines.append(_('WebAPI {0}: not reachable ({1})').format(webapi, error))
-    return '\n'.join(lines)
-
-
-# The Hunter's Dream pool: the engine's own backend for it (BB_NET_BACKEND=thd, bbhost's
-# protocol, Awaken's port as Supermedo took it in): the pool choice and the Discord sign-in on
-# the Online page, as Supermedo shows them since its 1.8.1. BB_HUNTERS_DREAM=0 hides them.
-HUNTERS_DREAM_POOL = os.environ.get('BB_HUNTERS_DREAM') != '0'
-ONLINE_POOLS = [('shadnet', ('shadNet server (address below)',)),
-                ('huntersdream', ("The Hunter's Dream (Discord sign-in)",))]
-# Which build a server sees: shadNet's client version and The Hunter's Dream's client field
-# ("bbgl/<version>"). This fork's own name, never an official shadPS4 one.
 CLIENT_VERSION = f'bbgl {VERSION}'
-
-
-# How the launcher's PLAY starts the game: 'offline', 'huntersdream' (online on The Hunter's
-# Dream, Discord sign-in) or 'coop' (seamless co-op on a server one of the players hosts).
-PLAY_MODES = ('offline', 'huntersdream', 'coop')
+PLAY_MODES = ('offline', 'coop')
 
 
 def play_mode(s):
-    """The play mode; older settings (Play online with The Hunter's Dream pool) map to it."""
+    """Only local play and bundled seamless co-op are supported."""
     mode = s.get('play_mode')
-    if mode in PLAY_MODES:
-        return mode
-    return 'huntersdream' if s.get('online') and s.get('online_pool') == 'huntersdream' else 'offline'
-
-
-def hunters_dream_selected(s):
-    return HUNTERS_DREAM_POOL and s.get('online_pool') == 'huntersdream'
-
-
-def thd_call(url, body):
-    """A call to The Hunter's Dream's account service (bbhost's): its reply, or ValueError with
-    the server's reason."""
-    request = urllib.request.Request(url, data=json.dumps(body).encode(), method='POST',
-                                     headers={'Content-Type': 'application/json'})
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            text = response.read()
-    except urllib.error.HTTPError as error:
-        text = error.read()
-    try:
-        reply = json.loads(text)
-    except ValueError:
-        reply = None
-    if not isinstance(reply, dict) or 'ResKind' not in reply:
-        raise ValueError(f'{url} has no account service')
-    if reply['ResKind'] != 0:
-        raise ValueError(reply.get('Message') or 'refused')
-    return reply
-
-
-def thd_sign_in(game_server, on_code, cancelled=lambda: False):
-    """Discord sign-in the way bbhost does it: a code to approve on the website. on_code(page,
-    code) shows it. Returns (online id, token); raises ValueError."""
-    auth = community_address(game_server)
-    start = thd_call(auth + '/auth/device/start',
-                     {'DeviceName': f'bbgl on {os.environ.get("COMPUTERNAME", "PC")}'})
-    device, user_code = start.get('DeviceCode', ''), start.get('UserCode', '')
-    if not device or not user_code:
-        raise ValueError('no code in the reply')
-    interval = max(1, int(start.get('Interval') or 5))
-    deadline = time.monotonic() + int(start.get('ExpiresIn') or 600)
-    # As bbhost opens it: the website's /link page with the code in its address, so after the
-    # Discord sign-in there the page asks to approve this code. (Its "code from the game" box is
-    # for the other direction: signing in to the website from an account made in the game.)
-    page = start.get('VerificationUri') or auth + '/link'
-    on_code(page + ('&' if '?' in page else '?') + 'code=' + urllib.parse.quote(user_code), user_code)
-    while time.monotonic() < deadline and not cancelled():
-        time.sleep(interval)
-        poll = thd_call(auth + '/auth/device/poll', {'DeviceCode': device})
-        status = poll.get('Status')
-        if status == 'approved':
-            if not poll.get('OnlineId') or not poll.get('Token'):
-                raise ValueError('no token in the reply')
-            return poll['OnlineId'], poll['Token']
-        if status == 'slow_down':
-            interval += 5
-        elif status == 'denied':
-            raise ValueError('the sign-in was denied')
-        elif status == 'expired':
-            break
-    raise ValueError('the sign-in was cancelled' if cancelled() else 'the code expired; try again')
-
-
-def server_check_hunters_dream(community):
-    """Whether The Hunter's Dream's game server and bbhost service answer (off the UI thread)."""
-    lines = []
-    for title, url in ((_('Game server {0}'), community + ':20443/bb-eu/ss.info'),
-                       (_('Co-op service {0}'), f'{community}:{COMMUNITY_API_PORT}/')):
-        name = title.format(url.split('://', 1)[1].split('/')[0])
-        try:
-            urllib.request.urlopen(url, timeout=6).close()
-            lines.append(_('{0}: reachable').format(name))
-        except urllib.error.HTTPError:
-            lines.append(_('{0}: reachable').format(name))   # it answered
-        except (OSError, ValueError) as error:
-            lines.append(_('{0}: not reachable ({1})').format(name, error))
-    return '\n'.join(lines)
-
-
-def thd_client_refused(reason):
-    """Whether a 401's reason is the server refusing this build ("This client is not supported"),
-    which a new sign-in cannot change; gpu/bbnet/thd/thd_session.cpp tells the two apart alike."""
-    return 'client is not supported' in reason.casefold()
-
-
-def thd_account_check(community, online_id, token):
-    """Whether The Hunter's Dream accepts this sign-in from this client: the game's own event
-    poll (read-only, no ack), with the headers gpu/bbnet/thd/thd_session.cpp sends. A saved
-    token alone says nothing: the server can still refuse the account or this build (HTTP 401)."""
-    if not online_id or not token:
-        return _('Not signed in: use "Sign in with Discord".')
-    # The game sends at most 16 characters of it (thd_session.cpp, BB_THD_ONLINE_ID).
-    body = {'OnlineId': online_id[:16], 'Cursor': 0, 'Categories': ['matching2']}
-    request = urllib.request.Request(f'{community}:{COMMUNITY_API_PORT}/np/events/poll',
-                                     data=json.dumps(body).encode(),
-                                     method='POST',
-                                     headers={'Content-Type': 'application/json', 'Accept': 'application/json',
-                                              'User-Agent': CLIENT_VERSION.replace(' ', '/'),
-                                              'X-BBHost-Ruleset': os.environ.get('BB_THD_RULESET') or 'vanilla',
-                                              'X-BB-Token': token})
-    try:
-        with urllib.request.urlopen(request, timeout=8) as response:
-            reply = json.loads(response.read())
-    except urllib.error.HTTPError as error:
-        if error.code != 401:
-            return _('Sign-in as {0}: not checked (HTTP {1})').format(online_id, error.code)
-        try:
-            reason = json.loads(error.read()).get('Message') or ''
-        except (OSError, ValueError, AttributeError, http.client.HTTPException):
-            reason = ''
-        line = _('Sign-in as {0}: refused by the server ({1})').format(online_id, reason or 'HTTP 401')
-        if thd_client_refused(reason):
-            line += '\n' + _('The server refuses this build, not the account: signing in again does not help.')
-        return line
-    except ValueError:
-        # Answered, but not with the poll's JSON: a proxy, a captive portal or another service.
-        return _("Sign-in as {0}: not checked (the reply is not from The Hunter's Dream)").format(online_id)
-    except (OSError, http.client.HTTPException) as error:
-        return _('Sign-in as {0}: not checked ({1})').format(online_id, connection_error_text(error))
-    if not isinstance(reply, dict):
-        return _("Sign-in as {0}: not checked (the reply is not from The Hunter's Dream)").format(online_id)
-    return _('Signed in as {0}: accepted by the server').format(online_id)
+    return mode if mode in PLAY_MODES else 'offline'
 
 
 # Button prompt packs. Both are edits of the game's own menu/common.tpf.dcx, so the port does not
@@ -792,7 +610,7 @@ def game_environment(s):
                 value = str(item['default'])
         env[item['env']] = str(value)
     env['BB_PORT_VERSION'] = VERSION
-    env['BB_CLIENT_VERSION'] = CLIENT_VERSION  # what shadNet and The Hunter's Dream see
+    env['BB_CLIENT_VERSION'] = CLIENT_VERSION  # client build identifier
     env['BB_DATA_DIR'] = str(DATA_DIR)
     env['BB_CONFIG'] = str(ini_path())
     env['BB_USER_DIR'] = s['user_dir'] or str(DATA_DIR / 'user')
@@ -833,25 +651,12 @@ def game_environment(s):
         if '=' in item:
             key, value = item.split('=', 1)
             env[key] = value
-    # Online only in The Hunter's Dream play mode; seamless co-op sets up its own launch
-    # (bbport_coop.co_op_environment), and the shadNet-server pool is no longer offered.
-    if s.get('online') and play_mode(s) == 'huntersdream':
-        server = str(s['online_server']).strip() or APP_DEFAULTS['online_server']
-        env['BB_ONLINE'] = '1'
-        env['BB_SHADNET_SERVER'] = server
-        env['BB_SHADNET_WEBAPI'] = webapi_setting(s)
-        env['BB_SHADNET_NPID'] = str(s['online_npid']).strip()
-        env['BB_SHADNET_PASSWORD'] = str(s['online_password'])
-        env['BB_UPNP'] = '1' if s['online_upnp'] else '0'
-        env['BB_COMMUNITY_SERVER'] = community_address(s['online_community'])
-        if hunters_dream_selected(s):
-            # The engine's Hunter's Dream backend with the Discord-linked account (run.py sets
-            # the game server and the backend's addresses).
-            env['BB_NET_BACKEND'] = 'thd'
-            env['BB_THD_ONLINE_ID'] = str(s.get('thd_online_id', ''))
-            env['BB_THD_TOKEN'] = str(s.get('thd_token', ''))
-            for key in ('BB_SHADNET_SERVER', 'BB_SHADNET_WEBAPI', 'BB_SHADNET_NPID', 'BB_SHADNET_PASSWORD'):
-                env.pop(key, None)
+    # Co-op builds its own environment pointed at the selected host.
+    env['BB_ONLINE'] = '0'
+    env.pop('BB_NET_BACKEND', None)
+    for key in tuple(env):
+        if key.startswith('BB_THD_') or key == 'BB_COMMUNITY_SERVER':
+            env.pop(key)
     env['PYTHONUNBUFFERED'] = '1'
     env['PYTHONIOENCODING'] = 'utf-8'
     return env
@@ -1169,7 +974,6 @@ class Launcher:
                           ('display', '▤', _('Display & FPS', 'Экран и FPS')),
                           ('game', '◈', _('Game & effects', 'Игра и эффекты')),
                           ('cheats', '✦', _('Cheats', 'Читы')),
-                          ('online', '◎', _('Online co-op', 'Онлайн-кооператив')),
                           ('mods', '▦', _('Mods & patches', 'Моды и патчи')),
                           ('advanced', '⚙', _('Advanced', 'Дополнительно')),
                           ('log', '≡', _('Log', 'Журнал')))
@@ -1202,7 +1006,6 @@ class Launcher:
         self.build_display()
         self.build_game()
         self.build_cheats()
-        self.build_online()
         self.build_mods()
         self.build_advanced()
         self.build_log()
@@ -1590,7 +1393,7 @@ class Launcher:
         line(2,3,_('Add to Steam  →','Добавить в Steam  →'),color=GOLD,action=self.add_to_steam)
         if card_h>self.px(195):
             line(2,4,_('Online co-op enabled','Кооператив включён') if self.var('online','app').get()
-                 else _('Playing offline','Игра офлайн'),color=MUTED,action=lambda:self.show('online'))
+                 else _('Playing offline','Игра офлайн'),color=MUTED)
         banner_y=card_y+card_h+self.px(12)
         if banner_y+self.px(55)<h:
             footer_height=h-self.px(10)-banner_y
@@ -1749,8 +1552,8 @@ class Launcher:
                       'dvdroot_ps4); версия 1.09 для патчей сообщества.'), on_change=self.game_changed)
         self.folder(f, 'user_dir', _('Saves folder', 'Папка сохранений'),
                     _('Choose the saves folder', 'Выберите папку сохранений'),
-                    _('Empty: {} (shader caches are kept there too).',
-                      'Пусто: {} (там же кэш шейдеров).').format(DATA_DIR / 'user'), on_change=self.refresh_status)
+                    _('Empty: {}.',
+                      'Пусто: {}.').format(DATA_DIR / 'user'), on_change=self.refresh_status)
         self.folder(f, 'dlc_dir', _('DLC folder'), _('Choose the DLC folder'),
                     _('Your dumped add-ons, one folder each named like SPEXPANSIONDLC03 (The Old Hunters). '
                       'Only needed with a base-game dump; the Game of the Year edition (CUSA03173) has it.'))
@@ -1787,113 +1590,6 @@ class Launcher:
         control.trace_add('write', lambda *_a: control.get() and camera.set(False))
         camera.trace_add('write', lambda *_a: camera.get() and control.set(False))
 
-    def build_online(self):
-        ttk = self.ttk
-        f = self.scrolled_page('online', _('Online co-op'),
-                               _("Messages, bloodstains and ghosts come from The Hunter's Dream; bells and summons "
-                                 'go through a shadNet server.'))
-        self.check(f, 'online', 'app', _('Play online'),
-                   _('Off: the game stays offline, as before.'))
-        self.note(f, _('Heads-up: the public shadPS4 server (srv.shadps4.net) currently signs this port out '
-                       '("doesn\'t accept your shadPS4 build"), since its 14 October 2026 update. To play together, '
-                       'use seamless co-op on a server one of you runs, or a private shadNet server.',
-                       'Внимание: публичный сервер shadPS4 (srv.shadps4.net) сейчас отключает этот порт '
-                       '("doesn\'t accept your shadPS4 build") после обновления 14 октября 2026. Для совместной игры '
-                       'используйте бесшовный кооператив на сервере одного из вас или частный сервер shadNet.'))
-        self.var('online', 'app').trace_add('write', lambda *_a: self.refresh_status())
-        if HUNTERS_DREAM_POOL:
-            self.build_hunters_dream(f)
-        self.section(f, _('Game server (messages, bloodstains, ghosts)'))
-        community = self.var('online_community', 'app')
-        self.row(f, _('Game server'), ttk.Entry(f, textvariable=community, width=40),
-                 _('The Hunter\'s Dream by default. Only the name is needed; the game picks the ports.'))
-        self.section(f, _('Co-op server (bells and summons)'))
-        server = self.var('online_server', 'app')
-        self.row(f, _('Server address'), ttk.Entry(f, textvariable=server, width=40),
-                 _('srv.shadps4.net:31313 is the public shadPS4 server. For a private server, enter '
-                   'host:port from the person who runs it.'))
-        self.row(f, _('WebAPI address'), ttk.Entry(f, textvariable=self.var('online_webapi', 'app'), width=40),
-                 _('Of the shadNet server, not the game server. Leave empty: the server address with '
-                   'port 31315 is used.'))
-        self.section(f, _('Account'))
-        self.row(f, '', ttk.Button(f, text=_('Create shadNet account (no Discord)'),
-                                   command=lambda: webbrowser.open('https://shadps4.net/shadnet/register/')))
-        self.note(f, _('The Hunter\'s Dream website account is separate and optional for gameplay.'))
-        self.row(f, _('Online ID (NPID)'), ttk.Entry(f, textvariable=self.var('online_npid', 'app'), width=40),
-                 _('Your shadNet account name, not your email. Register one at shadps4.net/shadnet/register/, or ask the '
-                   'owner of a private server.'))
-        self.row(f, _('Password'), ttk.Entry(f, textvariable=self.var('online_password', 'app'), width=40, show='•'),
-                 _('Saved on this PC with the other launcher settings.'))
-        self.section(f, _('Connection'))
-        self.check(f, 'online_upnp', 'app', _('UPnP (open a port on the router automatically)'),
-                   _('Turn it off on Tailscale or another VPN.'))
-        self.note(f, _('Test connection checks server reachability, not account sign-in.'))
-        result = ttk.Label(f, text='', style='Muted.TLabel', justify='left')
-
-        def check():
-            values = {key: self.var(key, 'app').get()
-                      for key in ('online_server', 'online_webapi', 'online_community')}
-            address = values['online_server'].strip() or APP_DEFAULTS['online_server']
-            webapi, game = webapi_setting(values), community_address(values['online_community'])
-            online_on = self.var('online', 'app').get()
-            result.configure(text=_('Checking…'))
-
-            def work():
-                text = server_check(address, webapi, game)
-                if values['online_webapi'].strip() and values['online_webapi'].strip() != webapi:
-                    text += '\n' + _('The WebAPI box holds the game server address; it is ignored.')
-                if not online_on:
-                    text += '\n' + _('"Play online" is off: the game starts offline.')
-                self.ui_calls.put(lambda: result.configure(text=text))
-            threading.Thread(target=work, daemon=True).start()
-        self.row(f, '', ttk.Button(f, text=_('Test connection'), command=check))
-        result.grid(row=self.next_row(f), column=1, sticky='w', pady=(6, 0))
-        self.note(f, _('Everyone in a session needs the same game version (1.09) and the same server. '
-                       'Cheats change the game for the other players too: turn them off when you play together.'))
-
-    def build_hunters_dream(self, f):
-        """The co-op pool choice and The Hunter's Dream's Discord sign-in (BB_HUNTERS_DREAM=0 hides them)."""
-        ttk = self.ttk
-        self.section(f, _("The Hunter's Dream (test build)"))
-        self.row(f, _('Co-op pool'), self.choice(f, 'online_pool', 'app', ONLINE_POOLS),
-                 _("The Hunter's Dream signs in with Discord below; the shadNet server uses the account "
-                   'fields further down.'))
-        thd_id, thd_token = self.var('thd_online_id', 'app'), self.var('thd_token', 'app')
-        account = ttk.Label(f, text='', justify='left')
-
-        def show_account():
-            name = thd_id.get() if thd_token.get() else ''
-            account.configure(text=_('Signed in as {}').format(name) if name else _('Not signed in'))
-        show_account()
-        self.row(f, _('Account'), account)
-        signing = ttk.Label(f, text='', style='Muted.TLabel', justify='left', wraplength=self.px(560))
-        code_label = ttk.Label(f, text='', font=('Segoe UI', 20, 'bold'))
-
-        def sign_in():
-            signing.configure(text=_('Starting the sign-in…'))
-            code_label.configure(text='')
-            game = self.var('online_community', 'app').get()
-
-            def on_code(page, code):
-                text = _('On the page that opened, sign in with Discord and approve this code (not in its "code from the game" box):')
-                self.ui_calls.put(lambda: (signing.configure(text=text), code_label.configure(text=code)))
-                webbrowser.open(page)
-
-            def work():
-                try:
-                    name, token = thd_sign_in(game, on_code)
-                except (OSError, ValueError) as error:
-                    self.ui_calls.put(lambda e=error: (signing.configure(text=_('Sign-in failed: {}').format(connection_error_text(e))),
-                                                       code_label.configure(text='')))
-                    return
-                self.ui_calls.put(lambda: (thd_id.set(name), thd_token.set(token), signing.configure(text=''),
-                                           code_label.configure(text=''), show_account(), self.collect()))
-            threading.Thread(target=work, daemon=True).start()
-        self.row(f, '', ttk.Button(f, text=_('Sign in with Discord'), command=sign_in))
-        signing.grid(row=self.next_row(f), column=1, sticky='w', pady=(6, 0))
-        code_label.grid(row=self.next_row(f), column=1, sticky='w', pady=(4, 0))
-        self.note(f, _("The connection to The Hunter's Dream is Awaken's port of bbhost's network code; "
-                       "bbhost and The Hunter's Dream are by droogie. Seamless co-op does not use it."))
 
     def build_mods(self):
         f = self.scrolled_page('mods', _('Mods & patches', 'Моды и патчи'),
@@ -2232,26 +1928,6 @@ class Launcher:
     def play(self):
         if self.process:
             return
-        online, npid = self.var('online', 'app'), self.var('online_npid', 'app')
-        if not online.get() and npid.get().strip():
-            choice = self.messagebox.askyesnocancel(
-                'Bloodborne', _('An online account is filled in, but "Play online" is off.\n\n'
-                                'Yes: play online.   No: play offline.'))
-            if choice is None:
-                return
-            online.set(bool(choice))
-        if (online.get() and HUNTERS_DREAM_POOL and self.var('online_pool', 'app').get() == 'huntersdream'
-                and not self.var('thd_token', 'app').get()):
-            self.messagebox.showwarning('Bloodborne', _("The Hunter's Dream: sign in with Discord on the "
-                                                        'Online page first.'))
-            self.show('online')
-            return
-        if online.get() and '@' in npid.get():
-            self.messagebox.showwarning(
-                'Bloodborne', _('The Online ID is the account name (NPID) you registered on the server, '
-                                'not your email address.'))
-            self.show('online')
-            return
         self.collect()
         if not game_info(self.app['game_dir']):
             self.messagebox.showerror('Bloodborne', _('Choose the game folder with eboot.bin (CUSA03173).',
@@ -2457,7 +2133,7 @@ class Launcher:
         if self.process:
             return
         import shutil
-        cache = Path(self.app['user_dir'] or DATA_DIR / 'user') / 'cache'
+        cache = DATA_DIR / 'cache'
         shutil.rmtree(cache, ignore_errors=True)
         self.messagebox.showinfo('Bloodborne', _('Shader cache cleared. The next start stutters for a few minutes while '
                                                  'it is rebuilt.', 'Кэш шейдеров очищен. Следующий запуск несколько '
@@ -2550,7 +2226,6 @@ class GameJob:
         if self.handle:
             ctypes.windll.kernel32.CloseHandle(ctypes.c_void_p(self.handle))
             self.handle = None
-
 
 
 RUN_LOGS_KEPT = 3

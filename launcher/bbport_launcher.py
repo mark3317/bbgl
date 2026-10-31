@@ -44,10 +44,10 @@ OUTPUT_RES = [("1280×720 (Steam Deck)", "1280x720"), ("1920×1080", "1920x1080"
               ("3840×2160", "3840x2160")]
 # Game effects (patches applied at start): bbport.ini key, title, default.
 EFFECTS = [
-    ("effect_chromatic_aberration", "Хроматическая аберрация", True),
-    ("effect_dof", "Глубина резкости (DoF)", True),
+    ("effect_chromatic_aberration", "Хром. аберрация", True),
+    ("effect_dof", "Depth of Field (DoF)", True),
     ("effect_motion_blur", "Размытие в движении", True),
-    ("effect_ssao", "Затенение SSAO", True),
+    ("effect_ssao", "SSAO", True),
     ("effect_game_aa", "Собственное сглаживание игры", True),
     ("effect_dynamic_shadows", "Тени от динамических источников", True),
     ("effect_ssr", "Отражения SSR (не было в игре)", False),

@@ -77,8 +77,7 @@ class CoopTests(unittest.TestCase):
         self.assertEqual(env['BB_GAME_DIR'], 'game')
         overrides = json.loads(Path(env['BB_HOST_OVERRIDES']).read_text(encoding='utf-8'))
         self.assertEqual(overrides['https://ss4.scej-network.jp:20443'], 'http://100.65.141.9:20443')
-        self.assertEqual(overrides['https://thehuntersdream.com:18671/summon_messenger'],
-                         'http://100.65.141.9:31315')
+        self.assertFalse(any('thehuntersdream.com' in url for url in overrides))
         self.assertNotIn('BBSC_SAVE_DIR', env)  # no saves yet: BBSC finds none either way
 
     def test_bbsc_is_told_where_the_saves_are(self):

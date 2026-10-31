@@ -14,6 +14,19 @@ import bbport_launcher_win as core
 
 
 class ProfileLayoutTests(unittest.TestCase):
+    def test_retired_online_mode_and_credentials_do_not_reach_a_launch(self):
+        settings = core.app_settings({'play_mode': 'huntersdream', 'online': True,
+                                      'thd_token': 'old', 'thd_online_id': 'old',
+                                      'online_pool': 'huntersdream'})
+        self.assertEqual(core.play_mode(settings), 'offline')
+        self.assertNotIn('thd_token', settings)
+        self.assertEqual(core.PLAY_MODES, ('offline', 'coop'))
+        with patch.dict(os.environ, {'BB_NET_BACKEND': 'thd', 'BB_THD_TOKEN': 'old'}):
+            env = core.game_environment(settings)
+        self.assertEqual(env['BB_ONLINE'], '0')
+        self.assertNotIn('BB_THD_TOKEN', env)
+        self.assertNotIn('BB_NET_BACKEND', env)
+
     def test_offline_client_is_verified_in_place_and_damage_is_reported(self):
         with tempfile.TemporaryDirectory() as temp:
             port = Path(temp) / 'install'
@@ -61,7 +74,7 @@ class ProfileLayoutTests(unittest.TestCase):
             (roaming / 'bbport-launcher/input.ini').write_text('controls')
             with patch.dict(os.environ, {'LOCALAPPDATA': str(local), 'APPDATA': str(roaming)}):
                 root = paths.profile_dir()
-                self.assertEqual(root, local / 'bbgl')
+                self.assertEqual(root, local / 'Bloodborne Game Launcher')
                 self.assertEqual((root / 'settings.json').read_text(), 'local')
                 self.assertEqual((root / 'user/savedata/save').read_bytes(), b'local')
                 self.assertEqual((root / 'input.ini').read_text(), 'controls')

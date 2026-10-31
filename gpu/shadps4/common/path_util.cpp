@@ -129,7 +129,10 @@ static auto UserPaths = [] {
     create_path(PathType::MetaDataDir, user_dir / METADATA_DIR);
     create_path(PathType::CustomTrophy, user_dir / CUSTOM_TROPHY);
     create_path(PathType::CustomConfigs, user_dir / CUSTOM_CONFIGS);
-    create_path(PathType::CacheDir, user_dir / CACHE_DIR);
+    const char* cache_dir = std::getenv("BB_GPU_CACHE_DIR");
+    const auto cache_path = cache_dir && cache_dir[0] ? fs::path(cache_dir) : user_dir / CACHE_DIR;
+    std::filesystem::create_directories(cache_path);
+    create_path(PathType::CacheDir, cache_path);
     create_path(PathType::FontsDir, user_dir / FONTS_DIR);
     create_path(PathType::TrophyDir, user_dir / TROPHY_DIR);
     create_path(PathType::HomeDir, user_dir / HOME_DIR);

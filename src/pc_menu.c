@@ -274,6 +274,14 @@ static void add_toggle_row(void *dialog, Row *r) {
     memset(list, 0, sizeof(list));
     uint8_t def = setting_default(r->key) > 0;
     fn(BUILD_ON_OFF)(ptr(list), 0, 0, 0, 0, 0);
+    r->shown_count = 2;
+    for (int option = 0; option < 2; ++option) {
+        const uint16_t *label = at(rd64(list + option * 0x48 + 8));
+        size_t i = 0;
+        for (; label && label[i] && i + 1 < TEXT; ++i) r->text[option][i] = label[i];
+        r->text[option][i] = 0;
+        wr64(list + option * 0x48 + 8, ptr(r->text[option]));
+    }
     fn(ADD_CHOICE_ROW)(ptr(dialog), ptr(captions.buf), ptr(&r->toggle), ptr(list), ptr(&def), 0);
     const uint64_t entries = rd64(list + 0x98);
     for (uint64_t k = 0; k < entries && k < 2; ++k) free_wstring(list + k * 0x48 + 0x18);
@@ -376,7 +384,7 @@ static void set_blank(int from) {
         } else {
             g_open.caption[r][0] = g_open.caption_first[r];
         }
-        if (r < g_open.section->count && g_open.section->rows[r].kind == PICK) {
+        if (r < g_open.section->count) {
             Row *row = &g_open.section->rows[r];
             for (int i = 0; i < row->shown_count; ++i) {
                 if (now) {
@@ -386,10 +394,28 @@ static void set_blank(int from) {
                     row->text[i][0] = row->first[i];
                 }
             }
-            if (g_open.widget[r]) fn(DROPDOWN_REDRAW)(ptr(g_open.widget[r]), 0, 0, 0, 0, 0);
+            if (g_open.widget[r]) {
+                if (row->kind == PICK) fn(DROPDOWN_REDRAW)(ptr(g_open.widget[r]), 0, 0, 0, 0, 0);
+                else fn(LIST_REDRAW)(ptr(g_open.widget[r] + 0xa0), 0, 0, 0, 0, 0);
+            }
         }
     }
     fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
+}
+
+typedef struct RetiredWidget { uint64_t widget; struct RetiredWidget *next; } RetiredWidget;
+static RetiredWidget *retired_widgets;
+static void retire_widget(uint64_t widget) {
+    if (!widget) return;
+    RetiredWidget *r = malloc(sizeof(*r));
+    if (!r) return; /* Keep the owning reference rather than invalidate a live GFx listener. */
+    r->widget = widget; r->next = retired_widgets; retired_widgets = r;
+}
+static void release_retired_widgets(void) {
+    while (retired_widgets) {
+        RetiredWidget *r = retired_widgets; retired_widgets = r->next;
+        release_ref(r->widget); free(r);
+    }
 }
 
 static void graphics_rebind(void) {
@@ -401,7 +427,7 @@ static void graphics_rebind(void) {
     /* Offscreen widget objects must not keep updating a reused physical cell. */
     for (int r = 0; r < g_open.section->count; ++r) {
         unsigned char *rec = record(r);
-        release_ref(rd64(rec + ITEM_WIDGET));
+        retire_widget(rd64(rec + ITEM_WIDGET));
         wr64(rec + ITEM_WIDGET, 0);
         g_open.widget[r] = NULL;
     }
@@ -472,6 +498,7 @@ static void build_section(Section *s, void *dialog) {
 }
 
 static int64_t open_section(Section *s, void *root, void *params, const void *handler) {
+    release_retired_widgets();
     snprintf(g_open_name, sizeof(g_open_name), "%s", s->name);
     g_open.dialog = NULL;
     g_open.blank_from = -1;

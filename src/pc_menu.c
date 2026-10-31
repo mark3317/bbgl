@@ -526,7 +526,7 @@ static void ach_fill(int page) {
     to_utf16(g_ach.text[0], ACH_VALUE, line);
     int score = 0, total = 0;
     if (!count)
-        snprintf(line, sizeof(line), localized("No trophy pack in the game folder.", "В папке игры нет набора достижений."));
+        snprintf(line, sizeof(line), "%s", localized("No trophy pack in the game folder.", "В папке игры нет набора достижений."));
     else if (bbgpu_achievement_score(&score, &total))
         snprintf(line, sizeof(line), localized("%d of %d unlocked (%d%%), %d / 1000G", "Открыто %d из %d (%d%%), %d / 1000G"), earned, count, earned * 100 / count, score);
     else
@@ -553,9 +553,9 @@ static void ach_fill(int page) {
         if (got) {
             const time_t when = (time_t)a.unlocked_at;
             const struct tm *local = localtime(&when);
-            if (!local || !strftime(line, sizeof(line), localized("%d %b %Y", "%d.%m.%Y"), local)) snprintf(line, sizeof(line), localized("Unlocked", "Открыто"));
+            if (!local || !strftime(line, sizeof(line), localized("%d %b %Y", "%d.%m.%Y"), local)) snprintf(line, sizeof(line), "%s", localized("Unlocked", "Открыто"));
         } else {
-            snprintf(line, sizeof(line), localized("Locked", "Закрыто"));
+            snprintf(line, sizeof(line), "%s", localized("Locked", "Закрыто"));
         }
         to_utf16(g_ach.text[r], ACH_VALUE, line);
     }

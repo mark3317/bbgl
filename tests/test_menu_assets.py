@@ -99,14 +99,14 @@ class RealGameTests(unittest.TestCase):
                          {f'Item_{i}_0' for i in range(m.SYSTEM_VISIBLE_ROWS)})
         self.assert_row_animation(movie, top[1], m.SYSTEM_VISIBLE_ROWS, m.SYSTEM_ROW_PITCH * 20)
 
-    def test_graphics_has_six_widget_slots_and_native_scrollbar(self):
+    def test_graphics_has_persistent_widget_slots_and_native_scrollbar(self):
         movie = self.files[m.MOVIE]
         item = next(m.placement(movie,c,a) for c,_,a,_ in m.tags(movie,m.body_start(movie),len(movie))
                     if c in (m.PLACE2,m.PLACE3) and m.placement(movie,c,a)[3] == 'PCGraphics')
         _, a, z = m.find_sprite(movie,item[1])
         names = [m.placement(movie,c,a)[3] for c,_,a,_ in m.tags(movie,a+4,z) if c in (m.PLACE2,m.PLACE3)]
         self.assertIn('ScrollBarV',names)
-        self.assertEqual({n for n in names if n and n.startswith('Item_')}, {f'Item_{i}_0' for i in range(6)})
+        self.assertEqual({n for n in names if n and n.startswith('Item_')}, {f'Item_{i}_0' for i in range(15)})
         self.assertNotIn('PCDisplay', placed_names(movie))
         self.assertNotIn('PCSetting', placed_names(movie))
 

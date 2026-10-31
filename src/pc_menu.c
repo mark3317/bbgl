@@ -403,63 +403,52 @@ static void set_blank(int from) {
     fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
 }
 
-typedef struct RetiredWidget { uint64_t widget; struct RetiredWidget *next; } RetiredWidget;
-static RetiredWidget *retired_widgets;
-static void retire_widget(uint64_t widget) {
-    if (!widget) return;
-    RetiredWidget *r = malloc(sizeof(*r));
-    if (!r) return; /* Keep the owning reference rather than invalidate a live GFx listener. */
-    r->widget = widget; r->next = retired_widgets; retired_widgets = r;
-}
-static void release_retired_widgets(void) {
-    while (retired_widgets) {
-        RetiredWidget *r = retired_widgets; retired_widgets = r->next;
-        release_ref(r->widget); free(r);
-    }
-}
-
+/* Value controls have persistent logical Item_<index>_0 clips. Native scrolling
+ * virtualizes the captions into six cells; move only each logical clip's Widgets
+ * child to the matching visible line. Never replace record/widget ownership. */
 static void graphics_rebind(void) {
     if (!g_open.dialog || !g_open.section || !open_alive()) return;
     int scroll;
-    memcpy(&scroll, g_open.dialog + DIALOG_ROWS + 0x24c, 4);
-    if (scroll == g_open.scroll || scroll < 0 || scroll > g_open.section->count) return;
+    memcpy(&scroll, g_open.dialog + DIALOG_ROWS + 0x24c, sizeof(scroll));
+    if (scroll < 0 || scroll > g_open.section->count) return;
+    const int changed = scroll != g_open.scroll;
     g_open.scroll = scroll;
-    /* Offscreen widget objects must not keep updating a reused physical cell. */
     for (int r = 0; r < g_open.section->count; ++r) {
-        unsigned char *rec = record(r);
-        retire_widget(rd64(rec + ITEM_WIDGET));
-        wr64(rec + ITEM_WIDGET, 0);
-        g_open.widget[r] = NULL;
+        char path[64];
+        snprintf(path, sizeof(path), "Item_%d_0/Widgets", r);
+        _Alignas(16) unsigned char wrapper[0x80] = {0}, value[0x60] = {0}, info[0xe0] = {0};
+        fn(0x1edb220)(ptr(wrapper), ptr(g_open.dialog + 0xdf0), ptr(path), 0, 0, 0);
+        /* Extract a managed GFx::Value through the same wrapper method SetVisible uses. */
+        const uint64_t wrapper_vtable = rd64(wrapper);
+        if (!wrapper_vtable) continue;
+        ((GuestFn)at(rd64(at(wrapper_vtable))))(ptr(value), ptr(wrapper), 0, 0, 0, 0);
+        uint32_t type;
+        memcpy(&type, value + 0x20, sizeof(type));
+        const uint64_t interface = rd64(value + 0x18), data = rd64(value + 0x28);
+        if ((type & 0x8f) == 10 && interface && data) {
+            const uint64_t vt = rd64(at(interface));
+            ((GuestFn)at(rd64(at(vt + 0xe0))))(interface, data, ptr(info), 0, 0, 0);
+            const double y = -11.0 - scroll * 57.15;
+            const uint16_t flags = 0x42; /* GFx DisplayInfo: Y and Visible only. */
+            memcpy(info + 8, &y, sizeof(y));
+            memcpy(info + 0xd4, &flags, sizeof(flags));
+            info[0xd6] = r >= scroll && r < scroll + 6;
+            ((GuestFn)at(rd64(at(vt + 0xe8))))(interface, data, ptr(info), 0, 0, 0);
+        }
+        if ((type & 0x40) && interface)
+            ((GuestFn)at(rd64(at(rd64(at(interface)) + 0x18))))(interface, ptr(value + 8), data, 0, 0, 0);
+        uint32_t wrapper_type;
+        memcpy(&wrapper_type, wrapper + 0x48, sizeof(wrapper_type));
+        if (wrapper_type & 0x40) {
+            const uint64_t owner = rd64(wrapper + 0x40);
+            if (owner) ((GuestFn)at(rd64(at(rd64(at(owner)) + 0x18))))(owner, ptr(wrapper + 0x30), rd64(wrapper + 0x50), 0, 0, 0);
+        }
     }
-    enum { VISIBLE = 6, VECTOR_CAPACITY = 0xe68 };
-    _Alignas(16) unsigned char cells[VISIBLE * ITEM_STRIDE];
-    memset(cells, 0, sizeof(cells));
-    const uint64_t begin = rd64(g_open.dialog + ITEMS_BEGIN), end = rd64(g_open.dialog + ITEMS_END);
-    const uint64_t capacity = rd64(g_open.dialog + VECTOR_CAPACITY);
-    wr64(g_open.dialog + ITEMS_BEGIN, ptr(cells));
-    wr64(g_open.dialog + ITEMS_END, ptr(cells));
-    wr64(g_open.dialog + VECTOR_CAPACITY, ptr(cells + sizeof(cells)));
-    const int count = g_open.section->count - scroll < VISIBLE ? g_open.section->count - scroll : VISIBLE;
-    for (int slot = 0; slot < count; ++slot) {
-        Row *row = &g_open.section->rows[scroll + slot];
-        if (row->kind == TOGGLE) add_toggle_row(g_open.dialog, row);
-        else add_pick_row(g_open.dialog, row);
+    if (changed) {
+        int cursor;
+        memcpy(&cursor, g_open.dialog + DIALOG_ROWS + 0x74, sizeof(cursor));
+        printf("PC menu: Graphics viewport %d..%d, cursor=%d; persistent value controls\n", scroll, scroll + 5, cursor);
     }
-    wr64(g_open.dialog + ITEMS_BEGIN, begin);
-    wr64(g_open.dialog + ITEMS_END, end);
-    wr64(g_open.dialog + VECTOR_CAPACITY, capacity);
-    for (int slot = 0; slot < count; ++slot) {
-        unsigned char *cell = cells + slot * ITEM_STRIDE;
-        uint64_t widget = rd64(cell + ITEM_WIDGET);
-        wr64(record(scroll + slot) + ITEM_WIDGET, widget);
-        g_open.widget[scroll + slot] = at(widget);
-        free_wstring(cell + 0x08);
-        free_wstring(cell + 0x48);
-    }
-    fn(LIST_REDRAW)(ptr(g_open.dialog + DIALOG_ROWS), 0, 0, 0, 0, 0);
-    int cursor;
-    memcpy(&cursor, g_open.dialog + DIALOG_ROWS + 0x74, sizeof(cursor));
-    printf("PC menu: Graphics viewport %d..%d rebound, cursor=%d, capacity=6\n", scroll, scroll + count - 1, cursor);
 }
 
 static void ach_list_update(unsigned char *comp);  /* the Achievements section's paging */
@@ -500,7 +489,6 @@ static void build_section(Section *s, void *dialog) {
 }
 
 static int64_t open_section(Section *s, void *root, void *params, const void *handler) {
-    release_retired_widgets();
     snprintf(g_open_name, sizeof(g_open_name), "%s", s->name);
     g_open.dialog = NULL;
     g_open.blank_from = -1;

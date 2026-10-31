@@ -633,6 +633,8 @@ def build_option_movie(source):
     movie = bytes(source)
     for name, title, depth, defaults_slot, drop in SECTIONS:
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)
+    # One persistent value widget per logical row; native labels retain six visible cells.
+    movie = fit_command_list(movie, 'PCGraphics', 15, pitch=57.15)
     movie = add_scrollbar(movie, 'PCGraphics', *SCROLLBAR_AT)
     movie = fit_command_list(movie, 'Top', SYSTEM_VISIBLE_ROWS,
                              pitch=SYSTEM_ROW_PITCH, offset_y=SYSTEM_ROW_OFFSET)

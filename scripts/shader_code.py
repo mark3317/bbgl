@@ -11,6 +11,7 @@ renderer's own dumps). Nothing is copied anywhere but the folder asked for.
   shader_code.py <game folder> <prepared eboot.elf> <output folder>
 """
 from pathlib import Path
+import os
 import struct
 import sys
 
@@ -43,9 +44,20 @@ def programs(data):
         i = data.find(FOOTER, i + 1)
 
 
+def archives(game):
+    sources = {p.name.lower(): p for p in (Path(game) / 'dvdroot_ps4/shader').glob('*.shaderbnd*.dcx')}
+    if manifest := os.environ.get('BB_MOD_FILES'):
+        for row in Path(manifest).read_text(encoding='utf-8').splitlines()[1:]:
+            key, source = row.split('\t')
+            path = Path(key)
+            if path.parent.as_posix() == 'dvdroot_ps4/shader' and '.shaderbnd' in path.name and path.suffix == '.dcx':
+                sources[path.name] = Path(source)
+    return [sources[key] for key in sorted(sources)]
+
+
 def collect(game, eboot):
     found = {}
-    for archive in sorted((Path(game) / 'dvdroot_ps4' / 'shader').glob('*.shaderbnd*.dcx')):
+    for archive in archives(game):
         # A damaged archive only leaves its shaders to be translated in game, as without this.
         try:
             files = Bnd4(dcx_decompress(archive.read_bytes())).files

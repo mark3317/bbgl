@@ -58,6 +58,58 @@ static size_t mount_count, opens, reads, writes, missing;
 static uint64_t bytes_read;
 static pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
 
+/* Immutable after configure: replacements stay in their original mod/cache folders. */
+typedef struct { char *relative, *source; } ModFile;
+static ModFile *mod_files;
+static size_t mod_count;
+static void mod_key(char *p) {
+    for (; *p; ++p) { if (*p=='\\') *p='/'; if (*p>='A' && *p<='Z') *p+='a'-'A'; }
+}
+static const char *mod_relative(const char *guest) {
+    if (guest[0]!='/') return guest;
+    if (!strncmp(guest,"/app0/",6)) return guest+6;
+    if (!strncmp(guest,"/hostapp/",9)) return guest+9;
+    if (!strcmp(guest,"/app0") || !strcmp(guest,"/hostapp")) return "";
+    return NULL;
+}
+static void load_mod_files(void) {
+    for (size_t i=0;i<mod_count;++i) { free(mod_files[i].relative); free(mod_files[i].source); }
+    free(mod_files); mod_files=NULL; mod_count=0;
+    const char *path=getenv("BB_MOD_FILES");
+    if (!path || !*path) return;
+    FILE *f=fopen(path,"rb");
+    char line[8192];
+    if (!f || !fgets(line,sizeof(line),f) || strcmp(line,"BBMODS1\n")) {
+        fprintf(stderr,"Runtime: cannot read mod mapping %s\n",path); exit(1);
+    }
+    while (fgets(line,sizeof(line),f)) {
+        char *tab=strchr(line,'\t'), *end=strchr(line,'\n');
+        if (!tab || !end) { fputs("Runtime: invalid mod mapping\n",stderr); exit(1); }
+        *tab++=0; *end=0;
+        ModFile *next=realloc(mod_files,(mod_count+1)*sizeof(*next));
+        if (!next) { fputs("Runtime: out of memory loading mods\n",stderr); exit(1); }
+        mod_files=next;
+        mod_files[mod_count++]=(ModFile){strdup(line),strdup(tab)};
+    }
+    if (ferror(f)) { fputs("Runtime: error reading mod mapping\n",stderr); exit(1); }
+    fclose(f);
+    printf("Runtime: direct mod mapping: %zu files and directories\n",mod_count);
+}
+static const char *mod_source(const char *guest) {
+    const char *relative=mod_relative(guest);
+    if (!relative) return NULL;
+    char key[1024];
+    snprintf(key,sizeof(key),"%s",relative); mod_key(key);
+    size_t lo=0,hi=mod_count;
+    while (lo<hi) {
+        size_t mid=lo+(hi-lo)/2;
+        int c=strcmp(key,mod_files[mid].relative);
+        if (!c) return mod_files[mid].source;
+        if (c<0) hi=mid; else lo=mid+1;
+    }
+    return NULL;
+}
+
 static int save_path(const char *p) { return p && !strncmp(p,"/savedata",9); }
 /* BB_SAFE_SAVES=0: save files are written in place again, as before (no copy and rename). */
 static int safe_save_path(const char *p) {
@@ -115,6 +167,7 @@ static char user_root[512]="user";
 const char *runtime_file_user_dir(void) { return user_root; }
 void runtime_file_configure(const char *app0,const char *user) {
     char path[600];
+    load_mod_files();
     snprintf(user_root,sizeof(user_root),"%s",user);
     runtime_file_mount("/app0",app0);
     runtime_file_mount("/hostapp",app0);
@@ -135,6 +188,8 @@ static int translate(const char *guest,char *out,size_t size) {
     else snprintf(buffer,sizeof(buffer),"%s",guest);
     for (const char *p=buffer;(p=strstr(p,".."));p+=2)
         if ((p==buffer || p[-1]=='/') && (p[2]==0 || p[2]=='/')) return EACCES;
+    const char *replacement=mod_source(buffer);
+    if (replacement) return (size_t)snprintf(out,size,"%s",replacement)>=size ? ENAMETOOLONG : 0;
     pthread_mutex_lock(&lock);
     size_t best=0; const Mount *m=NULL;
     for (size_t i=0;i<mount_count;++i) {
@@ -164,7 +219,7 @@ static int host_flags(int flags) {
     return r|O_CLOEXEC;
 }
 static void free_listing(Listing *l) { if (l) { free(l->names); free(l->offsets); free(l->types); free(l); } }
-static Listing *list_directory(const char *path) {
+static Listing *list_directory(const char *guest,const char *path) {
     DIR *d=opendir(path);
     if (!d) return NULL;
     Listing *l=calloc(1,sizeof(*l));
@@ -198,6 +253,33 @@ static Listing *list_directory(const char *path) {
         ++l->count; bytes+=n;
     }
     closedir(d);
+    const char *relative=mod_relative(guest);
+    if (relative && l) {
+        char prefix[1024];
+        snprintf(prefix,sizeof(prefix),"%s%s",relative,*relative ? "/" : ""); mod_key(prefix);
+        size_t n=strlen(prefix);
+        for (size_t i=0;i<mod_count;++i) {
+            const char *key=mod_files[i].relative;
+            if (strncmp(key,prefix,n) || !key[n] || strchr(key+n,'/')) continue;
+            size_t at=0;
+            for (;at<l->count;++at) {
+                char existing[1024]; snprintf(existing,sizeof(existing),"%s",l->names+l->offsets[at]); mod_key(existing);
+                if (!strcmp(existing,key+n)) break;
+            }
+            HostStat st;
+            if (host_stat(mod_files[i].source,&st)) continue;
+            if (at==l->count) {
+                size_t length=strlen(key+n)+1;
+                l->offsets=realloc(l->offsets,(l->count+1)*sizeof(size_t));
+                l->types=realloc(l->types,l->count+1);
+                l->names=realloc(l->names,bytes+length);
+                if (!l->offsets || !l->types || !l->names) { fputs("Out of memory listing mods\n",stderr); exit(1); }
+                l->offsets[l->count++]=bytes;
+                memcpy(l->names+bytes,key+n,length); bytes+=length;
+            }
+            l->types[at]=S_ISDIR(st.st_mode) ? 4 : 8;
+        }
+    }
     return l;
 }
 static void convert_stat(const HostStat *s,GuestStat *g) {
@@ -346,7 +428,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     int host=-1;
     if (!host_stat(path,&s) && S_ISDIR(s.st_mode)) {
         if (flags&3) return -EISDIR;
-        if (!(dir=list_directory(path))) return -EACCES;
+        if (!(dir=list_directory(guest,path))) return -EACCES;
     } else if (flags&0x20000) {
         e=errno==ENOENT ? ENOENT : ENOTDIR;
         if (e==ENOENT) { ++missing; printf("Runtime: open(%s) -> not found\n",guest); }
@@ -392,7 +474,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     }
     struct stat s;
     Listing *dir=NULL;
-    if (!fstat(host,&s) && S_ISDIR(s.st_mode)) dir=list_directory(path);
+    if (!fstat(host,&s) && S_ISDIR(s.st_mode)) dir=list_directory(guest,path);
 #endif
     pthread_mutex_lock(&lock);
     int fd=-1;

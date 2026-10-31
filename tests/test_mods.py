@@ -46,6 +46,42 @@ class ModTests(unittest.TestCase):
         self.assertFalse((self.assets / 'new.dcx').exists())
         self.assertEqual((result / 'eboot.bin').read_bytes(), b'original executable')
 
+    def test_direct_manifest_priority_and_new_directories(self):
+        a = self.mod('A')
+        b = self.mod('B', b'winner')
+        folder = a / 'dvdroot_ps4/chr/new'
+        folder.mkdir()
+        (folder / 'sub.dcx').write_bytes(b'new')
+        out = self.root / 'out'
+        self.assertEqual(mods.build_manifest(self.game, out, [('A', a), ('B', b)]), self.game)
+        rows = (out / 'mod-files.tsv').read_text().splitlines()
+        self.assertEqual(rows[0], 'BBMODS1')
+        mapping = dict(row.split('\t') for row in rows[1:])
+        self.assertEqual(Path(mapping['dvdroot_ps4/chr/a.dcx']).read_bytes(), b'winner')
+        self.assertEqual(Path(mapping['dvdroot_ps4/chr/new/sub.dcx']).read_bytes(), b'new')
+        self.assertTrue(Path(mapping['dvdroot_ps4/chr/new']).is_dir())
+        self.assertEqual((self.assets / 'a.dcx').read_bytes(), b'original')
+        self.assertEqual(list(out.iterdir()), [out / 'mod-files.tsv'])
+        mods.build_manifest(self.game, out, [])
+        self.assertEqual((out / 'mod-files.tsv').read_text(), 'BBMODS1\n')
+
+    def test_shader_prebuild_uses_direct_replacements(self):
+        from unittest import mock
+        import shader_code
+        shader = self.game / 'dvdroot_ps4/shader'
+        shader.mkdir()
+        (shader / 'a.shaderbnd.dcx').write_bytes(b'original')
+        (shader / 'b.shaderbnd.dcx').write_bytes(b'fallback')
+        mod = self.moddir / 'Shader/dvdroot_ps4/shader'
+        mod.mkdir(parents=True)
+        (mod / 'a.shaderbnd.dcx').write_bytes(b'replaced')
+        (mod / 'c.shaderbnd.dcx').write_bytes(b'added')
+        out = self.root / 'out'
+        mods.build_manifest(self.game, out, [('Shader', mod.parent.parent)])
+        with mock.patch.dict(os.environ, BB_MOD_FILES=str(out / 'mod-files.tsv')):
+            self.assertEqual([p.read_bytes() for p in shader_code.archives(self.game)],
+                             [b'replaced', b'fallback', b'added'])
+
     def test_last_mod_wins_and_reordering_changes_winner(self):
         a, b = self.mod('A', b'A'), self.mod('B', b'B')
         for layers, winner in [([('A', a), ('B', b)], b'B'), ([('B', b), ('A', a)], b'A')]:
@@ -76,7 +112,10 @@ class ModTests(unittest.TestCase):
 
     def test_mod_symlinks_rejected(self):
         a = self.mod('A')
-        (a / 'dvdroot_ps4/escape').symlink_to(self.assets, target_is_directory=True)
+        try:
+            (a / 'dvdroot_ps4/escape').symlink_to(self.assets, target_is_directory=True)
+        except OSError:
+            self.skipTest('creating symlinks needs Developer Mode on Windows')
         with self.assertRaises(ValueError):
             mods.build_overlay(self.game, self.root / 'out', [('A', a)])
 
@@ -151,7 +190,9 @@ class ModTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(ROOT / 'scripts/mods.py'), str(self.game),
                 '--out', str(self.root / 'out'), '--mods-dir', str(self.moddir), '--enabled', enabled],
                 capture_output=True, text=True, check=True)
-            self.assertEqual((Path(result.stdout.strip()) / 'dvdroot_ps4/chr/a.dcx').read_bytes(), expected)
+            mapping = dict(row.split('\t') for row in (self.root / 'out/mod-files.tsv').read_text().splitlines()[1:])
+            source = Path(mapping.get('dvdroot_ps4/chr/a.dcx', str(self.assets / 'a.dcx')))
+            self.assertEqual(source.read_bytes(), expected)
 
     def test_shadps4_sibling_folder_of_symlinks_is_left_out(self):
         # BBLauncher's CUSA03173-mods: symlinks into its own Mods-Active folder.
@@ -189,10 +230,10 @@ class ModTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(ROOT / 'scripts/mods.py'), str(self.game),
                 '--out', str(self.root / 'out'), '--mods-dir', str(self.moddir), '--enabled', enabled,
                 '--generated', str(generated)], capture_output=True, text=True, check=True)
-            return Path(result.stdout.strip()) / 'dvdroot_ps4/chr'
-        self.assertEqual((run('1') / 'a.dcx').read_bytes(), b'player')
-        self.assertEqual((run('1') / 'b.dcx').read_bytes(), b'generated b')
-        self.assertEqual((run('0') / 'a.dcx').read_bytes(), b'generated')
+            return dict(row.split('\t') for row in (self.root / 'out/mod-files.tsv').read_text().splitlines()[1:])
+        self.assertEqual(Path(run('1')['dvdroot_ps4/chr/a.dcx']).read_bytes(), b'player')
+        self.assertEqual(Path(run('1')['dvdroot_ps4/chr/b.dcx']).read_bytes(), b'generated b')
+        self.assertEqual(Path(run('0')['dvdroot_ps4/chr/a.dcx']).read_bytes(), b'generated')
         self.assertEqual((self.assets / 'a.dcx').read_bytes(), b'original')
 
     def test_app0_wrapped_mod_discovered(self):
@@ -271,7 +312,8 @@ class ModTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             mods.selected(self.moddir, config)
 
-    def test_run_uses_overlay_propagates_exit_and_cleans_view(self):
+    @unittest.skipIf(os.name == 'nt', 'shell launcher integration requires POSIX scripts')
+    def test_run_uses_manifest_and_propagates_exit(self):
         self.mod('A')
         python = self.root / 'python'
         python.write_text(f'#!{sys.executable}\nimport subprocess,sys\n'
@@ -282,7 +324,7 @@ class ModTests(unittest.TestCase):
         probe.write_text(f'#!{sys.executable}\nimport json,sys,os\nfrom pathlib import Path\n'
             'game=Path(sys.argv[sys.argv.index("--app0")+1])\n'
             'Path(os.environ["BB_DATA_DIR"],"mounted.json").write_text(json.dumps({\n'
-            '"path":str(game),"content":(game/"dvdroot_ps4/chr/a.dcx").read_text()}))\n'
+            '"path":str(game),"content":Path(dict(row.split("\\t") for row in Path(os.environ["BB_MOD_FILES"]).read_text().splitlines()[1:])["dvdroot_ps4/chr/a.dcx"]).read_text()}))\n'
             'sys.exit(7)\n')
         probe.chmod(0o755)
         env = dict(os.environ, BB_PREBUILT='1', BB_PROBE=str(probe), PYTHON=str(python),
@@ -292,7 +334,8 @@ class ModTests(unittest.TestCase):
         self.assertEqual(result.returncode, 7, result.stderr)
         mounted = json.loads((self.root / 'mounted.json').read_text())
         self.assertEqual(mounted['content'], 'mod')
-        self.assertFalse(Path(mounted['path']).exists())
+        self.assertEqual(Path(mounted['path']), self.game)
+        self.assertFalse(list(self.root.glob('mod-game-*')))
         self.assertEqual((self.assets/'a.dcx').read_bytes(), b'original')
 
 

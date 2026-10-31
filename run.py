@@ -130,10 +130,11 @@ def shader_prebuild(game, out, env):
     if env.get('BB_SHADER_PREBUILD') == '0':
         return
     code = out / 'shader_code'
-    sources = sorted((Path(game) / 'dvdroot_ps4' / 'shader').glob('*.shaderbnd*.dcx'))
+    from shader_code import archives
+    sources = archives(game)
     sources.append(out / 'eboot.elf')
     sources.append(PORT / 'scripts' / 'shader_code.py')
-    stamp = '\n'.join(f'{p.name} {p.stat().st_size} {int(p.stat().st_mtime)}' for p in sources if p.is_file())
+    stamp = '\n'.join(f'{p.resolve()} {p.stat().st_size} {p.stat().st_mtime_ns}' for p in sources if p.is_file())
     try:
         current = (code / 'stamp.txt').read_text(encoding='utf-8') == stamp
     except OSError:
@@ -232,7 +233,6 @@ def main():
     game = Path(env.get('BB_GAME_DIR', PORT.parent / 'CUSA03173'))
     if not (game / 'eboot.bin').is_file():
         fail(f'No eboot.bin in {game} (set BB_GAME_DIR).')
-    original_game = game.resolve()
     # A broken extraction (stale compressed sectors): the game would hang loading its shaders,
     # with no error. (parsifal295, Supermedo PR #64; bbport 0.5-pre4.) BB_SKIP_GAME_CHECK=1 skips it.
     if env.get('BB_SKIP_GAME_CHECK') != '1':
@@ -292,7 +292,7 @@ def main():
                            '--enabled', env.get('BB_MODS_ENABLED', '1'),
                            *(arg for folder in generated for arg in ('--generated', folder)),
                            capture=True).strip())
-    mod_view = game if game.resolve() != original_game else None
+    env['BB_MOD_FILES'] = str((out / 'mod-files.tsv').resolve())
     # Keyboard prompts: whether the key images are among the mods in use, as the launcher's
     # Controller page or the overlay's Mods tab left mods.json (read again on an in-game restart).
     # src/key_prompts.c names the bound keys in text when the images do not match the bindings.
@@ -307,190 +307,181 @@ def main():
             pass
     env['BB_BUTTON_PROMPTS'] = 'Keyboard' if keyboard else ''
     env['BB_KEY_PROMPT_IMAGES'] = '1' if keyboard else '0'
+    run_script('prepare.py', game, '--out', out)
+    sys.path.insert(0, str(PORT / 'scripts'))
+    from aspect_ratio import segment_fingerprint
+    env['BB_ASPECT_EBOOT_SEGMENTS'] = segment_fingerprint((out / 'eboot.elf').read_bytes())
+    shader_prebuild(game, out, env)
+    run_script('link_libc.py', game, '--out', out)
+    run_script('link_modules.py', game, '--out', out)
+    # Legacy CPU profile (scripts/cpu_compat.py): the image no longer needs BMI1, LZCNT or
+    # MOVBE, and bb-probe's CPU check lets such a CPU start.
     try:
-        run_script('prepare.py', game, '--out', out)
-        sys.path.insert(0, str(PORT / 'scripts'))
-        from aspect_ratio import segment_fingerprint
-        env['BB_ASPECT_EBOOT_SEGMENTS'] = segment_fingerprint((out / 'eboot.elf').read_bytes())
-        shader_prebuild(game, out, env)
-        run_script('link_libc.py', game, '--out', out)
-        run_script('link_modules.py', game, '--out', out)
-        # Legacy CPU profile (scripts/cpu_compat.py): the image no longer needs BMI1, LZCNT or
-        # MOVBE, and bb-probe's CPU check lets such a CPU start.
-        try:
-            compat = json.loads((out / 'link.json').read_text(encoding='utf-8')).get('cpu_compat', {})
-        except (OSError, ValueError):
-            compat = {}
-        if compat.get('enabled'):
-            env['BB_CPU_COMPAT'] = '1'
-        else:
-            env.pop('BB_CPU_COMPAT', None)
-        run_script('content_profile.py', game, '--out', out, '--sku', env.get('BB_CONTENT_SKU', 'full'))
+        compat = json.loads((out / 'link.json').read_text(encoding='utf-8')).get('cpu_compat', {})
+    except (OSError, ValueError):
+        compat = {}
+    if compat.get('enabled'):
+        env['BB_CPU_COMPAT'] = '1'
+    else:
+        env.pop('BB_CPU_COMPAT', None)
+    run_script('content_profile.py', game, '--out', out, '--sku', env.get('BB_CONTENT_SKU', 'full'))
 
-        # Patches exist for game version 01.09 only (patches.py applies none to others): other
-        # versions keep the game's 30 FPS timing and change resolutions live.
-        sys.path.insert(0, str(PORT / 'scripts'))
-        from patches import eboot_matches_patches, game_app_version
-        version = game_app_version(game)
-        forced = bool(env.get('BB_FORCE_PATCHES'))
-        patched = version in (None, '01.09') or forced
-        if not patched:
-            print(f'Game version {version}: community patches need 01.09; 30 FPS, no effect patches')
-        elif not forced and not eboot_matches_patches(out / 'eboot.elf'):
-            # param.sfo says 01.09, the code is another build's: the patches would break it.
-            patched = False
-            print('Game files: eboot.bin is not the 01.09 build the community patches were made for; '
-                  '30 FPS, no effect patches')
-        # Sizes chosen below for the previous launch are recomputed after an in-game restart.
-        if env.get('BB_AUTO_RENDER_RES') == '1':
-            for key in ('BB_RENDER_RES', 'BB_OUTPUT_RES', 'BB_AUTO_RENDER_RES'):
-                env.pop(key, None)
-        fps = env.get('BB_FPS', 'uncap') if patched else '30'
-        scaled_render = scaled_output = None
-        if not env.get('BB_RENDER_RES'):
-            printed = run_script('patches.py', '--print-scaled', '--settings', config, capture=True).split()
-            if len(printed) == 2:
-                scaled_render, scaled_output = printed
-        live = '0'
-        if scaled_output:
-            live = env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '1'
-            if live == 'auto' and auto_live_blurs_dof(scaled_output, config):
-                live = '0'
-                print(f'Output {scaled_output}: live resolution auto: startup patch (depth of field '
-                      'blurs live scenes above 1080p; live_resolution=1 forces live changes)')
-            if live == 'auto':
-                caps = probe.parent / 'bb-gpu-capabilities.exe'
-                live = '0'  # without the checker, the safe answer: no live changes
-                if caps.is_file():
-                    result = subprocess.run([str(caps), '--live-resolution'], stdin=subprocess.DEVNULL,
-                                            stdout=subprocess.PIPE, text=True, creationflags=no_console())
-                    live = result.stdout.strip() if result.returncode == 0 else '0'
-            live = '1' if live == '1' or not patched else '0'
-        from patches import hud_canvas, ultrawide
-        env.pop('BB_ASPECT_PATCHED', None)
-        if scaled_output or env.get('BB_OUTPUT_RES'):
-            movie_output = scaled_output or env['BB_OUTPUT_RES']
-            ow, oh = map(int, movie_output.split('x'))
-            if patched and ultrawide((ow, oh)):
-                # Kyo's 21:9 patch for this aspect ratio (patches.py ultrawide_writes): camera,
-                # HUD canvas and markers at start, so no live changes and no camera hook.
-                live = '0'
-                canvas = hud_canvas((ow, oh))
-                env['BB_UI_RES'] = f'{canvas[0]}x{canvas[1]}'
-                env['BB_ASPECT_PATCHED'] = '1'
-                print(f'Output {movie_output}: ultrawide, HUD {env["BB_UI_RES"]}; aspect changes require restart')
-            elif ow * 9 != oh * 16:
-                live = '0'
-                env['BB_UI_RES'] = movie_output
-                print('Aspect correction: centered 16:9 stage; aspect changes require restart')
-            elif (ow, oh) != (1920, 1080) and live != '1':
-                # Native-resolution UI at 16:9 above 1080p (matches patches.py ui=out): text and
-                # menus at QHD/4K instead of a 1080p UI scaled up.
-                live = '0'
-                env['BB_UI_RES'] = movie_output
-                print(f'Output {movie_output}: native-resolution UI {movie_output}; resolution changes require restart')
-            else:
-                env.pop('BB_UI_RES', None)
+    # Patches exist for game version 01.09 only (patches.py applies none to others): other
+    # versions keep the game's 30 FPS timing and change resolutions live.
+    sys.path.insert(0, str(PORT / 'scripts'))
+    from patches import eboot_matches_patches, game_app_version
+    version = game_app_version(game)
+    forced = bool(env.get('BB_FORCE_PATCHES'))
+    patched = version in (None, '01.09') or forced
+    if not patched:
+        print(f'Game version {version}: community patches need 01.09; 30 FPS, no effect patches')
+    elif not forced and not eboot_matches_patches(out / 'eboot.elf'):
+        # param.sfo says 01.09, the code is another build's: the patches would break it.
+        patched = False
+        print('Game files: eboot.bin is not the 01.09 build the community patches were made for; '
+              '30 FPS, no effect patches')
+    # Sizes chosen below for the previous launch are recomputed after an in-game restart.
+    if env.get('BB_AUTO_RENDER_RES') == '1':
+        for key in ('BB_RENDER_RES', 'BB_OUTPUT_RES', 'BB_AUTO_RENDER_RES'):
+            env.pop(key, None)
+    fps = env.get('BB_FPS', 'uncap') if patched else '30'
+    scaled_render = scaled_output = None
+    if not env.get('BB_RENDER_RES'):
+        printed = run_script('patches.py', '--print-scaled', '--settings', config, capture=True).split()
+        if len(printed) == 2:
+            scaled_render, scaled_output = printed
+    live = '0'
+    if scaled_output:
+        live = env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '1'
+        if live == 'auto' and auto_live_blurs_dof(scaled_output, config):
+            live = '0'
+            print(f'Output {scaled_output}: live resolution auto: startup patch (depth of field '
+                  'blurs live scenes above 1080p; live_resolution=1 forces live changes)')
+        if live == 'auto':
+            caps = probe.parent / 'bb-gpu-capabilities.exe'
+            live = '0'  # without the checker, the safe answer: no live changes
+            if caps.is_file():
+                result = subprocess.run([str(caps), '--live-resolution'], stdin=subprocess.DEVNULL,
+                                        stdout=subprocess.PIPE, text=True, creationflags=no_console())
+                live = result.stdout.strip() if result.returncode == 0 else '0'
+        live = '1' if live == '1' or not patched else '0'
+    from patches import hud_canvas, ultrawide
+    env.pop('BB_ASPECT_PATCHED', None)
+    if scaled_output or env.get('BB_OUTPUT_RES'):
+        movie_output = scaled_output or env['BB_OUTPUT_RES']
+        ow, oh = map(int, movie_output.split('x'))
+        if patched and ultrawide((ow, oh)):
+            # Kyo's 21:9 patch for this aspect ratio (patches.py ultrawide_writes): camera,
+            # HUD canvas and markers at start, so no live changes and no camera hook.
+            live = '0'
+            canvas = hud_canvas((ow, oh))
+            env['BB_UI_RES'] = f'{canvas[0]}x{canvas[1]}'
+            env['BB_ASPECT_PATCHED'] = '1'
+            print(f'Output {movie_output}: ultrawide, HUD {env["BB_UI_RES"]}; aspect changes require restart')
+        elif ow * 9 != oh * 16:
+            live = '0'
+            env['BB_UI_RES'] = movie_output
+            print('Aspect correction: centered 16:9 stage; aspect changes require restart')
+        elif (ow, oh) != (1920, 1080) and live != '1':
+            # Native-resolution UI at 16:9 above 1080p (matches patches.py ui=out): text and
+            # menus at QHD/4K instead of a 1080p UI scaled up.
+            live = '0'
+            env['BB_UI_RES'] = movie_output
+            print(f'Output {movie_output}: native-resolution UI {movie_output}; resolution changes require restart')
         else:
             env.pop('BB_UI_RES', None)
-        if live == '1':
-            print(f'Output {scaled_output}: live resolution changes (live_resolution=0: startup patch)')
-        elif scaled_output:
-            env.update(BB_RENDER_RES=scaled_render, BB_OUTPUT_RES=scaled_output, BB_AUTO_RENDER_RES='1')
-            env.setdefault('BB_DMEM_MB', '9152')
-            print(f'Output {scaled_output}: scene {scaled_render}, direct memory {env["BB_DMEM_MB"]} MiB '
-                  '(live_resolution=1: live changes)')
-        vram = low_vram_mb(env, probe.parent / 'bb-gpu-capabilities.exe')
-        if vram:
-            env.setdefault('BB_GC_BUDGET_MB', str(max(2048, vram - VRAM_RESERVE_MB)))
-            notes = [f'texture budget {env["BB_GC_BUDGET_MB"]} MiB']
-            # At 1080p output the live path keeps the game's targets native; here they shrink too.
-            wants_live = (env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '1') == '1'
-            if (patched and not scaled_output and not env.get('BB_RENDER_RES') and not wants_live
-                    and ini_value(config, 'upscaler') != 'taa'):
-                size = run_script('patches.py', '--print-preset-size', '--settings', config, capture=True).strip()
-                if size:
-                    env.update(BB_RENDER_RES=size, BB_AUTO_RENDER_RES='1')
-                    notes.append(f'scene {size} patched at start (live_resolution=1: live changes)')
-                    # On this path most prepared draws go unused (145494 of 182272), and on four
-                    # cores the workers take time from the game: 53.0 FPS with 4 workers, 55.1
-                    # with 2, 56.8 without (minimum 45.3, 48.4, 53.3; i5-11300H, 4 cores, 8
-                    # threads). On 8 cores the workers win: 197 FPS without them, 234 with 4.
-                    if physical_cores() <= 4 and 'BB_PREP_WORKERS' not in env:
-                        env['BB_PREP_WORKERS'] = '0'
-                        notes.append('no draw-preparation workers')
-            print(f'Low-VRAM profile ({vram} MiB card): {", ".join(notes)}; BB_LOW_VRAM=0 turns it off')
-        # The game's graphics heaps at PC sizes need the larger pool (patches.py HEAP_PATCH;
-        # pc_heaps=0 / BB_PC_HEAPS=0: the PS4's heaps, the larger pool only above 1080p).
-        if patched and (env.get('BB_PC_HEAPS') or ini_value(config, 'pc_heaps') or '1') != '0':
-            env.setdefault('BB_DMEM_MB', '9152')
-        # Frame limiter slots on the planned grid (driver.cpp, Supermedo d646b1d); off by default.
-        if not env.get('BB_FRAME_CAP_GRID') and ini_value(config, 'frame_cap_grid') == '1':
-            env['BB_FRAME_CAP_GRID'] = '1'
-        extra = env.get('BB_PATCHES', '')
-        # The game shows only its region's text languages and falls back to English for the
-        # others: Chinese (BB_LANGUAGE 10, 11), and Spanish and Japanese too (GitHub issues #126,
-        # #133; Spanish checked in game). Every language but English and Russian (shown without
-        # it) gets the region unlocked (k1m0206, Supermedo PR #91; its server lookups stay on
-        # Europe).
-        if env.get('BB_LANGUAGE', '1') not in REGION_LANGUAGES and 'Unlock Game Region' not in extra:
-            extra = ';'.join(filter(None, (extra, 'Unlock Game Region')))
-        # Offline, the title screen goes straight to the main menu (PLAY ONLINE would only fail
-        # there); online play and co-op keep the dialog. BB_SKIP_NETWORK_CHOICE=0 shows it offline
-        # too. (bbport 0.5-pre1, deadinside28 39940f2, via parsifal295's Supermedo PR #65.)
-        if (env.get('BB_ONLINE') != '1' and env.get('BB_COOP') != '1'
-                and env.get('BB_SKIP_NETWORK_CHOICE', '1') != '0'):
-            extra = ';'.join(filter(None, (extra, 'Skip Online/Offline Choice')))
-        run_script('patches.py', '--out', out, '--fps', fps, '--extra', extra,
-                   '--settings', config, '--game-dir', game, '--render-res', env.get('BB_RENDER_RES', ''),
-                   '--output-res', env.get('BB_OUTPUT_RES', ''),
-                   '--patches-dir', env.get('BB_PATCHES_DIR', data / 'patches'),
-                   '--patches-config', env.get('BB_PATCHES_CONFIG', data / 'patches.json'))
-        if fps in ('120', '144'):
-            # 90 FPS++ scaled to the rate (patches.py SCALED_FPS): vblank and frame limit at the
-            # rate, as Awakenchan/BloodBorneButPc sets them; another cap would change its timing.
-            env['BB_VBLANK_HZ'] = env.get('BB_VBLANK_HZ') or fps
-            env['BB_FPS_LIMIT'] = fps
-        elif not env.get('BB_VBLANK_HZ'):
-            env['BB_VBLANK_HZ'] = {'uncap': '0', '90': '90'}.get(fps, '60')
+    else:
+        env.pop('BB_UI_RES', None)
+    if live == '1':
+        print(f'Output {scaled_output}: live resolution changes (live_resolution=0: startup patch)')
+    elif scaled_output:
+        env.update(BB_RENDER_RES=scaled_render, BB_OUTPUT_RES=scaled_output, BB_AUTO_RENDER_RES='1')
+        env.setdefault('BB_DMEM_MB', '9152')
+        print(f'Output {scaled_output}: scene {scaled_render}, direct memory {env["BB_DMEM_MB"]} MiB '
+              '(live_resolution=1: live changes)')
+    vram = low_vram_mb(env, probe.parent / 'bb-gpu-capabilities.exe')
+    if vram:
+        env.setdefault('BB_GC_BUDGET_MB', str(max(2048, vram - VRAM_RESERVE_MB)))
+        notes = [f'texture budget {env["BB_GC_BUDGET_MB"]} MiB']
+        # At 1080p output the live path keeps the game's targets native; here they shrink too.
+        wants_live = (env.get('BB_LIVE_RES') or ini_value(config, 'live_resolution') or '1') == '1'
+        if (patched and not scaled_output and not env.get('BB_RENDER_RES') and not wants_live
+                and ini_value(config, 'upscaler') != 'taa'):
+            size = run_script('patches.py', '--print-preset-size', '--settings', config, capture=True).strip()
+            if size:
+                env.update(BB_RENDER_RES=size, BB_AUTO_RENDER_RES='1')
+                notes.append(f'scene {size} patched at start (live_resolution=1: live changes)')
+                # On this path most prepared draws go unused (145494 of 182272), and on four
+                # cores the workers take time from the game: 53.0 FPS with 4 workers, 55.1
+                # with 2, 56.8 without (minimum 45.3, 48.4, 53.3; i5-11300H, 4 cores, 8
+                # threads). On 8 cores the workers win: 197 FPS without them, 234 with 4.
+                if physical_cores() <= 4 and 'BB_PREP_WORKERS' not in env:
+                    env['BB_PREP_WORKERS'] = '0'
+                    notes.append('no draw-preparation workers')
+        print(f'Low-VRAM profile ({vram} MiB card): {", ".join(notes)}; BB_LOW_VRAM=0 turns it off')
+    # The game's graphics heaps at PC sizes need the larger pool (patches.py HEAP_PATCH;
+    # pc_heaps=0 / BB_PC_HEAPS=0: the PS4's heaps, the larger pool only above 1080p).
+    if patched and (env.get('BB_PC_HEAPS') or ini_value(config, 'pc_heaps') or '1') != '0':
+        env.setdefault('BB_DMEM_MB', '9152')
+    # Frame limiter slots on the planned grid (driver.cpp, Supermedo d646b1d); off by default.
+    if not env.get('BB_FRAME_CAP_GRID') and ini_value(config, 'frame_cap_grid') == '1':
+        env['BB_FRAME_CAP_GRID'] = '1'
+    extra = env.get('BB_PATCHES', '')
+    # The game shows only its region's text languages and falls back to English for the
+    # others: Chinese (BB_LANGUAGE 10, 11), and Spanish and Japanese too (GitHub issues #126,
+    # #133; Spanish checked in game). Every language but English and Russian (shown without
+    # it) gets the region unlocked (k1m0206, Supermedo PR #91; its server lookups stay on
+    # Europe).
+    if env.get('BB_LANGUAGE', '1') not in REGION_LANGUAGES and 'Unlock Game Region' not in extra:
+        extra = ';'.join(filter(None, (extra, 'Unlock Game Region')))
+    # Offline, the title screen goes straight to the main menu (PLAY ONLINE would only fail
+    # there); online play and co-op keep the dialog. BB_SKIP_NETWORK_CHOICE=0 shows it offline
+    # too. (bbport 0.5-pre1, deadinside28 39940f2, via parsifal295's Supermedo PR #65.)
+    if (env.get('BB_ONLINE') != '1' and env.get('BB_COOP') != '1'
+            and env.get('BB_SKIP_NETWORK_CHOICE', '1') != '0'):
+        extra = ';'.join(filter(None, (extra, 'Skip Online/Offline Choice')))
+    run_script('patches.py', '--out', out, '--fps', fps, '--extra', extra,
+               '--settings', config, '--game-dir', game, '--render-res', env.get('BB_RENDER_RES', ''),
+               '--output-res', env.get('BB_OUTPUT_RES', ''),
+               '--patches-dir', env.get('BB_PATCHES_DIR', data / 'patches'),
+               '--patches-config', env.get('BB_PATCHES_CONFIG', data / 'patches.json'))
+    if fps in ('120', '144'):
+        # 90 FPS++ scaled to the rate (patches.py SCALED_FPS): vblank and frame limit at the
+        # rate, as Awakenchan/BloodBorneButPc sets them; another cap would change its timing.
+        env['BB_VBLANK_HZ'] = env.get('BB_VBLANK_HZ') or fps
+        env['BB_FPS_LIMIT'] = fps
+    elif not env.get('BB_VBLANK_HZ'):
+        env['BB_VBLANK_HZ'] = {'uncap': '0', '90': '90'}.get(fps, '60')
 
-        # The in-game restart starts this script again once this process is gone.
-        # GPU caches (shaders, pipelines) beside the saves; read before main(), so set here.
-        user_dir = Path(env.get('BB_USER_DIR', data / 'user')).resolve()
-        user_dir.mkdir(parents=True, exist_ok=True)
-        from bbsc_information import prepare as prepare_information
-        env['BB_INFORMATION_FILE'] = prepare_information(user_dir, env.get('BB_LANGUAGE', '1'))
-        env.setdefault('BB_GPU_USER_DIR', str(user_dir))
-        env.setdefault('BB_GPU_CACHE_DIR', str(data.resolve() / 'cache'))
-        if env.get('BB_ONLINE') == '1':
-            online_overrides(env, user_dir)
-        else:
-            env.pop('BB_NET_BACKEND', None)
-        this = ['--run'] if getattr(sys, 'frozen', False) else [str(Path(__file__).resolve())]
-        restart = [sys.executable, *this, '--after', str(os.getpid()), *args]
-        env['BB_RESTART_COMMAND'] = subprocess.list2cmdline(restart)
-        command = [str(probe), str(out / 'boot-linked.bin'), '--content-profile', str(out / 'content.bin'),
-                   '--patches', str(out / 'patches.bin'), '--app0', str(game),
-                   '--user', str(user_dir),
-                   '--timeout', env.get('BB_TIMEOUT', '0'), *args]
-        # No stdin: an inherited pipe (shells such as Git Bash) cost the game its console output.
-        game_proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, creationflags=no_console())
-        started = []
-        try:
-            return game_proc.wait()
-        finally:
-            for proc in started:
-                proc.terminate()
-            if game_proc.poll() is None:
-                game_proc.terminate()
+    # The in-game restart starts this script again once this process is gone.
+    # GPU caches (shaders, pipelines) beside the saves; read before main(), so set here.
+    user_dir = Path(env.get('BB_USER_DIR', data / 'user')).resolve()
+    user_dir.mkdir(parents=True, exist_ok=True)
+    from bbsc_information import prepare as prepare_information
+    env['BB_INFORMATION_FILE'] = prepare_information(user_dir, env.get('BB_LANGUAGE', '1'))
+    env.setdefault('BB_GPU_USER_DIR', str(user_dir))
+    env.setdefault('BB_GPU_CACHE_DIR', str(data.resolve() / 'cache'))
+    if env.get('BB_ONLINE') == '1':
+        online_overrides(env, user_dir)
+    else:
+        env.pop('BB_NET_BACKEND', None)
+    this = ['--run'] if getattr(sys, 'frozen', False) else [str(Path(__file__).resolve())]
+    restart = [sys.executable, *this, '--after', str(os.getpid()), *args]
+    env['BB_RESTART_COMMAND'] = subprocess.list2cmdline(restart)
+    command = [str(probe), str(out / 'boot-linked.bin'), '--content-profile', str(out / 'content.bin'),
+               '--patches', str(out / 'patches.bin'), '--app0', str(game),
+               '--user', str(user_dir),
+               '--timeout', env.get('BB_TIMEOUT', '0'), *args]
+    # No stdin: an inherited pipe (shells such as Git Bash) cost the game its console output.
+    game_proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, creationflags=no_console())
+    started = []
+    try:
+        return game_proc.wait()
     finally:
-        if mod_view:
-            # Read-only game files leave read-only links (mods.remove_overlay clears them).
-            from mods import remove_overlay
-            try:
-                remove_overlay(mod_view, original_game)
-            except OSError:
-                pass
+        for proc in started:
+            proc.terminate()
+        if game_proc.poll() is None:
+            game_proc.terminate()
 
 
 if __name__ == '__main__':

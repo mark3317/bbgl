@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Merge loose-file mods through links, preserving the original game and mod files."""
+"""Connect loose-file mods through a runtime path map, preserving original game files."""
 import argparse
 import hashlib
 import json
@@ -275,6 +275,53 @@ def expand(directory):
         directory.mkdir(exist_ok=True)
 
 
+def build_manifest(game, out, mods):
+    """Map game-relative files and directories directly to their persistent sources."""
+    game = Path(game).resolve(strict=True)
+    entries = {}
+    for name, root in mods:
+        count = 0
+        for relative, source in mod_files(root):
+            destination = game
+            for part in relative.parts:
+                destination = child(destination, part)
+            relative = destination.relative_to(game)
+            key = relative.as_posix().lower()
+            if destination.is_dir() or (key in entries and entries[key][1]):
+                raise ValueError(f'File/directory conflict: {relative}')
+            for parent in destination.parents:
+                if parent == game:
+                    break
+                if parent.exists() and not parent.is_dir():
+                    raise ValueError(f'File/directory conflict: {parent}')
+            if key in entries and entries[key][0] != source:
+                print(f'Mods: {relative}: replaced by {name}', file=sys.stderr)
+            entries[key] = (source.resolve(), False)
+            for parent in relative.parents:
+                if parent == Path('.'):
+                    continue
+                original = game / parent
+                folder = source.parents[len(relative.parts) - len(parent.parts) - 1]
+                directory_key = parent.as_posix().lower()
+                if directory_key in entries and not entries[directory_key][1]:
+                    raise ValueError(f'File/directory conflict: {parent}')
+                entries.setdefault(directory_key, (original if original.is_dir() else folder.resolve(), True))
+            count += 1
+        print(f'Mods: {name}: {count} files (direct mapping)', file=sys.stderr)
+    lines = ['BBMODS1']
+    for key, (source, directory) in sorted(entries.items()):
+        if any(c in key + str(source) for c in '\t\r\n'):
+            raise ValueError('Mod paths cannot contain tabs or newlines')
+        lines.append(f'{key}\t{source.as_posix()}')
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    target = out / 'mod-files.tsv'
+    temporary = target.with_suffix('.tmp')
+    temporary.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    temporary.replace(target)
+    return game
+
+
 def build_overlay(game, out, mods):
     game = Path(game).resolve(strict=True)
     replacements = []
@@ -475,7 +522,7 @@ def main():
         layers = keep_pc_menu_text(layers, generated, args.out)
     except (OSError, ValueError) as error:
         print(f'Mods: PC menu strings not merged ({error})', file=sys.stderr)
-    print(build_overlay(args.game, args.out, layers))
+    print(build_manifest(args.game, args.out, layers))
 
 
 if __name__ == '__main__':

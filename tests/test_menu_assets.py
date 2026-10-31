@@ -152,8 +152,9 @@ class RealGameTests(unittest.TestCase):
             _h2, a2, z2 = m.find_sprite(movie, cid)
             self.assertEqual(source[a:z], movie[a2:z2])
 
-    def test_title_lists_fit_all_commands_in_both_editions(self):
-        for relative in m.TITLE_MOVIES:
+    def test_title_lists_fit_all_commands_in_available_regions(self):
+        movies = [*m.TITLE_MOVIES, *(p for p in m.OPTIONAL_TITLE_MOVIES if (GAME / p).is_file())]
+        for relative in movies:
             source, movie = (GAME / relative).read_bytes(), self.files[relative]
             self.assertEqual(int.from_bytes(movie[4:8], 'little'), len(movie))
             self.assertNotIn('Item_5_0', placed_names(source, (m.PLACE2,)) + self.list_rows(source))
@@ -164,6 +165,17 @@ class RealGameTests(unittest.TestCase):
                            c == m.PLACE2 and m.Place2(movie, s2, e2).name == 'Item_0_0'
                            for c, _h2, s2, e2 in m.tags(movie, s + 4, e)))
             self.assert_row_animation(movie, cid, m.TITLE_VISIBLE_ROWS, 797)
+
+    def test_missing_optional_eu_title_keeps_standard_title_support(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for relative in [m.MOVIE, *m.TITLE_MOVIES,
+                             Path('msg/engus') / m.MESSAGE_FILE]:
+                (root / relative).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(GAME / relative, root / relative)
+            result = m.make(root, log=lambda line: None)
+            self.assertTrue(all(p in result for p in m.TITLE_MOVIES))
+            self.assertNotIn(Path('menu/title_dlc_eu.gfx'), result)
 
     def assert_row_animation(self, movie, cid, count, pitch):
         """Every opening/closing frame retains capacity, pitch and relative motion."""

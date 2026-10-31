@@ -24,7 +24,9 @@ from fromsoft import Bnd4, FormatError, dcx_compress, dcx_decompress  # noqa: E4
 
 MESSAGES = Path(__file__).resolve().parent / 'pc_menu_messages.tsv'
 MOVIE = Path('menu') / 'optionsetting.gfx'
-TITLE_MOVIES = [Path('menu') / 'title.gfx', Path('menu') / 'title_dlc.gfx']  # the DLC edition uses the second
+TITLE_MOVIES = [Path('menu') / name for name in ('title.gfx', 'title_dlc.gfx')]
+# European DLC uses its own movie. Some dumps omit it, so patch it when present.
+OPTIONAL_TITLE_MOVIES = [Path('menu') / 'title_dlc_eu.gfx']
 MESSAGE_FILE = 'menu.msgbnd.dcx'
 
 # The sections: (instance name, title message id, rows). ControllSetting has rows Item_0_0..
@@ -630,7 +632,7 @@ def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
 
 # The world adds Exit Game to the five front-end native commands.
 SYSTEM_VISIBLE_ROWS = 6 + len(NATIVE_SECTIONS) + 1
-TITLE_VISIBLE_ROWS = 6
+TITLE_VISIBLE_ROWS = 8  # native commands + online/offline variant + Information + Quit Game
 SYSTEM_ROW_PITCH = 48
 SYSTEM_ROW_OFFSET = -145
 
@@ -775,11 +777,12 @@ def make(dvdroot, log=print):
     if not languages:
         log('PC menu: off - the game has no msg/*/menu.msgbnd.dcx')
         return {}
-    # Quit Game on the title: both title movies, or neither (the row needs its line).
+    # Quit Game on the title: patch every available regional movie together.
     try:
         titles = {relative: fit_command_list((dvdroot / relative).read_bytes(), 'CommandList',
                                           TITLE_VISIBLE_ROWS, offset_y=-50)
-                  for relative in TITLE_MOVIES}
+                  for relative in [*TITLE_MOVIES, *(p for p in OPTIONAL_TITLE_MOVIES
+                                                      if (dvdroot / p).is_file())]}
         files.update(titles)
     except (OSError, FormatError, IndexError, struct.error) as error:
         log(f'PC menu: no Quit Game on the title - {error}')

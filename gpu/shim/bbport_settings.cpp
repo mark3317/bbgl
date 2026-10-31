@@ -444,11 +444,11 @@ const char* UpscalerName(int upscaler) {
 
 } // namespace BbSettings
 
-// Native Graphics menu offers only outputs that keep the startup camera/HUD aspect.
+// Live sessions keep the startup aspect; fixed-render sessions save all output choices for restart.
 extern "C" int bbgpu_output_live_supported(int output) {
     using namespace BbSettings;
     const auto& v = Get();
-    return output >= 0 && output < OutputCount && !FixedRenderSession() &&
+    return output >= 0 && output < OutputCount && (FixedRenderSession() ||
         int64_t(OutputWidths[output]) * OutputHeights[v.startup_output_res] ==
-        int64_t(OutputWidths[v.startup_output_res]) * OutputHeights[output];
+        int64_t(OutputWidths[v.startup_output_res]) * OutputHeights[output]);
 }

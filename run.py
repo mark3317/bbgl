@@ -458,6 +458,8 @@ def main():
         # GPU caches (shaders, pipelines) beside the saves; read before main(), so set here.
         user_dir = Path(env.get('BB_USER_DIR', data / 'user')).resolve()
         user_dir.mkdir(parents=True, exist_ok=True)
+        from bbsc_information import prepare as prepare_information
+        env['BB_INFORMATION_FILE'] = prepare_information(user_dir, env.get('BB_LANGUAGE', '1'))
         env.setdefault('BB_GPU_USER_DIR', str(user_dir))
         env.setdefault('BB_GPU_CACHE_DIR', str(data.resolve() / 'cache'))
         if env.get('BB_ONLINE') == '1':

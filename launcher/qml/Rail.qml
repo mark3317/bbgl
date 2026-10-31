@@ -22,7 +22,7 @@ Rectangle {
                 Rectangle { visible: active; x: 0; y: 8; width: 3; height: parent.height - 16; color: Theme.accent }
                 Rectangle {
                     anchors.centerIn: parent; width: 52; height: 52; radius: 4
-                    color: active ? "#1d1316" : hit.containsMouse ? "#15181c" : "transparent"
+                    color: active ? "#11262c" : hit.containsMouse ? "#15181c" : "transparent"
                 }
                 NavIcon {
                     anchors.centerIn: parent; width: 30; height: 30; kind: modelData.kind

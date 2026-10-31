@@ -1797,7 +1797,29 @@ int PS4_SYSV_ABI sceHttpSendRequest(int reqId, const void* postData, u64 size) {
         s32 worker_errno = 0;
         u32 success_event_bits = 0; // 0 = no event (offline path uses failure bits)
 
-        if (!online) {
+        // Information describes this client fork, even when the host still serves upstream news.
+        bool local_information = false;
+        const char* information_file = std::getenv("BB_INFORMATION_FILE");
+        if (information_file && plan.path.substr(0, plan.path.find('?')) == "/basic_utils/get_normal_notice") {
+            std::ifstream in(information_file, std::ios::binary);
+            std::ostringstream contents;
+            contents << in.rdbuf();
+            const auto text = contents.str();
+            const auto notice = nlohmann::json::parse(text, nullptr, false);
+            if (notice.is_object() && notice.value("MessageId", std::string{}) == "NoticeNormalGetResponse") {
+                local_res.status_code = 200;
+                local_res.body.assign(text.begin(), text.end());
+                local_res.content_length = text.size();
+                local_res.content_length_result = 0;
+                local_res.all_headers_blob = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " +
+                    std::to_string(text.size()) + "\r\n\r\n";
+                success_event_bits = ORBIS_HTTP_NB_EVENT_IN | ORBIS_HTTP_NB_EVENT_OUT | ORBIS_HTTP_NB_EVENT_RESOLVED;
+                local_information = true;
+            }
+        }
+        if (local_information) {
+            LOG_INFO(Lib_Http, "Information: using the local BBSC-GL page");
+        } else if (!online) {
             SynthesizeTransportFailureResponse(local_res);
             worker_errno = ORBIS_HTTP_ERROR_RESOLVER_ENODNS;
         } else {

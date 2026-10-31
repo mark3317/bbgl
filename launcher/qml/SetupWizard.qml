@@ -216,14 +216,9 @@ Item {
                       (launcher.recommendedPreset !== "" ? launcher.tr("  ★ Suggested for your graphics card.") : "")
             }
             Rectangle { width: parent.width; height: 1; color: Theme.line }
-            GlassSwitch {
-                text: launcher.tr("Start the game directly next time")
-                checked: launcher.launchDirectly
-                onToggled: launcher.setValue("launchDirectly", checked)
-            }
             Text {
                 width: parent.width; wrapMode: Text.WordWrap; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-                text: launcher.tr("Hold Shift while starting to open the launcher instead. In the game, Insert or L3+R3 opens the guide. Setup can be run again from Game & Saves.")
+                text: launcher.tr("In the game, Insert or L3+R3 opens the guide. Setup can be run again from Game & Saves.")
             }
         }
     }

@@ -205,7 +205,7 @@ Item {
                 width: parent.width; wrapMode: Text.WordWrap; color: Theme.textDim
                 font.family: Theme.sans; font.pixelSize: 12; lineHeight: 1.35
                 text: launcher.notice !== launcher.tr("Ready to hunt.") && launcher.notice !== "" ? launcher.notice :
-                      launcher.tr("Hold Shift while starting to open this launcher  ·  Insert or L3+R3 opens the guide in game")
+                      launcher.tr("Insert or L3+R3 opens the guide in game")
             }
         }
     }

@@ -178,7 +178,7 @@ FIELDS = {
     'Enhancements': [
         *[row(key, title[0], 'toggle') for key, title, _ in core.ENHANCEMENTS],
     ],
-    # Launch behaviour (launchDirectly, close_on_play, shortcuts) lives on Home; the update
+    # Launch behaviour (close_on_play, shortcuts) lives on Home; the update
     # toggle has its own row with "Check now" in Main.qml.
     'Advanced': [
         row('ui_language', 'Launcher language', 'choice', [('', ('System default',))] + core.UI_LANGUAGES),
@@ -304,7 +304,7 @@ class LauncherBackend(QObject):
         self._notice = 'Ready to hunt.'
         self._mods = []
         self._patches = []
-        # A newer release found earlier (a direct launch checks quietly): shown at once.
+        # A newer release found earlier is shown at once.
         self._update = core.remembered_update() if self.app.get('check_updates') else None
         self._settings_revision = 0
         self._gpu_status = 'Checking graphics card…'
@@ -428,10 +428,6 @@ class LauncherBackend(QObject):
     @Property(int, notify=changed)
     def fixStep(self):
         return bbport_startup.PROBLEMS.get(self._problem, ('', 1))[1]
-
-    @Property(bool, notify=changed)
-    def launchDirectly(self):
-        return bool(self.app.get('launchDirectly'))
 
     @Property(bool, notify=changed)
     def closeOnPlay(self):
@@ -1228,7 +1224,7 @@ class LauncherBackend(QObject):
                     f'$s.TargetPath={ps_string(target)};$s.WorkingDirectory={ps_string(core.PORT_DIR)};'
                     f'$s.IconLocation={ps_string(icon)};'
                     + (f'$s.Arguments={ps_string(options)};' if options else '') + '$s.Save();')
-        # The Start Menu entry always opens the launcher, since a plain start may launch the game directly.
+        # The Start Menu entry always opens the launcher, like a plain start.
         script = shortcut('Desktop', 'Bloodborne', '') + shortcut('Programs', 'Bloodborne (Launcher)', '--launcher')
         result = subprocess.run(['powershell', '-NoProfile', '-Command', script], capture_output=True,
                                 creationflags=core.NO_WINDOW)
@@ -1248,7 +1244,7 @@ class LauncherBackend(QObject):
         else:
             pythonw = Path(sys.executable).with_name('pythonw.exe')
             exe = pythonw if pythonw.exists() else Path(sys.executable)
-            options = f'"{Path(core.__file__).resolve()}" --play'
+            options = f'"{Path(core.__file__).resolve()}"'
         self._write()
         restart = False
         if bbport_steam.steam_running():

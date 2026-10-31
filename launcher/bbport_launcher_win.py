@@ -8,9 +8,9 @@ preset, output, effects), start-up options passed to run.py as environment varia
 Launcher options live in %LOCALAPPDATA%/Bloodborne Game Launcher/settings.json.
 
 Frozen with PyInstaller (packaging/windows/package.sh) the same Bloodborne.exe also runs the
-game without the window (`--play`), run.py (`--run`) and the preparation scripts (`--script`),
-so a packaged port needs no Python installation. A plain start launches the game directly once
-setup is done; `--launcher` (or Shift/Ctrl held) opens the launcher and `--setup` the wizard.
+run.py (`--run`) and the preparation scripts (`--script`),
+so a packaged port needs no Python installation. A plain start opens the launcher;
+`--setup` opens the setup wizard.
 """
 import ctypes
 import http.client
@@ -52,11 +52,8 @@ STRIP_ART = PORT_DIR / 'launcher' / 'art' / 'strip.png'
 RELEASES_API = 'https://api.github.com/repos/mark3317/bbgl/releases/latest'
 RELEASES_PAGE = 'https://github.com/mark3317/bbgl/releases/latest'
 UPDATE_DIR = Path(tempfile.gettempdir()) / 'bbport-update'
-# The last answer from GitHub, so a direct launch (no launcher window) can check quietly and the
-# launcher shows the result the next time it opens. Off with check_updates like every check.
+# The last answer from GitHub is shown the next time the launcher opens.
 UPDATE_CACHE = CONFIG_DIR / 'mark3317-update-check.json'
-QUIET_CHECK_DELAY = 20  # seconds after a direct launch starts the game
-QUIET_CHECK_INTERVAL = 6 * 3600  # at most this often from direct launches
 # Never copied over an installation by an update (the package does not hold them either).
 USER_FILES = ('user', 'out', 'mods', 'bbport.ini', 'mods.json', 'patches.json', 'last_run.log')
 
@@ -165,6 +162,16 @@ def windows_language():
     return bbport_lang.WINDOWS_LANGUAGES.get(primary, 'en')
 
 
+def game_language(settings):
+    """Resolve automatic text language from Windows, independently of manual UI overrides."""
+    value = settings.get('language', 'auto')
+    if value not in ('auto', ''):
+        return str(value)
+    return {'en': '1', 'ru': '8', 'ja': '0', 'fr': '2', 'es': '3', 'de': '4',
+            'it': '5', 'pt': '7', 'pl': '16', 'tr': '19', 'ko': '9', 'zh': '11'}.get(windows_language(), '1')
+
+
+
 # ---------------------------------------------------------------------------------------------
 # Settings. bbport.ini keys (the game reads them, the in-game menu edits them) and the
 # launcher's own settings.json (passed to run.py as environment variables).
@@ -248,9 +255,9 @@ INI_DEFAULTS = {'upscaler': 'dlss', 'preset': '2', 'sharpen': '1', 'sharpness': 
 from bbport_coop_settings import SETTINGS as COOP_SETTINGS
 
 APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'), 'user_dir': '', 'dlc_dir': '',
-                'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': '1',
+                'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': 'auto',
                 'voice_language': 'auto',
-                'player_name': '', 'fullscreen': False, 'fullscreen_mode': 'borderless', 'display': '',
+                'player_name': '', 'fullscreen': True, 'fullscreen_mode': 'borderless', 'display': '',
                 'hdr': False, 'present_mode': 'Mailbox',
                 'fps_mode': '120', 'frame_cap': '', 'draw_pipe': '', 'readbacks': '',
                 'frames_ahead': '', 'vram_budget_mb': '', 'frame_stats': False, 'gpu_profile': False,
@@ -260,9 +267,8 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
                 'play_mode': 'offline',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
-                # finished or skipped; launchDirectly starts the game without the launcher.
+                # finished or skipped.
                 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,
-                'launchDirectly': True,
                 **{'bbsc_' + item['id']: item['default'] for item in COOP_SETTINGS}}
 
 
@@ -270,9 +276,12 @@ def app_settings(saved):
     """The launcher settings: APP_DEFAULTS under the saved ones. Settings saved before 120 FPS was
     the default and without a frame rate of their own ran unlocked: they keep that."""
     saved = {key: value for key, value in saved.items()
-             if not key.startswith('thd_') and key not in ('online_pool', 'online_community')}
+             if not key.startswith('thd_') and key not in ('online_pool', 'online_community', 'launchDirectly')}
     settings = {**APP_DEFAULTS, **saved}
     settings['play_mode'] = play_mode(settings)
+    if not saved.get('game_language_auto_v1'):
+        settings['language'] = 'auto'
+    settings['game_language_auto_v1'] = True
     settings['online'] = False
     if saved and 'fps_mode' not in saved:
         settings['fps_mode'] = 'uncap'
@@ -336,7 +345,7 @@ DISPLAYS = [('', ('Primary monitor', 'Основной монитор'))] + \
 PRESENT_MODES = [('Mailbox', ('Mailbox (low latency, no tearing)', 'Mailbox (без разрывов)')),
                  ('Fifo', ('FIFO (VSync)',)), ('FifoRelaxed', ('FIFO Relaxed',)),
                  ('Immediate', ('Immediate (tearing)', 'Immediate (с разрывами)'))]
-LANGUAGES = [('1', ('English', 'Английский')), ('8', ('Russian', 'Русский')), ('0', ('Japanese', 'Японский')),
+LANGUAGES = [('auto', ('System default',)), ('1', ('English', 'Английский')), ('8', ('Russian', 'Русский')), ('0', ('Japanese', 'Японский')),
              ('2', ('French', 'Французский')), ('3', ('Spanish', 'Испанский')), ('4', ('German', 'Немецкий')),
              ('5', ('Italian', 'Итальянский')),
              # The other languages the game ships (dvdroot_ps4/msg), by PS4 system language id.
@@ -624,7 +633,7 @@ def game_environment(s):
     env['BB_MODS_ENABLED'] = '1' if s['mods_enabled'] else '0'
     env['BB_PATCHES_DIR'] = s['patches_dir'] or str(DATA_DIR / 'patches')
     env['BB_PATCHES_CONFIG'] = str(DATA_DIR / 'patches.json')
-    env['BB_LANGUAGE'] = s['language']
+    env['BB_LANGUAGE'] = game_language(s)
     env['BB_VOICE_LANGUAGE'] = s.get('voice_language') or 'auto'
     if str(s['player_name']).strip():
         env['BB_USER_NAME'] = str(s['player_name']).strip()
@@ -666,8 +675,8 @@ def game_environment(s):
 # The window.
 
 BG, PANEL, CARD, LINE = '#090d12', '#131920', '#1c232b', '#33404a'
-TEXT, MUTED, GOLD, BLOOD, BLOOD_HI = '#f3f1eb', '#a3aeb7', '#d2bb85', '#8a2635', '#ba3446'
-NAV_HOVER, NAV_ACTIVE, SUCCESS = '#242b32', '#48252c', '#8dcc93'
+TEXT, MUTED, GOLD, BLOOD, BLOOD_HI = '#f3f1eb', '#a3aeb7', '#d2bb85', '#287c8d', '#3395a6'
+NAV_HOVER, NAV_ACTIVE, SUCCESS = '#242b32', '#12333c', '#8dcc93'
 
 
 def round_rect(canvas, x1, y1, x2, y2, radius, fill, outline='', width=1, tags=()):
@@ -724,7 +733,7 @@ class Launcher:
         root.after(100, self.drain_output)
         threading.Thread(target=self.detect_gpu, daemon=True).start()
         if self.app.get('check_updates', True) and not COOP_TEST:
-            if remembered := remembered_update():  # found by a direct launch's quiet check
+            if remembered := remembered_update():  # remembered from the previous check
                 self.offer_update(*remembered)
             threading.Thread(target=self.check_update, daemon=True).start()
 
@@ -2170,8 +2179,8 @@ class Launcher:
             exe, options = PORT_DIR / 'bin' / 'Play Bloodborne.exe', ''
         else:
             pythonw = Path(sys.executable).with_name('pythonw.exe')
-            exe, options = (pythonw if pythonw.exists() else Path(sys.executable)), f'"{Path(__file__).resolve()}" --play'
-        self.collect()  # Play Bloodborne.exe starts the game with the saved settings
+            exe, options = (pythonw if pythonw.exists() else Path(sys.executable)), f'"{Path(__file__).resolve()}"'
+        self.collect()  # Save before opening the launcher from Steam.
         restart = False
         if bbport_steam.steam_running():
             if not self.messagebox.askyesno('Bloodborne', _('Steam has to close while the game is added; it starts '
@@ -2246,23 +2255,6 @@ def open_run_log(log_dir):
     return open(log_dir / 'last_run.log', 'w', encoding='utf-8', buffering=1)
 
 
-def play_without_window(settings):
-    """--play: the game with the saved settings (shortcuts, Steam). Output goes to the console
-    when there is one and to <saves folder>/last_run.log."""
-    attach_stdio()
-    start_quiet_update_check(settings)
-    with open_run_log(settings.get('user_dir') or DATA_DIR / 'user') as log:
-        process = subprocess.Popen(run_command(), cwd=PORT_DIR, env=game_environment(settings),
-                                   stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT, creationflags=NO_WINDOW)
-        for raw in iter(process.stdout.readline, b''):
-            text = raw.decode('utf-8', errors='replace')
-            log.write(text)
-            try:
-                sys.stdout.write(text)
-            except (OSError, ValueError):
-                pass
-        return process.wait()
 
 
 def version_tuple(text):
@@ -2303,28 +2295,8 @@ def remembered_update():
     return version, cached.get('url') or None, cached.get('page') or RELEASES_PAGE
 
 
-def quiet_update_check(settings, now=None):
-    """Direct launches: asks GitHub at most every QUIET_CHECK_INTERVAL and only remembers the
-    answer (UPDATE_CACHE); nothing is shown while the game runs."""
-    if not settings.get('check_updates', True) or COOP_TEST:
-        return False
-    cached = load_json(UPDATE_CACHE, {})
-    checked = cached.get('checked') if isinstance(cached, dict) else None
-    now = time.time() if now is None else now
-    if isinstance(checked, (int, float)) and 0 <= now - checked < QUIET_CHECK_INTERVAL:
-        return False
-    try:
-        latest_release()
-    except (OSError, ValueError, KeyError):
-        return False
-    return True
 
 
-def start_quiet_update_check(settings):
-    timer = threading.Timer(QUIET_CHECK_DELAY, quiet_update_check, args=(settings,))
-    timer.daemon = True
-    timer.start()
-    return timer
 
 
 def extract_update(archive, folder):
@@ -2421,7 +2393,7 @@ def main():
     if args and args[0] in ('--run', '--script'):
         sys.exit(run_role(args))
     import bbport_startup
-    keys_held = bbport_startup.launcher_keys_held()  # read first: the user may let go soon
+    keys_held = False
     saved = load_json(CONFIG_FILE, {})
     settings = app_settings(saved)
     if bbport_startup.migrate(saved, settings):
@@ -2435,9 +2407,6 @@ def main():
         sys.exit(install_update(args[1], args[2]))
     if FROZEN and UPDATE_DIR not in PORT_DIR.parents:
         remove_update_folder()  # what a finished update left behind
-    # Without a usable game folder there is nothing to play yet: open the launcher instead.
-    if '--play' in args and (Path(settings['game_dir'] or '.') / 'eboot.bin').is_file():
-        sys.exit(play_without_window(settings))
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(1)  # sharp text on scaled displays
     except (AttributeError, OSError):

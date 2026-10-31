@@ -1,11 +1,9 @@
-"""Start-up routing: first-run setup, direct launch, and the overrides that open the launcher.
+"""Start-up routing: first-run setup and the launcher.
 
 Runs before any window exists, so it only does quick file checks and never touches game,
 save or trophy data.
 """
-import ctypes
 from pathlib import Path
-import sys
 import tempfile
 
 # Bump when the wizard changes enough that everyone should see it again.
@@ -50,7 +48,6 @@ def migrate(saved, settings):
     elif saved.get('setup_seen'):
         saved['setupSkipped'] = True
     saved['setupVersion'] = SETUP_VERSION
-    saved.setdefault('launchDirectly', True)
     saved.pop('setup_seen', None)
     return True
 
@@ -64,19 +61,10 @@ def setup_pending(settings):
     return not done or not current
 
 
-def launcher_keys_held():
-    """Shift or Ctrl held down right now (Windows only)."""
-    if sys.platform != 'win32':
-        return False
-    try:
-        state = ctypes.windll.user32.GetAsyncKeyState
-        return any(state(key) & 0x8000 for key in (0x10, 0x11))  # VK_SHIFT, VK_CONTROL
-    except (AttributeError, OSError):
-        return False
 
 
 def choose_route(settings, args, keys_held, game_valid, saves_valid):
-    """{'mode': 'direct' | 'launcher', 'page', 'step' (wizard), 'problem' (PROBLEMS key or '')}."""
+    """{'mode': 'launcher', 'page', 'step' (wizard), 'problem' (PROBLEMS key or '')}."""
     def launcher(page, step=0, problem=''):
         return {'mode': 'launcher', 'page': page, 'step': step, 'problem': problem}
 
@@ -86,9 +74,7 @@ def choose_route(settings, args, keys_held, game_valid, saves_valid):
         return launcher('Game', PROBLEMS['game'][1], 'game')
     if not saves_valid:
         return launcher('Game', PROBLEMS['saves'][1], 'saves')
-    if keys_held or '--launcher' in args or not settings.get('launchDirectly', True):
-        return launcher('Home')
-    return {'mode': 'direct', 'page': 'Home', 'step': 0, 'problem': ''}
+    return launcher('Home')
 
 
 def route(settings, args, data_dir, keys_held):

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <chrono>
 #include <initializer_list>
+extern "C" int bbgpu_output_live_supported(int output);
 
 int main() {
     using namespace BbSettings;
@@ -52,6 +53,18 @@ int main() {
     assert(AspectNeedsRestart() && ResolutionNeedsRestart());
     settings.output_res = 6; // 3440x1440, different camera and HUD aspect.
     assert(AspectNeedsRestart() && ResolutionNeedsRestart());
+    assert(bbgpu_output_live_supported(2));
+    assert(!bbgpu_output_live_supported(6));
+#ifdef _WIN32
+    _putenv_s("BB_RENDER_RES", "1280x720");
+#else
+    setenv("BB_RENDER_RES", "1280x720", 1);
+#endif
+    // Fixed-render sessions still expose output choices, saved for the restart command.
+    assert(bbgpu_output_live_supported(2));
+    assert(bbgpu_output_live_supported(6));
+    assert(!bbgpu_output_live_supported(-1));
+    assert(!bbgpu_output_live_supported(OutputCount));
     std::filesystem::remove(path);
     std::puts("Custom output settings: save/load and malformed input rejection PASS");
 }

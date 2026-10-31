@@ -297,7 +297,6 @@ Item {
                     Column { visible: is("System", "Launch"); width: parent.width; spacing: 14
                         Column {
                             width: parent.width
-                            ToggleRow { label: launcher.tr("Start the game directly"); hint: launcher.tr("Opening Bloodborne starts the game; hold Shift or Ctrl to open the launcher instead."); checked: launcher.launchDirectly; onToggled: (on) => launcher.setValue("launchDirectly", on) }
                             ToggleRow { label: launcher.tr("Close the launcher after Play"); checked: launcher.closeOnPlay; onToggled: (on) => launcher.setValue("close_on_play", on) }
                         }
                         Row { spacing: 10
@@ -306,7 +305,7 @@ Item {
                         }
                     }
                     Column { visible: is("System", "Updates"); width: parent.width; spacing: 14
-                        ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Also checks quietly when the game starts directly, and shows the result here and on Play."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
+                        ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks when the launcher opens and shows available updates here and on Home."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
                         Row { spacing: 10
                             GlassButton { visible: launcher.hasUpdate; highlighted: true; text: launcher.tr("Install the new version"); width: Math.max(210, implicitWidth); height: 38; onClicked: launcher.installUpdate() }
                             GlassButton { text: launcher.tr("Check now"); width: Math.max(116, implicitWidth); height: 38; onClicked: launcher.checkForUpdates(true) }

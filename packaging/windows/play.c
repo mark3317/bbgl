@@ -1,6 +1,5 @@
-/* Play Bloodborne.exe: starts the game with the settings saved by the launcher, without opening
- * the launcher (it runs `Bloodborne.exe --play` from the package root above bin and waits for it, so Steam
- * and other front ends see the game running). Extra arguments are passed on. */
+/* Play Bloodborne.exe: opens the launcher from the package root and waits for it.
+ * Extra arguments are passed on; all regular entry points show the launcher first. */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <shellapi.h>
@@ -22,8 +21,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR arguments, int
         return 1;
     *slash = 0;
     swprintf(exe, 32768, L"%ls\\Bloodborne.exe", dir);
-    swprintf(parameters, 32768, L"--play%ls%ls", arguments && *arguments ? L" " : L"",
-             arguments ? arguments : L"");
+    swprintf(parameters, 32768, L"%ls", arguments ? arguments : L"");
     swprintf(line, 32768, L"\"%ls\" %ls", exe, parameters);
 
     HANDLE game = NULL;

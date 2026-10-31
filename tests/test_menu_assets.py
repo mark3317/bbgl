@@ -55,7 +55,7 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(m.NATIVE_SECTIONS, m.SECTION_ROWS)
         self.assertIn('MAX_ROWS = 16', runtime)
         self.assertIn('bbgpu_output_live_supported', runtime)
-        self.assertNotIn('add_command(builder, ROW_RESTART', runtime)
+        self.assertIn('add_command(builder, ROW_RESTART', runtime)
         template = re.search(r'g_graphics_template\[\] = \{(.*?)\n\};', runtime, re.S).group(1)
         ids = [int(i) for i in re.findall(r'_ROW\("\w+", (\d+)', template)]
         self.assertEqual(len(ids), 15)

@@ -831,6 +831,16 @@ static BB_GUEST_ABI void *quit_opener(void *out, void *factory) {
     return question(out, factory, QUIT_QUESTION, (const void *)quit_yes);
 }
 
+static BB_GUEST_ABI int64_t restart_yes(int64_t a, int64_t b) {
+    (void)a; (void)b;
+    runtime_restart();
+    return 0;
+}
+
+static BB_GUEST_ABI void *restart_opener(void *out, void *factory) {
+    return question(out, factory, RESTART_QUESTION, (const void *)restart_yes);
+}
+
 static void add_command(void *builder, uint32_t id, const void *open, int section_opener) {
     Captions captions;
     GuestFunction f;
@@ -881,6 +891,7 @@ static BB_GUEST_ABI void *system_finalize(void *out, void *builder, void *arg3) 
         const int i = NATIVE_SECTION_INDEX[k];
         add_command(builder, g_sections[i].system_row, SECTION_ROWS[i], 1);
     }
+    add_command(builder, ROW_RESTART, (const void *)restart_opener, 0);
     if (move_exit) add_command(builder, EXIT_GAME_ROW_ID, bb_guest(BB_BN(EXIT_GAME_OPENER)), 0);
     fn(SYSTEM_FINALIZE)(ptr(out), ptr(builder), ptr(arg3), 0, 0, 0);
     return out;
@@ -971,7 +982,7 @@ int bb_pc_menu_install(void) {
                                       "effect_ssao", "effect_game_aa", "effect_dynamic_shadows"};
         for (int e = 0; e < 6; ++e) if (!strcmp(r->key, effects[e])) bit = e;
         if (bit >= 0 && !(live & (1 << bit))) continue;
-        if (!resolution && (!strcmp(r->key, "output_res") || !strcmp(r->key, "preset") ||
+        if (!resolution && (!strcmp(r->key, "preset") ||
                             !strcmp(r->key, "upscaler"))) continue;
         g_graphics[g_sections[0].count++] = *r;
     }

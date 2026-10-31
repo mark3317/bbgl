@@ -9,6 +9,8 @@ The classic Tk launcher keeps its own table (bbport_i18n.py).
 import re
 
 RU = {
+    'Insert or L3+R3 opens the guide in game': 'Во время игры Insert или L3+R3 открывает меню.',
+    'In the game, Insert or L3+R3 opens the guide. Setup can be run again from Game & Saves.': 'Во время игры Insert или L3+R3 открывает меню. Мастер настройки можно повторно открыть в разделе «Игра и сохранения».',
     'Game installed.': 'Игра установлена.',
     'The game folder already exists. Choose it using the folder button.': 'Папка game уже существует. Укажите её кнопкой выбора папки.',
     'Installation cancelled. Downloaded parts are kept for the next attempt.': 'Установка отменена. Скачанные части сохранены для следующей попытки.',
@@ -104,8 +106,6 @@ RU = {
     ' mods enabled': ' мод. включено',
     'Mods & Patches': 'Моды и патчи',
     'Installed mods': 'Установленные моды',
-    'Hold Shift while starting to open this launcher  ·  Insert or L3+R3 opens the guide in game':
-        'Удерживайте Shift при запуске, чтобы открыть лаунчер  ·  Insert или L3+R3 открывает меню в игре',
     'Home': 'Главная',
     'Game files need attention': 'Файлы игры требуют внимания',
     'Ready to play': 'Можно играть',
@@ -122,7 +122,6 @@ RU = {
     'Play': 'Играть',
     'Bloodborne starts in ': 'Bloodborne запустится через ',
     'Launching Bloodborne…': 'Запуск Bloodborne…',
-    'Hold Shift or click here for the launcher': 'Удерживайте Shift или нажмите здесь, чтобы открыть лаунчер',
     'Bloodborne — Windows': 'Bloodborne — Windows',
 
     # --- Settings workspace -------------------------------------------------------------------
@@ -208,16 +207,13 @@ RU = {
     'Open mods folder': 'Открыть папку модов',
     'External patches': 'Внешние патчи',
     'Launch': 'Запуск',
-    'Start the game directly': 'Сразу запускать игру',
-    'Opening Bloodborne starts the game; hold Shift or Ctrl to open the launcher instead.':
-        'Bloodborne сразу запускает игру; удерживайте Shift или Ctrl, чтобы открыть лаунчер.',
     'Close the launcher after Play': 'Закрывать лаунчер после запуска игры',
     'Desktop shortcut': 'Ярлык на рабочем столе',
     'Add to Steam': 'Добавить в Steam',
     'Updates': 'Обновления',
     'Check for updates': 'Проверять обновления',
-    'Also checks quietly when the game starts directly, and shows the result here and on Play.':
-        'Также тихо проверяет при прямом запуске игры и показывает результат здесь и на кнопке «Играть».',
+    'Checks when the launcher opens and shows available updates here and on Home.':
+        'Проверяет обновления при открытии лаунчера и показывает результат здесь и на главной странице.',
     'Install the new version': 'Установить новую версию',
     'Check now': 'Проверить сейчас',
     'Releases ↗': 'Релизы ↗',
@@ -273,11 +269,6 @@ RU = {
     'A required check needs attention. Go back to Game files or Your data to fix it.':
         'Обязательная проверка не пройдена. Вернитесь к шагу «Файлы игры» или «Ваши данные», чтобы исправить.',
     '  ★ Suggested for your graphics card.': '  ★ Рекомендуется для вашей видеокарты.',
-    'Start the game directly next time': 'В следующий раз сразу запускать игру',
-    'Hold Shift while starting to open the launcher instead. In the game, Insert or L3+R3 opens the guide. Setup '
-    'can be run again from Game & Saves.':
-        'Удерживайте Shift при запуске, чтобы открыть лаунчер. В игре Insert или L3+R3 открывает меню. Мастер '
-        'можно запустить снова в разделе «Игра и сохранения».',
     'Start setup': 'Начать настройку',
     'Skip for now': 'Пока пропустить',
     'Back': 'Назад',

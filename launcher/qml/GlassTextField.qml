@@ -6,7 +6,7 @@ TextField {
     color: Theme.text
     placeholderTextColor: Theme.textFaint
     selectedTextColor: "#ffffff"
-    selectionColor: "#8a2a33"
+    selectionColor: "#287c8d"
     font.family: Theme.sans
     font.pixelSize: 13
     leftPadding: 12

@@ -20,8 +20,8 @@ class RouteTests(unittest.TestCase):
             self.assertEqual(choose({}, args, game=False)['page'], 'Setup')
         self.assertEqual(choose({}, keys=True)['page'], 'Setup')
 
-    def test_completed_setup_launches_directly(self):
-        self.assertEqual(choose(DONE)['mode'], 'direct')
+    def test_completed_setup_opens_launcher(self):
+        self.assertEqual(choose(DONE)['mode'], 'launcher')
 
     def test_skipped_setup_without_game_opens_game_page(self):
         route = choose({**DONE, 'setupCompleted': False, 'setupSkipped': True}, game=False)
@@ -51,7 +51,7 @@ class MigrationTests(unittest.TestCase):
             self.assertTrue(startup.migrate(saved, saved))
             self.assertTrue(saved['setupCompleted'])
             self.assertNotIn('setup_seen', saved)
-            self.assertEqual(choose(saved)['mode'], 'direct')
+            self.assertEqual(choose(saved)['mode'], 'launcher')
             self.assertFalse(startup.migrate(saved, saved), 'migration must run only once')
 
     def test_dismissed_old_wizard_without_game_counts_as_skipped(self):

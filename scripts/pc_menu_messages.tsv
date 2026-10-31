@@ -64,7 +64,7 @@
 125020	PC Display
 125004	Fullscreen	Fullscreen or a window. Applies straight away.
 125000	FPS Counter	Frames per second, in the corner of the screen.
-125001	Output Resolution	Final image size. Current aspect ratio is preserved.
+125001	Output Resolution	Final image size. May require a restart.
 125002	Live Resolution Changes	Change resolution without a restart.
 125003	Model Detail	Level of detail of characters and objects.
 125100	1280 x 720

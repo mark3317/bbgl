@@ -247,6 +247,19 @@ def display_resolution():
     return '1920x1080'
 
 
+def dlss_hardware_supported():
+    exe = PORT_DIR / 'bin' / 'bb-gpu-capabilities.exe'
+    if not exe.is_file(): exe = PORT_DIR / 'out' / 'bb-gpu-capabilities.exe'
+    if not (exe.parent / 'bbport_dlss.dll').is_file() or not (exe.parent / 'nvngx_dlss.dll').is_file():
+        return False
+    try:
+        result = subprocess.run([str(exe), '--dlss'], capture_output=True, text=True,
+                                timeout=30, creationflags=NO_WINDOW)
+        return result.returncode == 0 and result.stdout.strip() == '1'
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 INI_DEFAULTS = {'upscaler': 'dlss', 'preset': '2', 'sharpen': '1', 'sharpness': '0.50',
                 'object_motion': '1', 'show_fps': '1', 'output_res': display_resolution(), 'hud_position': '100', 'model_lod': '0',
                 'live_resolution': '1', 'mouse_camera': '1', 'mouse_sensitivity': '10', 'mouse_menu': '1',
@@ -853,6 +866,8 @@ class Launcher:
 
     def choice(self, parent, key, store, options, width=38):
         """A combobox over (value, (english, russian)) pairs, kept in sync with its variable."""
+        if key == 'upscaler' and not dlss_hardware_supported():
+            options = [o for o in options if o[0] != 'dlss']
         var = self.var(key, store)
         values = [v for v, _t in options]
         box = self.ttk.Combobox(parent, values=[_(*text) for _v, text in options],

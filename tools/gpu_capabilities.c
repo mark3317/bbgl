@@ -73,6 +73,7 @@ static void print_vram(VkPhysicalDevice device) {
 }
 
 int main(int argc, char **argv) {
+    const int dlss_mode = argc > 1 && !strcmp(argv[1], "--dlss");
     const int live_mode = argc > 1 && !strcmp(argv[1], "--live-resolution");
     const int vram_mode = argc > 1 && !strcmp(argv[1], "--vram");
     const VkApplicationInfo app = {
@@ -117,6 +118,16 @@ int main(int argc, char **argv) {
     } else {
         for (uint32_t i = 1; i < count; ++i)
             if (better_device(devices[i], selected)) selected = devices[i];
+    }
+    if (dlss_mode) {
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(selected, &props);
+        const int supported = props.vendorID == 0x10de && strstr(props.deviceName, "RTX") != NULL;
+        fprintf(stderr, "GPU: %s, DLSS hardware %s\n", props.deviceName, supported ? "supported" : "unavailable");
+        printf("%d\n", supported);
+        free(devices);
+        vkDestroyInstance(instance, NULL);
+        return 0;
     }
     if (live_mode || vram_mode) {
         if (live_mode) printf("%d\n", live_resolution_suits(selected));

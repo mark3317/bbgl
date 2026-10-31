@@ -272,6 +272,7 @@ class LauncherBackend(QObject):
     updateAvailable = Signal(str, str, str)
     workerNotice = Signal(str)
     gpuDetected = Signal(str)
+    dlssDetected = Signal(bool)
     setupRunningChanged = Signal()
     setupCompleted = Signal(str)
     setupFailed = Signal(str)
@@ -307,6 +308,7 @@ class LauncherBackend(QObject):
         # A newer release found earlier is shown at once.
         self._update = core.remembered_update() if self.app.get('check_updates') else None
         self._settings_revision = 0
+        self._dlss_supported = False
         self._gpu_status = 'Checking graphics card…'
         self._setup_running = False
         self._game_download_progress = 0.0
@@ -316,6 +318,7 @@ class LauncherBackend(QObject):
         self.workerNotice.connect(self._set_notice)
         self.updateAvailable.connect(self._offer_update)
         self.gpuDetected.connect(self._set_gpu_status)
+        self.dlssDetected.connect(self._set_dlss_supported)
         self.setupCompleted.connect(self._complete_game_setup)
         self.setupFailed.connect(self._fail_game_setup)
         # Seamless co-op (bbport_coop): the servers this launcher hosts, and the last message.
@@ -526,6 +529,15 @@ class LauncherBackend(QObject):
         self._gpu_status = status
         self.changed.emit()
 
+    @Slot(bool)
+    def _set_dlss_supported(self, supported):
+        self._dlss_supported = supported
+        if not supported and self.ini.get('upscaler') == 'dlss':
+            self.ini['upscaler'] = 'fsr3'
+            self._write()
+        self._settings_revision += 1
+        self.changed.emit()
+
     # --- Graphics presets (core.GRAPHICS_PRESETS) ---------------------------------------------
 
     @Property(str, notify=changed)
@@ -574,8 +586,11 @@ class LauncherBackend(QObject):
         if clang:
             env['PATH'] = str(clang) + os.pathsep + env.get('PATH', '')
         try:
-            result = subprocess.run([str(exe), '--live-resolution'], capture_output=True, text=True,
+            result = subprocess.run([str(exe), '--dlss'], capture_output=True, text=True,
                                     timeout=30, env=env, creationflags=core.NO_WINDOW)
+            self.dlssDetected.emit(result.returncode == 0 and result.stdout.strip() == '1' and
+                                   (exe.parent / 'bbport_dlss.dll').is_file() and
+                                   (exe.parent / 'nvngx_dlss.dll').is_file())
             names = [line[5:].split(':')[0] for line in result.stderr.splitlines() if line.startswith('GPU: ')]
             self.gpuDetected.emit(names[0] if names else 'Vulkan graphics card not detected')
         except (OSError, subprocess.TimeoutExpired):
@@ -631,6 +646,8 @@ class LauncherBackend(QObject):
         return f'Now: the game renders at {rw} × {rh} and upscales it to {w} × {h}.'
 
     def live_field(self, field):
+        if field['key'] == 'upscaler' and not self._dlss_supported:
+            field = {**field, 'options': [o for o in field['options'] if o['value'] != 'dlss']}
         if field['key'] == 'preset':
             field = {**field, 'hint': f"{T(field['hint'])} {T(self.scene_size_text())}".strip()}
         if not RUSSIAN:
@@ -796,6 +813,8 @@ class LauncherBackend(QObject):
 
     @Slot(str, 'QVariant')
     def setValue(self, key, value):
+        if key == 'upscaler' and str(value) == 'dlss' and not self._dlss_supported:
+            return
         if key not in core.APP_DEFAULTS and key not in core.INI_DEFAULTS:
             return
         if key in core.INI_DEFAULTS:

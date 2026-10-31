@@ -160,8 +160,8 @@ void Dlss::AppendDeviceExtensions(vk::Instance instance, vk::PhysicalDevice phys
         return;
     }
     const auto properties = physical.getProperties();
-    if (properties.vendorID != 0x10de) {
-        return impl->Disable("not an NVIDIA GPU");
+    if (properties.vendorID != 0x10de || std::string_view(properties.deviceName.data()).find("RTX") == std::string_view::npos) {
+        return impl->Disable("DLSS requires an NVIDIA RTX GPU");
     }
     u32 count{};
     const VkExtensionProperties* required{};

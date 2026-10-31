@@ -25,9 +25,7 @@ public:
     ObjectMotion(const Instance& instance, Scheduler& scheduler);
     ~ObjectMotion();
 
-    [[nodiscard]] bool Enabled() const noexcept {
-        return enabled;
-    }
+    [[nodiscard]] bool Enabled() const noexcept;
 
     using DrawInfo = Motion::Draw;
     u32 PrepareDraw(const DrawInfo& draw);
@@ -91,6 +89,7 @@ private:
     const Instance& instance;
     Scheduler& scheduler;
     bool enabled = false;
+    bool live_toggles = false, was_active = false;
 
     // Parameter ring (host visible): FrameSlots frames of ParamsPerFrame entries (two u32x4),
     // element 0 all zero (motion off).

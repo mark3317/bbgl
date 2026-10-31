@@ -549,12 +549,15 @@ void Hint(const char* text) {
 
 bool IsCheat(int e) { return !std::strncmp(BbSettings::Effects[e].key, "cheat_", 6); }
 // The stamina cheats are set each frame (src/runtime_stamina.c), not patched at start.
-bool LiveSetting(int e) { return std::strstr(BbSettings::Effects[e].key, "stamina") != nullptr; }
+bool LiveSetting(int e) {
+    return (e < 7 && (BbSettings::Get().live_graphics_mask & (1 << e))) ||
+           std::strstr(BbSettings::Effects[e].key, "stamina") != nullptr;
+}
 
 bool RestartNeeded() {
     const auto& s = BbSettings::Get();
-    bool restart = s.object_motion != s.startup_object_motion ||
-                   s.model_lod != s.startup_model_lod ||
+    bool restart = (!(s.live_graphics_mask & 256) && s.object_motion != s.startup_object_motion) ||
+                   (!(s.live_graphics_mask & 128) && s.model_lod != s.startup_model_lod) ||
                    s.live_resolution != s.startup_live_resolution ||
                    BbSettings::ResolutionNeedsRestart();
     for (int e = 0; e < BbSettings::EffectCount; ++e)

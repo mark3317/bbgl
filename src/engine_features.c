@@ -26,7 +26,9 @@ static int menu_pointer_install(void) {
     return 0;
 }
 
-static const Install installs[] = {bb_pc_menu_install, bb_rebirth_install, bb_mouse_camera_install,
+extern int bb_live_graphics_install(void);
+
+static const Install installs[] = {bb_live_graphics_install, bb_pc_menu_install, bb_rebirth_install, bb_mouse_camera_install,
                                    bb_key_prompts_install, menu_pointer_install,
                                    bb_occlusion_queries_install};
 static const Frame frames[] = {bb_pc_menu_frame, bb_menu_pointer_frame};

@@ -59,6 +59,9 @@ typedef struct {
  * no branch lands inside after the first. Every register, the flags and the vector registers
  * (ymm0-15) are kept; the red zone below the game's stack pointer is left alone. */
 int bb_hook_mid(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *));
+/* Same restrictions as bb_hook_mid, but runs the displaced instructions BEFORE the callback.
+ * Useful for masking a comparison's result without changing the game's live objects. */
+int bb_hook_mid_after(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *));
 
 /* Makes the (>= 5) bytes at `at` (the code `original` describes, under the same rules) skippable while
  * the game runs: bb_skip(handle, 1) jumps over them, bb_skip(handle, 0) runs them again. The

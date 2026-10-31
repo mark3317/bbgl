@@ -356,7 +356,12 @@ def validate_patch_requirements(names, game):
 
 def effect_patches(settings):
     names=[]
+    live = os.environ.get("BB_LIVE_GRAPHICS") == "1"
     for key,(off,on) in EFFECTS.items():
+        if live and key.startswith("effect_"):
+            # Keep resources available in both toggle directions; SSR preparation is startup-only.
+            if key == "effect_ssr": names.append(on)
+            continue
         if key not in settings: continue
         name=on if settings[key]=='1' else off
         if name: names.append(name)
@@ -368,7 +373,7 @@ def effect_patches(settings):
     if 'No Rally Decay' in names and 'Disable Rally (HP Regain)' in names:
         names.remove('No Rally Decay')
     lod=MODEL_LOD.get(settings.get('model_lod','0'))
-    if lod: names.append(lod)
+    if lod and not live: names.append(lod)
     return names
 SCENE_WIDTH=0x02196A6B-EBOOT_BASE
 SCENE_HEIGHT=0x02196A7A-EBOOT_BASE

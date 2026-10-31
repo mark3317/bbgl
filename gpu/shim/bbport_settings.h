@@ -72,6 +72,7 @@ inline constexpr int OutputCustom = OutputCount - 1;
 inline constexpr int OutputDefault = 1; ///< 1920x1080, the game's own size
 
 struct Values {
+    std::atomic<int> live_graphics_mask{0}; // Experimental engine hooks successfully installed.
     std::atomic<int> upscaler{UpscalerFsr3};
     std::atomic<int> preset{NativeAA};
     std::atomic<bool> sharpen{true};

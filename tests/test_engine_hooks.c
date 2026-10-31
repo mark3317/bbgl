@@ -15,7 +15,7 @@ typedef int64_t (BB_GUEST_ABI *IntFn)(int64_t, int64_t);
 typedef double (BB_GUEST_ABI *VecFn)(double, double);
 
 enum { SUM = 0x100, ADD = 0x200, CALLER = 0x300, MID = 0x400, MID_SITE = MID + 16, STEP = 0x500,
-       IMAGE = 0x2000 };
+       AFTER = 0x600, CMP = 0x700, IMAGE = 0x2000 };
 /* sum(a, b) = a + 2b: push rbp; mov rbp,rsp; lea rax,[rdi+rsi*2]; pop rbp; ret */
 /* The hook API checks sites by length and hash (code_check.h). */
 static BbCode code_of(const unsigned char *code, size_t n) {
@@ -73,6 +73,12 @@ static BB_GUEST_ABI int64_t replace_sum(int64_t a, int64_t b) {
     return ((IntFn)bb_guest(SUM))(a, b) * 10;
 }
 
+static int force_zero;
+static BB_GUEST_ABI void on_after(BbRegs *regs) { assert(regs->rax == 17); regs->rax *= 2; }
+static BB_GUEST_ABI void on_cmp(BbRegs *regs) {
+    if (force_zero) regs->flags = (regs->flags & ~0x8d5ull) | 0x44;
+}
+static const unsigned char cmp_code[] = {0x83,0xff,0x00,0x90,0x90,0x0f,0x94,0xc0,0x0f,0xb6,0xc0,0xc3};
 int main(void) {
     unsigned char *image = VirtualAlloc(NULL, IMAGE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     assert(image);
@@ -87,6 +93,8 @@ int main(void) {
     memcpy(image + MID, mid_code, sizeof(mid_code));
     memcpy(image + STEP, step_code, sizeof(step_code));
 
+    memcpy(image + AFTER, step_code, sizeof(step_code));
+    memcpy(image + CMP, cmp_code, sizeof(cmp_code));
     assert(bb_hooks_init(image, IMAGE) == 0);
     unsigned char before[IMAGE];
     memcpy(before, image, IMAGE);
@@ -112,6 +120,8 @@ int main(void) {
     assert(bb_hook_mid(MID_SITE, code_of(mid_code + 16, 5), on_mid) == 0);
     BbSkip *add16 = bb_hook_skip(STEP + 5, code_of(step_code + 5, 5));
     assert(add16);
+    assert(bb_hook_mid_after(AFTER + 5, code_of(step_code + 5, 5), on_after) == 0);
+    assert(bb_hook_mid_after(CMP, code_of(cmp_code, 5), on_cmp) == 0);
     bb_hooks_seal();
     DWORD old;
     assert(VirtualProtect(image, IMAGE, PAGE_EXECUTE_READ, &old));
@@ -132,6 +142,11 @@ int main(void) {
     assert(((StepFn)(image + STEP))() == 1);
     bb_skip(add16, 0);
     assert(((StepFn)(image + STEP))() == 17);
+    assert(((StepFn)(image + AFTER))() == 34);
+    assert(((IntFn)(image + CMP))(1, 0) == 0);
+    assert(((IntFn)(image + CMP))(0, 0) == 1);
+    force_zero = 1;
+    assert(((IntFn)(image + CMP))(1, 0) == 1);
     puts("engine hooks: ok");
     return 0;
 }

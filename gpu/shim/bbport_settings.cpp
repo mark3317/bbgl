@@ -308,7 +308,8 @@ namespace {
 // output resolution as an index into OutputWidths, live resolution as -1 (auto), 0 or 1, the
 // model detail as -2..2. False for a key the menu does not handle.
 bool Read(const Values& v, const std::string& k, int& out) {
-    if (k == "show_fps") out = v.show_fps.load();
+    if (k == "live_graphics_mask") out = v.live_graphics_mask.load();
+    else if (k == "show_fps") out = v.show_fps.load();
     else if (k == "fullscreen") out = v.fullscreen.load();
     else if (k == "sharpen") out = v.sharpen.load();
     else if (k == "jitter") out = v.jitter.load();
@@ -387,6 +388,10 @@ void SetFullscreen(bool on) {
 
 extern "C" void bbgpu_setting_set(const char* key, int value) {
     const std::string k = key;
+    if (k == "live_graphics_mask") {
+        Get().live_graphics_mask = value;
+        return;
+    }
     if (k == "fullscreen") {
         SetFullscreen(value != 0);
         return;

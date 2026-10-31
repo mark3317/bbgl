@@ -53,8 +53,10 @@ ObjectMotion::ObjectMotion(const Instance& instance_, Scheduler& scheduler_)
     : instance{instance_}, scheduler{scheduler_} {
     // Pipeline selection limits the extra attachment and vertex stores to likely
     // animated draws. A setting or environment override can still disable the path.
-    if (!BbSettings::Get().object_motion ||
-        BbSettings::Get().upscaler == BbSettings::UpscalerOff) {
+    const char* experiment = std::getenv("BB_LIVE_GRAPHICS");
+    live_toggles = experiment && std::strcmp(experiment, "1") == 0;
+    if (!live_toggles && (!BbSettings::Get().object_motion ||
+        BbSettings::Get().upscaler == BbSettings::UpscalerOff)) {
         std::puts("Object motion: off (enable in menu or BB_OBJECT_MOTION=1)");
         return;
     }
@@ -88,7 +90,13 @@ ObjectMotion::ObjectMotion(const Instance& instance_, Scheduler& scheduler_)
     Shader::MotionVectors::params_address = params_address;
     Shader::MotionVectors::positions_address = positions_address;
     enabled = true;
+    if (live_toggles) BbSettings::Get().live_graphics_mask.fetch_or(256);
     std::printf("Object motion: on (%u vertices per frame)\n", PositionsPerFrame);
+}
+
+bool ObjectMotion::Enabled() const noexcept {
+    return enabled && (!live_toggles || (BbSettings::Get().object_motion &&
+           BbSettings::Get().upscaler != BbSettings::UpscalerOff));
 }
 
 ObjectMotion::~ObjectMotion() {
@@ -103,6 +111,12 @@ ObjectMotion::~ObjectMotion() {
 }
 
 void ObjectMotion::OnFrameStart() {
+    const bool active = Enabled();
+    if (live_toggles && active != was_active) {
+        InvalidateHistory();
+        std::printf("Live graphics: object motion %s (buffers retained)\n", active ? "on" : "off");
+        was_active = active;
+    }
     if (!enabled) {
         return;
     }
@@ -151,7 +165,7 @@ void ObjectMotion::OnFrameStart() {
 }
 
 u32 ObjectMotion::PrepareDraw(const DrawInfo& draw) {
-    if (!enabled || BbToggle::Disabled(1u << 29) || params_used >= ParamsPerFrame) {
+    if (!Enabled() || BbToggle::Disabled(1u << 29) || params_used >= ParamsPerFrame) {
         return 0;
     }
     const auto allocation = history.Prepare(draw);

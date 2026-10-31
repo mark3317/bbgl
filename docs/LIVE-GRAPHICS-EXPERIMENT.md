@@ -1,0 +1,44 @@
+# Live graphics experiment (2026-10-31)
+
+Opt-in: `BB_LIVE_GRAPHICS=1` inherited by run.py, patches.py and bb-probe.
+Normal launches retain the existing startup patches. CUSA03173 1.09 only.
+
+The startup patch selector omits CA, DoF, blur, SSAO, game AA, dynamic-shadow and LOD patches;
+it always prepares the existing SSR patch set. All 21 engine hook sites are hash-checked before
+installation; a mismatch aborts the experimental launch. Engine hooks must be enabled.
+Mid-after hooks execute the original comparison before masking its flags; disabled means the
+comparison observes zero, enabled preserves the game's own decision. CA masks its output store;
+LOD overrides the base bias before the original per-object adjustment and clamp.
+
+Object motion preallocates resources even when initially off; GPU compatibility exclusions remain.
+Turning it off selects ordinary shader pipelines and stops exposing object vectors. Turning it
+back on reuses resources and invalidates object history. Buffers remain allocated while off.
+The hooks' full register preservation and shader variant changes can affect timings: this build
+is for functional testing, not an FPS benchmark.
+
+SSR OFF suppresses its render/use checks, but its startup infrastructure (including the existing
+patch set's other changes) remains in place. Therefore SSR OFF is not byte-identical to a normal
+non-SSR launch. A final implementation must revisit this before enabling the feature by default.
+Live resolution, aspect changes, cheats and gameplay patches retain their current behavior.
+
+## Automated validation
+
+- Existing engine hook checks plus new post-instruction register/flags tests.
+- Startup patch selection tests: normal path unchanged; disabled effects retain resources;
+  SSR prepared even with an absent setting.
+- Fingerprint/whole-instruction checks against the user's own executable, including overlap
+  with startup SSR writes. No game bytes are stored in the repository.
+- Build of bb-probe. These checks do not establish visual correctness in game.
+
+## Player test
+
+Use an isolated copy of the selected save and configuration. Do not use co-op for this test.
+Check LOD, CA, DoF, game AA (external upscaler OFF), motion blur, SSAO, dynamic shadows, SSR,
+then object motion (temporal upscaler ON). For each: ON/OFF/ON, close menu, move camera/attack,
+then travel to another area. Repeat a second launch with the initial effects disabled to test
+OFF/ON/OFF. Inspect the Live graphics and PC menu lines in last_run logs.
+
+Labels that still say restart describe the normal build; this opt-in overrides only the nine
+settings listed above. Unsupported object-motion hardware still cannot enable that path.
+
+Status: implementation and automated validation in progress; player validation pending.

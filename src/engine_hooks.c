@@ -236,7 +236,7 @@ static unsigned char *emit_ymm(unsigned char *p, int i, int store) {
     return emit(p, &disp, 4);
 }
 
-int bb_hook_mid(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *)) {
+static int hook_mid(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *), int after) {
     const size_t n = original.n;
     unsigned char *site = mid_site(at, original);
     if (!site) return -1;
@@ -263,17 +263,27 @@ int bb_hook_mid(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *
     };
     unsigned char *s = stub(sizeof(save) + 16 * 9 + 13 + 3 + 16 * 9 + sizeof(restore) + n + 5);
     if (!s) return refuse("no stub space (not initialised, sealed or full)");
-    unsigned char *p = emit(s, save, sizeof(save));
+    unsigned char *p = s;
+    if (after) p = emit(p, site, n);
+    p = emit(p, save, sizeof(save));
     for (int i = 0; i < 16; ++i) p = emit_ymm(p, i, 1);
     p = emit_movabs_r11(p, (const void *)host);
     *p++ = 0x41; *p++ = 0xff; *p++ = 0xd3;  /* call r11 */
     for (int i = 0; i < 16; ++i) p = emit_ymm(p, i, 0);
     p = emit(p, restore, sizeof(restore));
-    p = emit(p, site, n);  /* the displaced instructions, from the game itself */
+    if (!after) p = emit(p, site, n);  /* the displaced instructions, from the game itself */
     *p++ = 0xe9;
     put_rel32(p, p + 4, site + n);
     divert(site, n, s);
     return 0;
+}
+
+int bb_hook_mid(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *)) {
+    return hook_mid(at, original, host, 0);
+}
+
+int bb_hook_mid_after(uint64_t at, BbCode original, void (BB_GUEST_ABI *host)(BbRegs *)) {
+    return hook_mid(at, original, host, 1);
 }
 
 struct BbSkip {

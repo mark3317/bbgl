@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "bbport_settings.h"
 #include "common/hash.h"
 #include "common/io_file.h"
 #include "common/path_util.h"
@@ -562,6 +563,9 @@ bool PipelineCache::RefreshGraphicsKey(PipelineSelection& sel) {
             bound += (regs.color_buffers[cb] && regs.color_target_mask.GetMask(cb)) ? 1 : 0;
         }
         motion_possible = Shader::MotionVectors::positions_address != 0 && bound >= 5 &&
+                          (!(BbSettings::Get().live_graphics_mask & 256) ||
+                           (BbSettings::Get().object_motion &&
+                            BbSettings::Get().upscaler != BbSettings::UpscalerOff)) &&
                           !regs.color_buffers[Shader::MotionVectors::Output] &&
                           regs.depth_buffer.DepthValid() &&
                           regs.depth_buffer.NumSamples() == 1 && !regs.IsClipDisabled() &&

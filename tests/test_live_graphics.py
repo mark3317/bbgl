@@ -19,10 +19,11 @@ class LiveGraphicsTests(unittest.TestCase):
         settings.update(model_lod="2", skip_intro="1")
         with patch.dict(os.environ, {"BB_LIVE_GRAPHICS": "1"}):
             names = patches.effect_patches(settings)
-        self.assertEqual(names, ["Enable Screen Space Reflections (READ NOTE)", "Skip Intro"])
+        self.assertEqual(names, ["Skip Intro"])
 
-    def test_ssr_prepared_without_an_ini_entry(self):
+    def test_ssr_remains_a_startup_setting(self):
         with patch.dict(os.environ, {"BB_LIVE_GRAPHICS": "1"}):
-            self.assertEqual(patches.effect_patches({}), ["Enable Screen Space Reflections (READ NOTE)"])
+            self.assertEqual(patches.effect_patches({}), [])
+            self.assertEqual(patches.effect_patches({"effect_ssr": "1"}), ["Enable Screen Space Reflections (READ NOTE)"])
 
 if __name__ == "__main__": unittest.main()

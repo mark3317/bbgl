@@ -51,41 +51,23 @@ class FormatTests(unittest.TestCase):
         import re
         runtime = (ROOT / 'src/pc_menu.c').read_text(encoding='utf-8')
         rows = m.read_messages()
-        arrays = dict(re.findall(r'static Row (g_\w+)\[\] = \{(.*?)\n\};', runtime, re.S))
-        sections = re.findall(r'\{"(\w+)", (\d+), (g_\w+), COUNT\(g_\w+\)\}', runtime)
-        # Achievements is built by its own handler: six text rows (ACH_ROWS) from 128000.
-        self.assertIn('"PCAchieve"', runtime)
-        self.assertIn('ACH_ROWS = 6', runtime)
-        self.assertIn(('PCAchieve', 128020, 6), m.SECTION_ROWS)
-        for row_id in range(128000, 128006):
-            self.assertIn(row_id, rows)
-        self.assertEqual(sorted([n for n, *_ in sections] + ['PCAchieve']), sorted(n for n, *_ in m.SECTION_ROWS))
-        native = re.search(r'NATIVE_SECTION_INDEX\[\] = \{([^}]+)\}', runtime)
-        self.assertIsNotNone(native)
-        indices = [int(index) for index in native.group(1).split(',')]
-        self.assertEqual([sections[index][0] for index in indices],
-                         [name for name, *_ in m.NATIVE_SECTIONS if name != 'PCAchieve'])
-        self.assertIn(('PCAchieve', 128020, 6), m.NATIVE_SECTIONS)
-        self.assertNotIn(('PCEnhance', 124020, 3), m.NATIVE_SECTIONS)
-        self.assertIn('add_command(builder, ROW_ACHIEVEMENTS, (const void *)ach_row, 1)', runtime)
-        self.assertEqual(len(m.NATIVE_SECTIONS), 6)  # in-game GFX capacity checked in play
-        counts = {name: rows_n for name, _title, rows_n in m.SECTION_ROWS}
-        for name, system, array in sections:
-            ids = [int(i) for i in re.findall(r'_ROW\("\w+", (\d+)', arrays[array])]
-            self.assertEqual(len(ids), counts[name], name)
-            self.assertLessEqual(len(ids), 6, name)
-            self.assertIn(int(system), rows, name)
-            for row_id in ids:
-                self.assertTrue(rows[row_id][1], f'{row_id} has no line help')
-            # Pick lists below every toggle (their drop-down covers what is under them).
-            kinds = re.findall(r'(TOGGLE|PICK)_ROW', arrays[array])
-            self.assertEqual(kinds, sorted(kinds, key=lambda k: k == 'PICK'), name)
-        options = ''.join(re.findall(r'static const Option \w+\[\] = \{(.*?)\};', runtime))
-        self.assertTrue(options)
-        for choice in re.findall(r'\{-?\d+, (\d+)\}', options):
-            self.assertIn(int(choice), rows)
-        for message in (110017, 920002, 122000, 920001):
-            self.assertIn(message, rows)
+        self.assertEqual(m.SECTION_ROWS, [('PCGraphics', 117020, 6), ('PCAchieve', 128020, 6)])
+        self.assertEqual(m.NATIVE_SECTIONS, m.SECTION_ROWS)
+        self.assertIn('MAX_ROWS = 16', runtime)
+        self.assertIn('bbgpu_output_live_supported', runtime)
+        self.assertNotIn('add_command(builder, ROW_RESTART', runtime)
+        template = re.search(r'g_graphics_template\[\] = \{(.*?)\n\};', runtime, re.S).group(1)
+        ids = [int(i) for i in re.findall(r'_ROW\("\w+", (\d+)', template)]
+        self.assertEqual(len(ids), 15)
+        self.assertNotIn('effect_ssr', template)
+        self.assertNotIn('live_resolution', template)
+        ru = m.read_messages(m.MESSAGES.with_name('pc_menu_messages_ru.tsv'))
+        self.assertEqual(ru.keys(), rows.keys())
+        self.assertEqual(ru[110007][0], 'Графика')
+        self.assertEqual(ru[110018][0], 'Достижения')
+        for mid in ids:
+            self.assertTrue(ru[mid][1], mid)
+
 
 
 @unittest.skipUnless(GAME, 'BB_TEST_GAME_DIR not set')
@@ -117,6 +99,17 @@ class RealGameTests(unittest.TestCase):
                          {f'Item_{i}_0' for i in range(m.SYSTEM_VISIBLE_ROWS)})
         self.assert_row_animation(movie, top[1], m.SYSTEM_VISIBLE_ROWS, m.SYSTEM_ROW_PITCH * 20)
 
+    def test_graphics_has_six_widget_slots_and_native_scrollbar(self):
+        movie = self.files[m.MOVIE]
+        item = next(m.placement(movie,c,a) for c,_,a,_ in m.tags(movie,m.body_start(movie),len(movie))
+                    if c in (m.PLACE2,m.PLACE3) and m.placement(movie,c,a)[3] == 'PCGraphics')
+        _, a, z = m.find_sprite(movie,item[1])
+        names = [m.placement(movie,c,a)[3] for c,_,a,_ in m.tags(movie,a+4,z) if c in (m.PLACE2,m.PLACE3)]
+        self.assertIn('ScrollBarV',names)
+        self.assertEqual({n for n in names if n and n.startswith('Item_')}, {f'Item_{i}_0' for i in range(6)})
+        self.assertNotIn('PCDisplay', placed_names(movie))
+        self.assertNotIn('PCSetting', placed_names(movie))
+
     def test_system_frame_and_footer_enclose_all_thirteen_rows(self):
         movie = self.files[m.MOVIE]
         source = (GAME / m.MOVIE).read_bytes()
@@ -131,18 +124,18 @@ class RealGameTests(unittest.TestCase):
                 if code == m.SHOW_FRAME:
                     result.append(current.copy())
             return result
-        self.assertEqual(m.SYSTEM_VISIBLE_ROWS, 13)  # six native in-world, six PC, Restart
+        self.assertEqual(m.SYSTEM_VISIBLE_ROWS, 8)  # six native in-world, six PC, Restart
         for before, after in zip(frames(source, 145), frames(movie, 145), strict=True):
-            for depth, shift in ((11, -145), (17, 194), (23, -145), (27, 194)):
+            for depth, shift in ((11, m.SYSTEM_FRAME_TOP), (17, m.SYSTEM_FRAME_BOTTOM), (23, m.SYSTEM_FRAME_TOP), (27, m.SYSTEM_FRAME_BOTTOM)):
                 self.assertEqual(after[depth][5] - before[depth][5], shift * 20)
                 self.assertEqual(after[depth][:4], before[depth][:4])  # ornaments keep their shape
         for frame in frames(movie, 150):
             # Row text baseline comes 50.7 px below its placement. The header and
             # divider/footer must leave at least 40 px after the last row text.
             first_y = frame[31][5] / 20 + 50.7
-            last_y = first_y + 12 * m.SYSTEM_ROW_PITCH
+            last_y = first_y + (m.SYSTEM_VISIBLE_ROWS - 1) * m.SYSTEM_ROW_PITCH
             self.assertGreater(first_y, frame[69][5] / 20 + 40)
-            divider = frame[3][5] / 20 + (15799 / 20 + 194)
+            divider = frame[3][5] / 20 + (15799 / 20 + m.SYSTEM_FRAME_BOTTOM)
             help_y = frame[66][5] / 20 + 4662 / 20
             self.assertLess(last_y + 40, divider)
             self.assertGreater(help_y, divider)
@@ -216,10 +209,11 @@ class RealGameTests(unittest.TestCase):
                 old = m.fmg_read(before.files[before.ids.index(group)])
                 new = m.fmg_read(after.files[after.ids.index(group)])
                 self.assertEqual({k: v for k, v in new.items() if k in old}, old)  # nothing changed
+            rows = m.read_messages(m.MESSAGES.with_name("pc_menu_messages_ru.tsv")) if relative.parts[1] == "rusru" else m.read_messages()
             menu = m.fmg_read(after.files[after.ids.index(m.MENU_TEXT)])
             self.assertEqual(menu[110006].decode('utf-16-le'), rows[110006][0])
             events = m.fmg_read(after.files[after.ids.index(m.EVENT_TEXT)])
-            self.assertEqual(events[14000335].decode('utf-16-le'), 'Accept Rebirth')
+            self.assertEqual(events[14000335].decode('utf-16-le'), rows[14000335][0])
             for group in (m.DIALOG_TEXT, m.SCREEN_DIALOG_TEXT):
                 dialog = m.fmg_read(after.files[after.ids.index(group)])
                 self.assertEqual(dialog[920001].decode('utf-16-le'), rows[920001][0])

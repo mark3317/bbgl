@@ -54,7 +54,7 @@ ObjectMotion::ObjectMotion(const Instance& instance_, Scheduler& scheduler_)
     // Pipeline selection limits the extra attachment and vertex stores to likely
     // animated draws. A setting or environment override can still disable the path.
     const char* experiment = std::getenv("BB_LIVE_GRAPHICS");
-    live_toggles = experiment && std::strcmp(experiment, "1") == 0;
+    live_toggles = !experiment || std::strcmp(experiment, "0") != 0;
     if (!live_toggles && (!BbSettings::Get().object_motion ||
         BbSettings::Get().upscaler == BbSettings::UpscalerOff)) {
         std::puts("Object motion: off (enable in menu or BB_OBJECT_MOTION=1)");

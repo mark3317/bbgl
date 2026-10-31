@@ -310,6 +310,7 @@ namespace {
 bool Read(const Values& v, const std::string& k, int& out) {
     if (k == "live_graphics_mask") out = v.live_graphics_mask.load();
     else if (k == "show_fps") out = v.show_fps.load();
+    else if (k == "live_render_resolution") out = !FixedRenderSession();
     else if (k == "fullscreen") out = v.fullscreen.load();
     else if (k == "sharpen") out = v.sharpen.load();
     else if (k == "jitter") out = v.jitter.load();
@@ -442,3 +443,12 @@ const char* UpscalerName(int upscaler) {
 }
 
 } // namespace BbSettings
+
+// Native Graphics menu offers only outputs that keep the startup camera/HUD aspect.
+extern "C" int bbgpu_output_live_supported(int output) {
+    using namespace BbSettings;
+    const auto& v = Get();
+    return output >= 0 && output < OutputCount && !FixedRenderSession() &&
+        int64_t(OutputWidths[output]) * OutputHeights[v.startup_output_res] ==
+        int64_t(OutputWidths[v.startup_output_res]) * OutputHeights[output];
+}

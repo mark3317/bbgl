@@ -33,21 +33,11 @@ MESSAGE_FILE = 'menu.msgbnd.dcx'
 # Item_5_0 and the label slot Item_6_0; a section keeps as many rows as it builds, and the
 # game's own "Defaults" row lands in the slot after them. Option sections do not scroll, so six
 # rows at most. The names and row counts must match src/pc_menu.c.
-SECTION_ROWS = [
-    ('PCGraphics', 117020, 5),
-    ('PCDisplay', 125020, 5),
-    ('PCEffects', 120020, 6),
-    ('PCSetting', 116020, 4),
-    ('PCGameplay', 126020, 5),
-    ('PCCheats', 127020, 5),
-    ('PCEnhance', 124020, 3),
-    ('PCAchieve', 128020, 6),
-]
-# (name, title, depth on the main timeline, Defaults slot, rows dropped)
-# The in-game movie crashes with seven or eight instantiated PC sections.
-# Cheats and Enhancements remain in the overlay and launcher.
-NATIVE_SECTIONS = [row for row in SECTION_ROWS if row[0] not in ('PCCheats', 'PCEnhance')]
-SECTIONS = [(name, title, 383 + i, rows, [f'Item_{k}_0' for k in range(rows, 6)])
+# Graphics keeps six visible widget slots; the native list scrolls the logical records.
+# No fixed Defaults-only slot: Defaults scrolls with the rest of the list.
+SECTION_ROWS = [('PCGraphics', 117020, 6), ('PCAchieve', 128020, 6)]
+NATIVE_SECTIONS = SECTION_ROWS
+SECTIONS = [(name, title, 383 + i, rows, ['Item_6_0'] if name == 'PCGraphics' else [])
             for i, (name, title, rows) in enumerate(NATIVE_SECTIONS)]
 # Where the System list's scroll bar goes, in pixels (bbhost's placement).
 SCROLLBAR_AT = (1290, 354.5)
@@ -561,15 +551,15 @@ def expand_system_frame(b):
         raise Fail('unexpected System frame')
     def panel(mat):
         # Original panel bounds are -31.8..493.75 px. Anchor its new top.
-        scale = (493.75 + 194 - (-31.8 - 145)) / (493.75 - (-31.8))
+        scale = (493.75 + SYSTEM_FRAME_BOTTOM - (-31.8 + SYSTEM_FRAME_TOP)) / (493.75 - (-31.8))
         mat.has_scale = True
         mat.sa = 65536
         mat.sc = round(scale * 65536)
         mat.sn = max(sbits(mat.sa), sbits(mat.sc))
-        mat.ty += round((-145 + 31.8 * (scale - 1)) * 20)
-    b = edit_sprite_matrices(b, 145, {1: panel, 11: move_y(-145),
-                                    17: move_y(194), 23: move_y(-145), 27: move_y(194)})
-    return edit_sprite_matrices(b, 150, {66: move_y(194), 69: move_y(-145)})
+        mat.ty += round((SYSTEM_FRAME_TOP + 31.8 * (scale - 1)) * 20)
+    b = edit_sprite_matrices(b, 145, {1: panel, 11: move_y(SYSTEM_FRAME_TOP),
+                                    17: move_y(SYSTEM_FRAME_BOTTOM), 23: move_y(SYSTEM_FRAME_TOP), 27: move_y(SYSTEM_FRAME_BOTTOM)})
+    return edit_sprite_matrices(b, 150, {66: move_y(SYSTEM_FRAME_BOTTOM), 69: move_y(SYSTEM_FRAME_TOP)})
 
 
 def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
@@ -631,16 +621,19 @@ def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
 
 
 # The world adds Exit Game to the five front-end native commands.
-SYSTEM_VISIBLE_ROWS = 6 + len(NATIVE_SECTIONS) + 1
+SYSTEM_VISIBLE_ROWS = 6 + len(NATIVE_SECTIONS)
 TITLE_VISIBLE_ROWS = 8  # native commands + online/offline variant + Information + Quit Game
-SYSTEM_ROW_PITCH = 48
-SYSTEM_ROW_OFFSET = -145
+SYSTEM_ROW_PITCH = 67.65
+SYSTEM_ROW_OFFSET = -70
+SYSTEM_FRAME_TOP = -70
+SYSTEM_FRAME_BOTTOM = 140
 
 
 def build_option_movie(source):
     movie = bytes(source)
     for name, title, depth, defaults_slot, drop in SECTIONS:
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)
+    movie = add_scrollbar(movie, 'PCGraphics', *SCROLLBAR_AT)
     movie = fit_command_list(movie, 'Top', SYSTEM_VISIBLE_ROWS,
                              pitch=SYSTEM_ROW_PITCH, offset_y=SYSTEM_ROW_OFFSET)
     return expand_system_frame(movie)
@@ -770,7 +763,8 @@ def make(dvdroot, log=print):
     for language in languages:
         relative = Path('msg') / language / MESSAGE_FILE
         try:
-            files[relative] = build_menu_messages((dvdroot / relative).read_bytes(), rows)
+            translated = read_messages(MESSAGES.with_name('pc_menu_messages_ru.tsv')) if language == 'rusru' else rows
+            files[relative] = build_menu_messages((dvdroot / relative).read_bytes(), translated)
         except (OSError, FormatError, IndexError, struct.error) as error:
             log(f'PC menu: off - {relative.as_posix()}: {error}')
             return {}

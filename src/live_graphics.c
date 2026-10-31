@@ -25,7 +25,6 @@ static BB_GUEST_ABI void ssao(BbRegs *r) { mask(r, 3); }
 static BB_GUEST_ABI void blur(BbRegs *r) { mask(r, 2); }
 static BB_GUEST_ABI void aa(BbRegs *r) { mask(r, 4); }
 static BB_GUEST_ABI void shadows(BbRegs *r) { mask(r, 5); }
-static BB_GUEST_ABI void ssr(BbRegs *r) { mask(r, 6); }
 typedef struct { uint64_t address; BbCode code; int index, after; void (BB_GUEST_ABI *hook)(BbRegs *); } Site;
 static const Site sites[] = {
     {BB_BN(0x269faae), {6, 0x269d45d570be1299ull}, 0, 0, ca},
@@ -46,8 +45,6 @@ static const Site sites[] = {
     {BB_BN(0x26c5a8e), {7, 0x0167fa45057dd2b6ull}, 2, 1, blur},
     {BB_BN(0x26a073e), {9, 0x5796d9a4404b0d93ull}, 4, 1, aa},
     {BB_BN(0x26a5c89), {8, 0x7cc18fc85e491e06ull}, 5, 1, shadows},
-    {BB_BN(0x26a8f7a), {8, 0x4a3babe00645a2bdull}, 6, 1, ssr},
-    {BB_BN(0x26c55b7), {7, 0x181a40712dacc048ull}, 6, 1, ssr},
 };
 static int last[9], mask_ready;
 static void report(void) {
@@ -64,7 +61,7 @@ static void report(void) {
 }
 int bb_live_graphics_install(void) {
     const char *enabled = getenv("BB_LIVE_GRAPHICS");
-    if (!enabled || strcmp(enabled, "1")) return 0;
+    if (enabled && !strcmp(enabled, "0")) return 0;
     /* Validate the entire set BEFORE changing anything. Other patches may own these sites. */
     for (size_t i = 0; i < sizeof(sites)/sizeof(*sites); ++i) {
         if (!bb_code_is(bb_guest(sites[i].address), sites[i].code)) {
@@ -89,6 +86,6 @@ int bb_live_graphics_install(void) {
     for (int i = 0; i < 9; ++i) last[i] = -999;
     report();
     bb_on_main_frame(report);
-    printf("Live graphics: EXPERIMENT active, %d hooks, mask=0x%x; SSR infrastructure always prepared\n", hooks, mask_ready);
+    printf("Live graphics: EXPERIMENT active, %d hooks, mask=0x%x; SSR remains a startup setting\n", hooks, mask_ready);
     return hooks;
 }

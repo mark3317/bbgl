@@ -450,7 +450,7 @@ def generator():
     here = Path(__file__).resolve().parent
     digest = hashlib.sha256()
     for name in ('enhancements.py', 'menu_assets.py', 'fromsoft.py', 'esd.py', 'enhanced_lamps.py',
-                 'boss_rematches.py', 'emevd.py', 'pc_menu_messages.tsv'):
+                 'boss_rematches.py', 'emevd.py', 'pc_menu_messages.tsv', 'pc_menu_messages_ru.tsv'):
         try:
             digest.update((here / name).read_bytes())
         except OSError:

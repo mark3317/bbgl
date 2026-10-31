@@ -15,7 +15,7 @@
 #
 # id	menu text (group 0xc8)	line help (group 0xc9)
 110006	PC Settings	Intro logos, reflections and the debug tools.
-110007	PC Graphics	Upscaling and image quality.
+110007	Graphics	Display, upscaling and image quality.
 110010	PC Effects	The game's post-processing. Restart to apply.
 110013	PC Enhancements	Mirror, invaders and rebirth. Restart to apply.
 110014	PC Display	Fullscreen, resolution, detail and the FPS counter.
@@ -37,10 +37,10 @@
 116104	1.6x
 116105	2.0x
 116106	3.0x
-117020	PC Graphics
+117020	Graphics
 117000	Sharpening	Sharpens the upscaled image (RCAS).
 117001	Subpixel Jitter	Needed by temporal upscalers; off only to compare.
-117002	Object Motion Vectors	Fewer trails on moving enemies. Restart to apply.
+117002	Object Motion Vectors	Fewer trails on moving enemies. Applies immediately.
 117003	Upscaler	How the game is scaled to your output resolution.
 117004	Upscaling Preset	Render scale: higher quality costs more GPU time.
 117100	Off
@@ -64,7 +64,7 @@
 125020	PC Display
 125004	Fullscreen	Fullscreen or a window. Applies straight away.
 125000	FPS Counter	Frames per second, in the corner of the screen.
-125001	Output Resolution	The size of the final image. Restart if not live.
+125001	Output Resolution	Final image size. Current aspect ratio is preserved.
 125002	Live Resolution Changes	Change resolution without a restart.
 125003	Model Detail	Level of detail of characters and objects.
 125100	1280 x 720

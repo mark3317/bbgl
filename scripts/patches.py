@@ -356,11 +356,10 @@ def validate_patch_requirements(names, game):
 
 def effect_patches(settings):
     names=[]
-    live = os.environ.get("BB_LIVE_GRAPHICS") == "1"
+    live = os.environ.get("BB_LIVE_GRAPHICS", "1") != "0"
     for key,(off,on) in EFFECTS.items():
-        if live and key.startswith("effect_"):
-            # Keep resources available in both toggle directions; SSR preparation is startup-only.
-            if key == "effect_ssr": names.append(on)
+        if live and key.startswith("effect_") and key != "effect_ssr":
+            # Keep resources available in both toggle directions. SSR stays startup-only.
             continue
         if key not in settings: continue
         name=on if settings[key]=='1' else off

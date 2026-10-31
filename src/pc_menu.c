@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * The in-game PC menu: PC Graphics, PC Display, PC Effects, PC Settings, PC Gameplay
- * and Achievements rows in the game's own System menu, each opening a section drawn by the
- * game like Controls or Language, plus Restart to Apply and the title menu's Quit Game. It
+ * Graphics and Achievements in the native System menu. Graphics uses the game's list
+ * scrolling and keeps the original option-section frame. The title gains Quit Game. It
  * offers what the L3+R3 overlay offers, which stays available.
  *
  * Ported from droogie's bbhost (https://github.com/droogie/bbhost, GPL-3.0-or-later,
@@ -81,7 +80,8 @@ enum { ROW_QUIT = 122000, QUIT_QUESTION = 920001, ROW_RESTART = 110017, RESTART_
 typedef int64_t (BB_GUEST_ABI *GuestFn)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
 static int g_installed;
-static char g_open_name[32] = "PCSetting";
+static char g_open_name[32] = "PCGraphics";
+extern int bbgpu_output_live_supported(int);
 
 static GuestFn fn(uint64_t bn) { return (GuestFn)bb_guest(BB_BN(bn)); }
 static uint64_t addr(uint64_t bn) { return (uint64_t)(uintptr_t)bb_guest(BB_BN(bn)); }
@@ -159,7 +159,7 @@ static void release_ref(uint64_t object) {
 /* --- Rows and sections -------------------------------------------------------------------- */
 
 enum { TOGGLE, PICK };
-enum { MAX_OPTIONS = 8, TEXT = 48, MAX_ROWS = 6 };
+enum { MAX_OPTIONS = 8, TEXT = 48, MAX_ROWS = 16 };
 
 typedef struct {
     int32_t value;
@@ -194,11 +194,9 @@ static const Option PRESETS[] = {{0, 117110}, {1, 117111}, {2, 117112}, {3, 1171
 /* The 16:9 outputs, 1920x1200, and the two common ultrawide ones; other outputs show only
  * while chosen (from the launcher), so the list stays as short as the others. Values index
  * BbSettings::OutputWidths. */
-enum { OUTPUTS_ALWAYS = 7 };
 static const Option OUTPUTS[] = {{0, 125100}, {1, 125101}, {2, 125102}, {3, 125103},
                                  {12, 125113}, {5, 125104}, {6, 125105}, {10, 125106}, {8, 125107},
                                  {11, 125108}, {7, 125109}};
-static const Option LIVE[] = {{-1, 125110}, {0, 125111}, {1, 125112}};
 static const Option LODS[] = {{-2, 125120}, {0, 125121}, {1, 125122}, {2, 125123}};
 #define COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
 #define TOGGLE_ROW(key, id) {key, id, TOGGLE, NULL, 0, 0, 0, 0, {{0, 0}}, 0, {{0}}, {0}}
@@ -208,45 +206,19 @@ static const Option LODS[] = {{-2, 125120}, {0, 125121}, {1, 125122}, {2, 125123
  * Settings or PC Gameplay past these rows (for the mouse settings) crashed the menu movie
  * (guest 0xdcf79/0xd67bb): the menus' Scaleform heap ran out (menu_heap_patch.h). The mouse settings stay in the
  * launcher and bbport.ini. */
-static Row g_graphics[] = {
+/* One scrollable Graphics list. Only rows with a live implementation are exposed. */
+static Row g_graphics_template[] = {
+    TOGGLE_ROW("fullscreen", 125004), TOGGLE_ROW("show_fps", 125000),
     TOGGLE_ROW("sharpen", 117000), TOGGLE_ROW("jitter", 117001), TOGGLE_ROW("object_motion", 117002),
-    PICK_ROW("upscaler", 117003, UPSCALERS), PICK_ROW("preset", 117004, PRESETS),
-};
-static Row g_display[] = {
-    TOGGLE_ROW("fullscreen", 125004), TOGGLE_ROW("show_fps", 125000), PICK_ROW("output_res", 125001, OUTPUTS),
-    PICK_ROW("live_resolution", 125002, LIVE), PICK_ROW("model_lod", 125003, LODS),
-};
-static Row g_effects[] = {
     TOGGLE_ROW("effect_chromatic_aberration", 120000), TOGGLE_ROW("effect_dof", 120001),
     TOGGLE_ROW("effect_motion_blur", 120002), TOGGLE_ROW("effect_ssao", 120003),
     TOGGLE_ROW("effect_game_aa", 120004), TOGGLE_ROW("effect_dynamic_shadows", 120005),
+    PICK_ROW("upscaler", 117003, UPSCALERS), PICK_ROW("preset", 117004, PRESETS),
+    PICK_ROW("output_res", 125001, OUTPUTS), PICK_ROW("model_lod", 125003, LODS),
 };
-static Row g_settings[] = {
-    TOGGLE_ROW("skip_intro", 116004), TOGGLE_ROW("effect_ssr", 116008),
-    TOGGLE_ROW("debug_camera", 116009), TOGGLE_ROW("debug_menu", 116010),
-};
-static Row g_gameplay[] = {
-    TOGGLE_ROW("tweak_no_rally", 126000), TOGGLE_ROW("tweak_camera_distance", 126001),
-    TOGGLE_ROW("tweak_no_camera_rotation", 126002), TOGGLE_ROW("tweak_easy_run", 126003),
-    TOGGLE_ROW("tweak_ragdoll", 126004),
-};
-static Row g_cheats[] = {
-    TOGGLE_ROW("cheat_no_death", 127000), TOGGLE_ROW("cheat_stealth", 127001),
-    TOGGLE_ROW("cheat_silent", 127002), TOGGLE_ROW("cheat_rally_no_decay", 127003),
-    TOGGLE_ROW("cheat_enemy_control", 127004),
-};
-static Row g_enhance[] = {
-    TOGGLE_ROW("pc_mirror_appearance", 124001), TOGGLE_ROW("pc_two_invaders", 124003),
-    TOGGLE_ROW("pc_rebirth", 124002),
-};
+static Row g_graphics[COUNT(g_graphics_template)];
 static Section g_sections[] = {
-    {"PCGraphics", 110007, g_graphics, COUNT(g_graphics)},
-    {"PCDisplay", 110014, g_display, COUNT(g_display)},
-    {"PCEffects", 110010, g_effects, COUNT(g_effects)},
-    {"PCSetting", 110006, g_settings, COUNT(g_settings)},
-    {"PCGameplay", 110015, g_gameplay, COUNT(g_gameplay)},
-    {"PCCheats", 110016, g_cheats, COUNT(g_cheats)},
-    {"PCEnhance", 110013, g_enhance, COUNT(g_enhance)},
+    {"PCGraphics", 110007, g_graphics, 0},
 };
 
 static int setting(const char *key) {
@@ -272,7 +244,7 @@ static void seed(Row *r) {
     const int now = setting(r->key);
     for (int i = 0; i < r->option_count && r->shown_count < MAX_OPTIONS; ++i) {
         if (!strcmp(r->key, "upscaler") && !bbgpu_upscaler_supported(r->options[i].value)) continue;
-        if (r->options == OUTPUTS && i >= OUTPUTS_ALWAYS && r->options[i].value != now) continue;
+        if (r->options == OUTPUTS && !bbgpu_output_live_supported(r->options[i].value)) continue;
         r->shown[r->shown_count++] = r->options[i];
     }
     r->pick = r->shown_count ? r->shown[0].value : 0;
@@ -484,17 +456,8 @@ static void *row_open(void *out, void *ctx, const void *opener) {
         return row_open(out, ctx, (const void *)opener_##n);                                     \
     }
 SECTION_FUNCTIONS(0)
-SECTION_FUNCTIONS(1)
-SECTION_FUNCTIONS(2)
-SECTION_FUNCTIONS(3)
-SECTION_FUNCTIONS(4)
-SECTION_FUNCTIONS(5)
-SECTION_FUNCTIONS(6)
-static const void *const SECTION_ROWS[] = {
-    (const void *)row_0, (const void *)row_1, (const void *)row_2, (const void *)row_3,
-    (const void *)row_4, (const void *)row_5, (const void *)row_6,
-};
-static const int NATIVE_SECTION_INDEX[] = {0, 1, 2, 3, 4};  /* Cheats and Enhancements stay in the overlay. */
+static const void *const SECTION_ROWS[] = {(const void *)row_0};
+static const int NATIVE_SECTION_INDEX[] = {0};
 _Static_assert(sizeof(SECTION_ROWS) / sizeof(SECTION_ROWS[0]) == sizeof(g_sections) / sizeof(g_sections[0]),
                "one row function per section");
 
@@ -545,6 +508,11 @@ static void to_utf16(uint16_t *out, size_t n, const char *in) {
     out[o] = 0;
 }
 
+static const char *localized(const char *en, const char *ru) {
+    const char *language = getenv("BB_LANGUAGE");
+    return language && !strcmp(language, "8") ? ru : en;
+}
+
 static void ach_fill(int page) {
     const int count = bbgpu_achievement_count();
     const int pages = count ? (count + ACH_PER_PAGE - 1) / ACH_PER_PAGE : 1;
@@ -553,16 +521,16 @@ static void ach_fill(int page) {
     BbAchievement a;
     for (int i = 0; i < count; ++i) earned += bbgpu_achievement_get(i, &a) && a.unlocked_at > 0;
     char line[256];
-    to_utf16(g_ach.label[0], ACH_TEXT, "Achievements");
-    snprintf(line, sizeof(line), "Page %d / %d", g_ach.page + 1, pages);
+    to_utf16(g_ach.label[0], ACH_TEXT, localized("Achievements", "Достижения"));
+    snprintf(line, sizeof(line), localized("Page %d / %d", "Страница %d / %d"), g_ach.page + 1, pages);
     to_utf16(g_ach.text[0], ACH_VALUE, line);
     int score = 0, total = 0;
     if (!count)
-        snprintf(line, sizeof(line), "No trophy pack in the game folder.");
+        snprintf(line, sizeof(line), localized("No trophy pack in the game folder.", "В папке игры нет набора достижений."));
     else if (bbgpu_achievement_score(&score, &total))
-        snprintf(line, sizeof(line), "%d of %d unlocked (%d%%), %d / 1000G", earned, count, earned * 100 / count, score);
+        snprintf(line, sizeof(line), localized("%d of %d unlocked (%d%%), %d / 1000G", "Открыто %d из %d (%d%%), %d / 1000G"), earned, count, earned * 100 / count, score);
     else
-        snprintf(line, sizeof(line), "%d of %d unlocked (%d%%). Left/right: more", earned, count, earned * 100 / count);
+        snprintf(line, sizeof(line), localized("%d of %d unlocked (%d%%). Left/right: more", "Открыто %d из %d (%d%%). Влево/вправо — ещё"), earned, count, earned * 100 / count);
     to_utf16(g_ach.help[0], 53, line);
     for (int r = 1; r < ACH_ROWS; ++r) {
         const int index = g_ach.page * ACH_PER_PAGE + r - 1;
@@ -572,12 +540,12 @@ static void ach_fill(int page) {
         }
         const int got = a.unlocked_at > 0, secret = a.hidden && !got;
         if (secret) {
-            to_utf16(g_ach.label[r], ACH_TEXT, "Secret Achievement");
-            to_utf16(g_ach.help[r], 53, "Unlock it to reveal it.");
+            to_utf16(g_ach.label[r], ACH_TEXT, localized("Secret Achievement", "Секретное достижение"));
+            to_utf16(g_ach.help[r], 53, localized("Unlock it to reveal it.", "Откройте достижение, чтобы узнать подробности."));
         } else if (!a.name[0]) {
-            snprintf(line, sizeof(line), "Achievement %d", a.id + 1);
+            snprintf(line, sizeof(line), localized("Achievement %d", "Достижение %d"), a.id + 1);
             to_utf16(g_ach.label[r], ACH_TEXT, line);
-            to_utf16(g_ach.help[r], 53, "Names need your trophy key (launcher, Game).");
+            to_utf16(g_ach.help[r], 53, localized("Names need your trophy key (launcher, Game).", "Для названий нужен ключ трофеев в лаунчере."));
         } else {
             to_utf16(g_ach.label[r], 41, a.name);
             to_utf16(g_ach.help[r], 53, a.description);  /* the help bar shows about 52 */
@@ -585,9 +553,9 @@ static void ach_fill(int page) {
         if (got) {
             const time_t when = (time_t)a.unlocked_at;
             const struct tm *local = localtime(&when);
-            if (!local || !strftime(line, sizeof(line), "%d %b %Y", local)) snprintf(line, sizeof(line), "Unlocked");
+            if (!local || !strftime(line, sizeof(line), localized("%d %b %Y", "%d.%m.%Y"), local)) snprintf(line, sizeof(line), localized("Unlocked", "Открыто"));
         } else {
-            snprintf(line, sizeof(line), "Locked");
+            snprintf(line, sizeof(line), localized("Locked", "Закрыто"));
         }
         to_utf16(g_ach.text[r], ACH_VALUE, line);
     }
@@ -720,13 +688,6 @@ static BB_GUEST_ABI int64_t quit_yes(int64_t a, int64_t b) {
     return 0;
 }
 
-static BB_GUEST_ABI int64_t restart_yes(int64_t a, int64_t b) {
-    (void)a, (void)b;
-    puts("PC menu: Restart to Apply");
-    runtime_restart();
-    return 0;
-}
-
 static void *question(void *out, void *factory, uint32_t message, const void *yes) {
     _Alignas(16) unsigned char caption[0x40];
     memset(caption, 0, sizeof(caption));
@@ -745,10 +706,6 @@ static void *question(void *out, void *factory, uint32_t message, const void *ye
 
 static BB_GUEST_ABI void *quit_opener(void *out, void *factory) {
     return question(out, factory, QUIT_QUESTION, (const void *)quit_yes);
-}
-
-static BB_GUEST_ABI void *restart_opener(void *out, void *factory) {
-    return question(out, factory, RESTART_QUESTION, (const void *)restart_yes);
 }
 
 static void add_command(void *builder, uint32_t id, const void *open, int section_opener) {
@@ -801,7 +758,6 @@ static BB_GUEST_ABI void *system_finalize(void *out, void *builder, void *arg3) 
         const int i = NATIVE_SECTION_INDEX[k];
         add_command(builder, g_sections[i].system_row, SECTION_ROWS[i], 1);
     }
-    add_command(builder, ROW_RESTART, (const void *)restart_opener, 0);
     if (move_exit) add_command(builder, EXIT_GAME_ROW_ID, bb_guest(BB_BN(EXIT_GAME_OPENER)), 0);
     fn(SYSTEM_FINALIZE)(ptr(out), ptr(builder), ptr(arg3), 0, 0, 0);
     return out;
@@ -882,9 +838,23 @@ int bb_pc_menu_install(void) {
         bb_patch(BB_BN(SECTION_COUNT_IMM), &seven, &six, 1);
         return 0;
     }
+    const int live = setting("live_graphics_mask"), resolution = setting("live_render_resolution");
+    for (int i = 0; i < COUNT(g_graphics_template); ++i) {
+        const Row *r = &g_graphics_template[i];
+        int bit = -1;
+        if (!strcmp(r->key, "object_motion")) bit = 8;
+        if (!strcmp(r->key, "model_lod")) bit = 7;
+        static const char *effects[] = {"effect_chromatic_aberration", "effect_dof", "effect_motion_blur",
+                                      "effect_ssao", "effect_game_aa", "effect_dynamic_shadows"};
+        for (int e = 0; e < 6; ++e) if (!strcmp(r->key, effects[e])) bit = e;
+        if (bit >= 0 && !(live & (1 << bit))) continue;
+        if (!resolution && (!strcmp(r->key, "output_res") || !strcmp(r->key, "preset") ||
+                            !strcmp(r->key, "upscaler"))) continue;
+        g_graphics[g_sections[0].count++] = *r;
+    }
     g_installed = 1;
     int hooks = 3 + hook_list_update();
-    printf("PC menu: System gains Achievements, %d PC sections and Restart to Apply\n", COUNT(NATIVE_SECTION_INDEX));
+    printf("PC menu: System gains Achievements and Graphics (%d live rows, native scrolling)\n", g_sections[0].count);
     const char *quit = getenv("BB_PC_MENU_QUIT");
     if (!quit || strcmp(quit, "1"))
         puts("PC menu: no Quit Game on the title (its line was not made)");

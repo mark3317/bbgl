@@ -405,6 +405,9 @@ bool PipelineCache::PrepareGraphicsPipeline(PipelineSelection& worker_sel) {
 }
 
 const GraphicsPipeline* PipelineCache::TryPreparedPipeline(const PreparedDraw& prepared) {
+    // Workers may have selected a motion variant before the menu changed. Re-evaluate
+    // on the GPU thread for the experimental path; both pipeline variants stay cached.
+    if (BbSettings::Get().live_graphics_mask & 256) return nullptr;
     if (prepared.state.load(std::memory_order_acquire) != PreparedDraw::Ready ||
         prepared.reg_checksum != liverpool->gfx_reg_checksum) {
         return nullptr;

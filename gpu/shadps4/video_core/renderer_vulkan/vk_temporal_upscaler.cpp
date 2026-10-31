@@ -309,7 +309,8 @@ bool TemporalUpscaler::OnFrameStart() {
         failed = false;
         fsr4_failed = false;
     }
-    const bool changed = output_changed || applied_preset != preset || active != last_active ||
+    const bool object_motion = (settings.live_graphics_mask & 256) && settings.object_motion;
+    const bool changed = object_motion != last_object_motion || output_changed || applied_preset != preset || active != last_active ||
                          jitter_on != last_jitter || applied_upscaler != upscaler;
     if (applied_upscaler != upscaler) {
         // A failed provider keeps a fatal flag internally; a user retry gets a fresh context.
@@ -333,6 +334,7 @@ bool TemporalUpscaler::OnFrameStart() {
     applied_preset = preset;
     applied_output = output;
     applied_upscaler = upscaler;
+    last_object_motion = object_motion;
     last_active = active;
     last_jitter = jitter_on;
     dispatched_last_frame = false;

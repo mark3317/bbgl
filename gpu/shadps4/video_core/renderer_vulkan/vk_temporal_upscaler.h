@@ -201,7 +201,7 @@ private:
     int applied_preset = -1;
     int applied_upscaler = -1;
     bool dispatched_last_frame = false;
-    bool last_active = false, last_jitter = false;
+    bool last_active = false, last_jitter = false, last_object_motion = false;
 
 
     bool enabled = false;

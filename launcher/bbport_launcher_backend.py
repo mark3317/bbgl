@@ -388,7 +388,7 @@ class LauncherBackend(QObject):
 
     @Property(str, notify=gameDownloadChanged)
     def gameDownloadStatus(self):
-        return self._game_download_status
+        return T(self._game_download_status)
 
     @Slot(float, str)
     def _show_game_download_progress(self, value, message):

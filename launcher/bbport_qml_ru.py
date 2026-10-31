@@ -9,6 +9,12 @@ The classic Tk launcher keeps its own table (bbport_i18n.py).
 import re
 
 RU = {
+    'Game installed.': 'Игра установлена.',
+    'The game folder already exists. Choose it using the folder button.': 'Папка game уже существует. Укажите её кнопкой выбора папки.',
+    'Installation cancelled. Downloaded parts are kept for the next attempt.': 'Установка отменена. Скачанные части сохранены для следующей попытки.',
+    'Another game installation is already running.': 'Установка игры уже выполняется другим лаунчером.',
+    'Downloaded ZIP checksum does not match. Please retry.': 'Контрольная сумма ZIP не совпала. Повторите загрузку.',
+
     'Download game': 'Скачать игру',
     'Cancel download': 'Отменить загрузку',
     'Preparing download…': 'Подготовка загрузки…',
@@ -682,6 +688,10 @@ RU = {
 
 # Texts with values: {} in the English template, {0}, {1}, ... in the Russian one.
 PATTERNS = [
+    ('Downloading {}/{} · {} / {} GiB', 'Загрузка {0}/{1} · {2} / {3} ГиБ'),
+    ('Unpacking {}/{} · {}/{}', 'Распаковка {0}/{1} · {2}/{3}'),
+    ('Not enough free space: need {} GiB', 'Недостаточно места: требуется {0} ГиБ'),
+
     ('A co-op server stopped at start; see {}.', 'Сервер совместной игры остановился при запуске; см. {0}.'),
     ('An invite code starts with {}', 'Код приглашения начинается с {0}'),
     ('No BBSC release has a {} package ({}).', 'Ни в одном релизе BBSC нет пакета {0} ({1}).'),

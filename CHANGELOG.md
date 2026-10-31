@@ -1,6 +1,16 @@
 # BBGL changelog
 
-## 1.0.0 — refreshed release, 2026-10-31
+## Graphics menu update, 2026-10-31
+
+- Merge PC Graphics, Display and Effects into one native Graphics screen with scrolling.
+- Remove PC Settings, PC Gameplay and Restart to Apply from the native menu; show only settings that can apply live.
+- Apply LOD, chromatic aberration, DoF, motion blur, SSAO, game AA, dynamic shadows and object motion without restarting. SSR remains a startup setting in the launcher.
+- Keep stable value controls when scrolling and retain the native option-screen frame.
+- Add Russian menu labels, choices, help and achievement UI selected by the game language.
+- Fit the System frame to seven commands and dropdown backgrounds to their choice counts.
+
+
+## 1.0.0 â€” refreshed release, 2026-10-31
 
 - Rename the launcher to Bloodborne Game Launcher (BBGL), repository to `bbgl`, and bundled mod fork to BBSC-GL (`bbsc-gl`).
 - Extract into `Bloodborne Game Launcher`; store the writable profile in `%LOCALAPPDATA%\bbgl`, importing previous Local/Roaming profiles without overwriting existing files.

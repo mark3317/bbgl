@@ -508,7 +508,69 @@ def add_scrollbar(b, list_name, ax, ay, name='ScrollBarV'):
     return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, sprite) + b[le:])
 
 
-def fit_command_list(b, list_name, count, pitch=None):
+def edit_sprite_matrices(b, cid, changes):
+    """Edit selected depths on every frame, preserving PLACE2/PLACE3 attributes."""
+    found = find_sprite(b, cid)
+    if not found:
+        raise Fail(f'no sprite {cid}')
+    head, start, end = found
+    out = bytearray(b[start:start + 4])
+    changed = set()
+    for code, h, a, z in tags(b, start + 4, end):
+        if code not in (PLACE2, PLACE3):
+            out += b[h:z]
+            continue
+        depth, _char, _mat, _name = placement(b, code, a)
+        if depth not in changes or not b[a] & 4:
+            out += b[h:z]
+            continue
+        pos = a + (4 if code == PLACE3 else 3)
+        if code == PLACE3 and (b[a + 1] & 8 or (b[a + 1] & 16 and b[a] & 2)):
+            _class, pos = cstr(b, pos)
+        if b[a] & 2:
+            pos += 2
+        mat, after = read_matrix(b, pos)
+        changes[depth](mat)
+        out += tag_bytes(code, b[a:pos] + write_matrix(mat) + b[after:z])
+        changed.add(depth)
+    if changed != set(changes):
+        raise Fail(f'sprite {cid}: missing layout depths {set(changes) - changed}')
+    return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, out) + b[end:])
+
+
+def move_y(pixels):
+    def apply(mat):
+        mat.ty += round(pixels * 20)
+    return apply
+
+
+def expand_system_frame(b):
+    """Expand only System's frame, leaving the option sections' shared art alone.
+
+    The two ornaments and two rules are separate placements. Move them instead
+    of stretching their artwork; only the translucent panel is stretched. Keep
+    the footer below the last command, including Exit Game in the world.
+    """
+    # These are the 1.09 Top/frame sprites. Verify their relationship before editing.
+    top = find_sprite(b, 150)
+    if not top or not any(c in (PLACE2, PLACE3) and
+                          placement(b, c, a)[1] == 145
+                          for c, _h, a, _z in tags(b, top[1] + 4, top[2])):
+        raise Fail('unexpected System frame')
+    def panel(mat):
+        # Original panel bounds are -31.8..493.75 px. Anchor its new top.
+        scale = (493.75 + 194 - (-31.8 - 145)) / (493.75 - (-31.8))
+        mat.has_scale = True
+        mat.sa = 65536
+        mat.sc = round(scale * 65536)
+        mat.sn = max(sbits(mat.sa), sbits(mat.sc))
+        mat.ty += round((-145 + 31.8 * (scale - 1)) * 20)
+    b = edit_sprite_matrices(b, 145, {1: panel, 11: move_y(-145),
+                                    17: move_y(194), 23: move_y(-145), 27: move_y(194)})
+    return edit_sprite_matrices(b, 150, {66: move_y(194), 69: move_y(-145)})
+
+
+def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
     """Give a command list enough visible slots, including every animation frame.
 
     Capacity comes from Item_<n>_0 children, not the scrollbar or the runtime row
@@ -555,7 +617,7 @@ def fit_command_list(b, list_name, count, pitch=None):
         if p.mat is None:
             raise Fail(f'{list_name} row animation without a matrix')
         mat = p.mat.copy()
-        mat.ty += first.mat.ty + index * new_pitch - rows[index].mat.ty
+        mat.ty += first.mat.ty + index * new_pitch - rows[index].mat.ty + round(offset_y * 20)
         out += tag_bytes(PLACE2, p.build(p.depth, mat, p.name))
         if index == old_count - 1:
             for i in range(old_count, count):
@@ -566,18 +628,20 @@ def fit_command_list(b, list_name, count, pitch=None):
     return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, out) + b[le:])
 
 
-# The native System list has five rows; six PC sections and Restart add seven.
-# Its existing full-height frame has room for twelve rows at 40 px, keeping the
-# original font size and the bottom rows above the frame's lower ornament.
-SYSTEM_VISIBLE_ROWS = 5 + len(NATIVE_SECTIONS) + 1
-TITLE_VISIBLE_ROWS = 8  # also covers the title's online/offline command variants
+# The world adds Exit Game to the five front-end native commands.
+SYSTEM_VISIBLE_ROWS = 6 + len(NATIVE_SECTIONS) + 1
+TITLE_VISIBLE_ROWS = 6
+SYSTEM_ROW_PITCH = 48
+SYSTEM_ROW_OFFSET = -145
 
 
 def build_option_movie(source):
     movie = bytes(source)
     for name, title, depth, defaults_slot, drop in SECTIONS:
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)
-    return fit_command_list(movie, 'Top', SYSTEM_VISIBLE_ROWS, pitch=40)
+    movie = fit_command_list(movie, 'Top', SYSTEM_VISIBLE_ROWS,
+                             pitch=SYSTEM_ROW_PITCH, offset_y=SYSTEM_ROW_OFFSET)
+    return expand_system_frame(movie)
 
 
 # --- Messages --------------------------------------------------------------------------------
@@ -713,7 +777,8 @@ def make(dvdroot, log=print):
         return {}
     # Quit Game on the title: both title movies, or neither (the row needs its line).
     try:
-        titles = {relative: fit_command_list((dvdroot / relative).read_bytes(), 'CommandList', TITLE_VISIBLE_ROWS)
+        titles = {relative: fit_command_list((dvdroot / relative).read_bytes(), 'CommandList',
+                                          TITLE_VISIBLE_ROWS, offset_y=-50)
                   for relative in TITLE_MOVIES}
         files.update(titles)
     except (OSError, FormatError, IndexError, struct.error) as error:

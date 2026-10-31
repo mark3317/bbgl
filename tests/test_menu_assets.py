@@ -115,7 +115,42 @@ class RealGameTests(unittest.TestCase):
         self.assertNotIn('ScrollBarV', inside)
         self.assertEqual({name for name in inside if name and name.startswith('Item_')},
                          {f'Item_{i}_0' for i in range(m.SYSTEM_VISIBLE_ROWS)})
-        self.assert_row_animation(movie, top[1], m.SYSTEM_VISIBLE_ROWS, 800)
+        self.assert_row_animation(movie, top[1], m.SYSTEM_VISIBLE_ROWS, m.SYSTEM_ROW_PITCH * 20)
+
+    def test_system_frame_and_footer_enclose_all_thirteen_rows(self):
+        movie = self.files[m.MOVIE]
+        source = (GAME / m.MOVIE).read_bytes()
+        def frames(data, cid):
+            _h, a, z = m.find_sprite(data, cid)
+            current, result = {}, []
+            for code, _h, s, e in m.tags(data, a + 4, z):
+                if code in (m.PLACE2, m.PLACE3):
+                    depth, _char, mat, _name = m.placement(data, code, s)
+                    if mat:
+                        current[depth] = mat
+                if code == m.SHOW_FRAME:
+                    result.append(current.copy())
+            return result
+        self.assertEqual(m.SYSTEM_VISIBLE_ROWS, 13)  # six native in-world, six PC, Restart
+        for before, after in zip(frames(source, 145), frames(movie, 145), strict=True):
+            for depth, shift in ((11, -145), (17, 194), (23, -145), (27, 194)):
+                self.assertEqual(after[depth][5] - before[depth][5], shift * 20)
+                self.assertEqual(after[depth][:4], before[depth][:4])  # ornaments keep their shape
+        for frame in frames(movie, 150):
+            # Row text baseline comes 50.7 px below its placement. The header and
+            # divider/footer must leave at least 40 px after the last row text.
+            first_y = frame[31][5] / 20 + 50.7
+            last_y = first_y + 12 * m.SYSTEM_ROW_PITCH
+            self.assertGreater(first_y, frame[69][5] / 20 + 40)
+            divider = frame[3][5] / 20 + (15799 / 20 + 194)
+            help_y = frame[66][5] / 20 + 4662 / 20
+            self.assertLess(last_y + 40, divider)
+            self.assertGreater(help_y, divider)
+        # Other sections share StatusBar/backdrop art: those sprites stay byte-identical.
+        for cid in (19, 37, 107, 115, 126, 134, 138):
+            _h, a, z = m.find_sprite(source, cid)
+            _h2, a2, z2 = m.find_sprite(movie, cid)
+            self.assertEqual(source[a:z], movie[a2:z2])
 
     def test_title_lists_fit_all_commands_in_both_editions(self):
         for relative in m.TITLE_MOVIES:

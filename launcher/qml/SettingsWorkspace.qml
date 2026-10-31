@@ -266,7 +266,7 @@ Item {
                         GlassButton { text: launcher.tr("Play co-op"); width: Math.max(140, implicitWidth); height: 38; enabled: !launcher.coopBusy && !launcher.running; onClicked: launcher.coopPlay() }
                         GlassButton { text: launcher.tr("About BBSC"); width: Math.max(130, implicitWidth); height: 38; onClicked: launcher.openCoopHelp() }
                     }
-                    Note { visible: is("Co-op", "Host a session"); text: launcher.tr("Starts BBSC's two servers on this PC (the first time, Windows asks once to open the firewall for Tailscale and your home network only). Keep this launcher open while you play; closing it stops the servers.") }
+                    Note { visible: is("Co-op", "Host a session"); text: launcher.tr("Starts BBSC's two servers on this PC (the first time, Windows asks once to open the firewall for Tailscale and your home network only). After Play, the launcher window closes; the servers stay active until you exit the game.") }
                     Row { visible: is("Co-op", "Host a session"); spacing: 10
                         GlassButton { text: launcher.coopHosting ? launcher.tr("Restart hosting") : launcher.tr("Start hosting"); width: Math.max(160, implicitWidth); height: 38; enabled: !launcher.coopBusy; onClicked: launcher.coopStartHosting() }
                         GlassButton { text: launcher.tr("Copy invite code"); width: Math.max(160, implicitWidth); height: 38; enabled: launcher.coopInvite !== ""; onClicked: launcher.coopCopyInvite() }
@@ -295,10 +295,6 @@ Item {
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
                     Column { visible: is("System", "Launch"); width: parent.width; spacing: 14
-                        Column {
-                            width: parent.width
-                            ToggleRow { label: launcher.tr("Close the launcher after Play"); checked: launcher.closeOnPlay; onToggled: (on) => launcher.setValue("close_on_play", on) }
-                        }
                         Row { spacing: 10
                             GlassButton { text: launcher.tr("Desktop shortcut"); width: Math.max(156, implicitWidth); height: 38; onClicked: launcher.createShortcut() }
                             GlassButton { text: launcher.tr("Add to Steam"); width: Math.max(132, implicitWidth); height: 38; onClicked: launcher.addToSteam() }

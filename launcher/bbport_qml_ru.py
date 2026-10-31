@@ -188,9 +188,9 @@ RU = {
     'BBSC from ZIP': 'BBSC из ZIP',
     'About BBSC': 'О BBSC',
     "Starts BBSC's two servers on this PC (the first time, Windows asks once to open the firewall for Tailscale "
-    "and your home network only). Keep this launcher open while you play; closing it stops the servers.":
+    "and your home network only). After Play, the launcher window closes; the servers stay active until you exit the game.":
         'Запускает два сервера BBSC на этом ПК (в первый раз Windows один раз попросит открыть брандмауэр — '
-        'только для Tailscale и вашей домашней сети). Не закрывайте лаунчер во время игры: это остановит серверы.',
+        'только для Tailscale и вашей домашней сети). После запуска игры окно лаунчера закроется; серверы будут работать до выхода из игры.',
     'Restart hosting': 'Перезапустить сервер',
     'Start hosting': 'Запустить сервер',
     'Copy invite code': 'Скопировать код приглашения',
@@ -700,10 +700,10 @@ PATTERNS = [
     ('Installing {}…', 'Установка {0}…'),
     ('FSR 4 download failed: {}', 'Не удалось скачать FSR 4: {0}'),
     ('Game ready · version {}', 'Игра готова · версия {0}'),
-    ('Hosting on {} ({}); your account is {}. Copy the invite code for your friend, then press Play co-op. Keep this '
-     'launcher open while you play.',
+    ('Hosting on {} ({}); your account is {}. Copy the invite code for your friend, then press Play co-op. The servers '
+     'stay active until you exit the game.',
      'Сервер запущен: {0} ({1}); ваш аккаунт: {2}. Скопируйте код приглашения для друга и нажмите «Играть '
-     'вместе». Не закрывайте лаунчер во время игры.'),
+     'вместе». Серверы будут работать до выхода из игры.'),
     ('Install version {} now? Saves, settings and mods are kept.',
      'Установить версию {0} сейчас? Сохранения, настройки и моды останутся.'),
     ('Now: the game renders at the output size, {} × {}.', 'Сейчас: игра рисует в выходном разрешении, {0} × {1}.'),

@@ -111,10 +111,11 @@ Item {
                     width: launcher.running ? parent.width - 132 : parent.width; height: 58
                     highlighted: true; serif: true
                     text: launcher.running ? launcher.tr("Game running") : launcher.setupRunning ? launcher.tr("Installing…") :
+                          launcher.coopBusy ? launcher.tr("Getting co-op ready…") :
                           home.gameBlocked ? launcher.tr("Set up game files") : home.savesBlocked ? launcher.tr("Choose a saves folder") :
                           home.onlineBlocked ? launcher.tr("Set up co-op") :
                           launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
-                    enabled: !launcher.running && !launcher.setupRunning
+                    enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy
                     onClicked: home.primaryRequested()
                 }
                 GlassButton {

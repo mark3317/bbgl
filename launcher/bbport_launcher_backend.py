@@ -178,7 +178,7 @@ FIELDS = {
     'Enhancements': [
         *[row(key, title[0], 'toggle') for key, title, _ in core.ENHANCEMENTS],
     ],
-    # Launch behaviour (close_on_play, shortcuts) lives on Home; the update
+    # Launch shortcuts live on Home; the update
     # toggle has its own row with "Check now" in Main.qml.
     'Advanced': [
         row('ui_language', 'Launcher language', 'choice', [('', ('System default',))] + core.UI_LANGUAGES),
@@ -431,10 +431,6 @@ class LauncherBackend(QObject):
     @Property(int, notify=changed)
     def fixStep(self):
         return bbport_startup.PROBLEMS.get(self._problem, ('', 1))[1]
-
-    @Property(bool, notify=changed)
-    def closeOnPlay(self):
-        return bool(self.app.get('close_on_play'))
 
     @Slot(str, str, result=bool)
     def confirm(self, title, text):
@@ -970,9 +966,6 @@ class LauncherBackend(QObject):
         self.runningChanged.emit()
         self._set_notice('Preparing the game…')
         threading.Thread(target=self._read_output, args=(self.process,), daemon=True).start()
-        if self.app.get('close_on_play'):
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(5000, self.closeRequested.emit)
 
     def _read_output(self, process):
         with core.open_run_log(self.app.get('user_dir') or core.DATA_DIR / 'user') as log:
@@ -992,6 +985,7 @@ class LauncherBackend(QObject):
             if not self._game_started:
                 self._game_started = True
                 self.gameStarted.emit()
+                self.closeRequested.emit()
             self._set_notice('The game is running.')
         elif 'restarting through run.py' in line:
             self._set_notice('Restarting with the new settings…')
@@ -1402,7 +1396,7 @@ class LauncherBackend(QObject):
             how = coop.create_account(address, key, name, password)
             self._coop_invite = coop.make_invite(address, key)
             return (f'Hosting on {network} ({address}); your account is {how}. Copy the invite code '
-                    'for your friend, then press Play co-op. Keep this launcher open while you play.')
+                    'for your friend, then press Play co-op. The servers stay active until you exit the game.')
         self._coop_run('Starting the co-op servers…', work)
 
     @Slot()
@@ -1511,6 +1505,8 @@ class LauncherBackend(QObject):
     @Slot()
     def playSelected(self):
         """PLAY: the selected mode."""
+        if self._coop_busy:
+            return
         if self.playMode == 'coop':
             self.coopPlay()
         else:

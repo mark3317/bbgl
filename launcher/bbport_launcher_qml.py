@@ -50,7 +50,15 @@ def run_ui(route=None):
         backend.start_background_checks()
         window = load('Main.qml')
         launcher_window.append(window)
-        backend.closeRequested.connect(window.close)
+        def close_after_launch():
+            # Hosting belongs to this process. Keep it and the log reader alive
+            # without a window until the game exits, then stop both servers.
+            if backend.coopHosting and backend.running:
+                app.setQuitOnLastWindowClosed(False)
+                backend.gameFinished.connect(lambda _code, _started: app.quit())
+            window.close()
+
+        backend.closeRequested.connect(close_after_launch)
         app.aboutToQuit.connect(backend.shutdown_coop)
         app.setQuitOnLastWindowClosed(True)
 

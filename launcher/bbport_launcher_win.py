@@ -274,7 +274,7 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'
                 'hdr': False, 'present_mode': 'Mailbox',
                 'fps_mode': '120', 'frame_cap': '', 'draw_pipe': '', 'readbacks': '',
                 'frames_ahead': '', 'vram_budget_mb': '', 'frame_stats': False, 'gpu_profile': False,
-                'vk_validation': False, 'extra_env': '', 'close_on_play': False,
+                'vk_validation': False, 'extra_env': '',
                 'check_updates': True, 'online': False, 'online_server': 'srv.shadps4.net:31313',
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
@@ -289,7 +289,7 @@ def app_settings(saved):
     """The launcher settings: APP_DEFAULTS under the saved ones. Settings saved before 120 FPS was
     the default and without a frame rate of their own ran unlocked: they keep that."""
     saved = {key: value for key, value in saved.items()
-             if not key.startswith('thd_') and key not in ('online_pool', 'online_community', 'launchDirectly')}
+             if not key.startswith('thd_') and key not in ('online_pool', 'online_community', 'launchDirectly', 'close_on_play')}
     settings = {**APP_DEFAULTS, **saved}
     settings['play_mode'] = play_mode(settings)
     if not saved.get('game_language_auto_v1'):
@@ -1652,7 +1652,6 @@ class Launcher:
         self.section(f, _('Launcher', 'Лаунчер'), top=4)
         self.row(f, _('Launcher language', 'Язык лаунчера'), self.choice(f, 'ui_language', 'app', UI_LANGUAGES),
                  _('Applies when the launcher opens again.', 'Применится при следующем открытии лаунчера.'))
-        self.check(f, 'close_on_play', 'app', _('Close the launcher when the game starts', 'Закрывать лаунчер при запуске игры'))
         self.check(f, 'check_updates', 'app', _('Check for updates when the launcher opens',
                                                 'Проверять обновления при открытии лаунчера'))
         holder = ttk.Frame(f)
@@ -1973,8 +1972,6 @@ class Launcher:
         self.stop_button.configure(state='normal')
         self.status.configure(text=_('Preparing the game; it opens in its own window…',
                                      'Подготовка игры; она откроется в своём окне…'), fg=GOLD)
-        if self.app.get('close_on_play'):
-            self.root.after(5000, self.root.destroy)  # the game keeps running
 
     def read_output(self, process):
         """Helper thread: the game's output to the Log page and to <saves folder>/last_run.log."""
@@ -2017,6 +2014,7 @@ class Launcher:
                 else:
                     if 'Entering original x86-64 code' in item:
                         self.status.configure(text=_('The game is running.', 'Игра запущена.'), fg=GOLD)
+                        self.root.after_idle(self.root.destroy)  # the game keeps running
                     elif 'restarting through run.py' in item:
                         self.status.configure(text=_('Restarting with the new settings…', 'Перезапуск с новыми настройками…'), fg=GOLD)
                     self.append(item)

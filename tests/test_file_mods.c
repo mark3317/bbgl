@@ -23,7 +23,7 @@ int main(void) {
     snprintf(manifest,sizeof(manifest),"%s/mod-files.tsv",root);
     snprintf(added,sizeof(added),"%s/new",root); assert(!mkdir(added,0755));
     f=fopen(manifest,"wb"); assert(f);
-    fprintf(f,"BBMODS1\nasset.dcx\t%s\nnew\t%s\nnew/added.dcx\t%s\n",source,added,source);
+    fprintf(f,"BBMODS1\r\nasset.dcx\t%s\r\nnew\t%s\r\nnew/added.dcx\t%s\r\n",source,added,source);
     assert(!fclose(f));
 #ifdef _WIN32
     assert(!_putenv_s("BB_MOD_FILES",manifest));

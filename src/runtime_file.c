@@ -79,13 +79,14 @@ static void load_mod_files(void) {
     if (!path || !*path) return;
     FILE *f=fopen(path,"rb");
     char line[8192];
-    if (!f || !fgets(line,sizeof(line),f) || strcmp(line,"BBMODS1\n")) {
+    if (!f || !fgets(line,sizeof(line),f) || (strcmp(line,"BBMODS1\n") && strcmp(line,"BBMODS1\r\n"))) {
         fprintf(stderr,"Runtime: cannot read mod mapping %s\n",path); exit(1);
     }
     while (fgets(line,sizeof(line),f)) {
         char *tab=strchr(line,'\t'), *end=strchr(line,'\n');
         if (!tab || !end) { fputs("Runtime: invalid mod mapping\n",stderr); exit(1); }
         *tab++=0; *end=0;
+        if (end>tab && end[-1]=='\r') end[-1]=0;
         ModFile *next=realloc(mod_files,(mod_count+1)*sizeof(*next));
         if (!next) { fputs("Runtime: out of memory loading mods\n",stderr); exit(1); }
         mod_files=next;

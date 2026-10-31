@@ -317,7 +317,7 @@ def build_manifest(game, out, mods):
     out.mkdir(parents=True, exist_ok=True)
     target = out / 'mod-files.tsv'
     temporary = target.with_suffix('.tmp')
-    temporary.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    temporary.write_text('\n'.join(lines) + '\n', encoding='utf-8', newline='\n')
     temporary.replace(target)
     return game
 

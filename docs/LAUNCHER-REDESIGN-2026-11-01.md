@@ -32,3 +32,21 @@ BBSC SHA256: `149004471A5B7C00D611B0FB5DDBA890C30BA5C02D3A1E06EDDB7D04E8136636`.
 
 Артефакты: `out/redesign-build.log`, `out/redesign-preview/`,
 `out/redesign-preview-small/`, `out/redesign-installed-smoke/result.json`.
+
+
+## FSR и начальная настройка — 08:07 МСК
+
+Код `3623f51`: FSR 4.1.1 удалён из Windows-лаунчера и обоих игровых списков
+(числовые ID других апскейлеров сохранены). FSR 4 доступен только при полном наборе
+непустых v07 assets; native дополнительно проверяет поддержку GPU. Старое значение
+fsr411 нормализуется в off. По умолчанию и во всех пресетах upscaler=off.
+Последний этап мастера включает масштабирование с зависимыми полями и общей
+кнопкой загрузки/удаления FSR 4. Удаление касается только manifest-файлов;
+выбранный FSR 4 предварительно выключается. Посторонние файлы остаются.
+
+Целевые проверки defaults/presets/полноты assets/удаления PASS, QML warnings=0.
+Полная сборка порта и пакета/verify PASS. Установлено только на ПК, 5220 файлов
+проверены, 12 заменены с бэкапом, bundle manifests PASS. Installed QML smoke PASS.
+Реальное игровое меню и качество масштабирования в игре не проверялись.
+Бэкап: D:/Games/Bloodborne/coop-dev/backups/launcher-lifetime-20261101-080702.
+Лог: out/fsr-availability-build.log.

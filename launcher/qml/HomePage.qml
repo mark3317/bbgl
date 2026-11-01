@@ -83,12 +83,11 @@ Item {
     }
     Item {
         x: Theme.railWidth + 44; width: home.panelWidth - 88
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 20; height: 174
-        Rectangle { anchors.fill: parent; radius: 10; color: "#dc14181d"; border.color: Theme.line }
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 160
         Item {
             id: modeSwitch
-            anchors.horizontalCenter: parent.horizontalCenter; width: parent.width - 32; height: 40; y: 12
-            Rectangle { anchors.fill: parent; radius: 6; color: "#0d1014" }
+            anchors.horizontalCenter: parent.horizontalCenter; width: 296; height: 44
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
             Row {
                 anchors.fill: parent
                 Repeater {
@@ -101,14 +100,12 @@ Item {
                         hoverEnabled: true
                         contentItem: Text {
                             text: modelData.label; color: modeButton.selected ? Theme.text : Theme.textDim
-                            font.family: Theme.sans; font.pixelSize: 14
+                            font.family: Theme.serif; font.pixelSize: 18
                             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
-                            radius: 6
-                            color: modeButton.selected ? Theme.surfaceHover : modeButton.hovered ? "#181c21" : "transparent"
-                            border.color: modeButton.selected ? Theme.lineStrong : "transparent"
-
+                            color: modeButton.hovered ? "#181c21" : "transparent"
+                            Rectangle { visible: modeButton.selected; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; width: parent.width - 28; height: 2; color: Theme.accentHover }
                         }
                         onClicked: launcher.setPlayMode(modelData.mode)
                     }
@@ -117,14 +114,14 @@ Item {
         }
         GlassButton {
             id: playButton
-            anchors.horizontalCenter: parent.horizontalCenter; y: 64
-            width: parent.width - 32; height: 54; serif: true; highlighted: !launcher.running && !launcher.coopBusy
+            anchors.horizontalCenter: parent.horizontalCenter; y: 54
+            width: 296; height: 56; serif: true; highlighted: !launcher.running && !launcher.coopBusy
             text: launcher.running || launcher.coopBusy ? launcher.tr("Cancel launch") : launcher.tr("Play")
             enabled: launcher.running || launcher.coopBusy || (!launcher.setupRunning && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked)
             onClicked: launcher.running || launcher.coopBusy ? launcher.cancelLaunch() : home.primaryRequested()
         }
         Text {
-            x: 16; y: 130; width: parent.width - 32; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+            y: 122; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
             text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
             color: Theme.textDim; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
         }

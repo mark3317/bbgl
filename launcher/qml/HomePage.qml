@@ -21,7 +21,7 @@ Item {
     }
     Flickable {
         id: homeScroll
-        x: Theme.railWidth + 44; y: 36; width: home.panelWidth - 64; height: parent.height - 186
+        x: Theme.railWidth + 44; y: 36; width: home.panelWidth - 64; height: parent.height - 256
         clip: true; contentHeight: content.implicitHeight
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
@@ -53,13 +53,13 @@ Item {
     }
     Item {
         x: Theme.railWidth + 44; width: home.panelWidth - 88
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 126
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 196
             Rectangle {
-                id: modeSwitch; width: 206; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
+                id: modeSwitch; anchors.horizontalCenter: parent.horizontalCenter; width: 296; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
                 Row {
                     anchors.fill: parent; anchors.margins: 4
                     Repeater {
-                        model: [{mode: "offline", label: "Solo"}, {mode: "coop", label: "Coop"}]
+                        model: [{mode: "offline", label: launcher.tr("Single-player")}, {mode: "coop", label: launcher.tr("Cooperative")}]
                         delegate: Rectangle {
                             width: (modeSwitch.width - 8) / 2; height: 48; radius: 6
                             color: launcher.playMode === modelData.mode ? "#6d5940" : "transparent"
@@ -71,14 +71,14 @@ Item {
             }
         GlassButton {
             id: playButton
-            anchors.right: parent.right; y: 0
+            anchors.horizontalCenter: parent.horizontalCenter; y: 66
             width: 296; height: 56; serif: true; highlighted: true
             text: launcher.tr("Play")
             enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
             onClicked: home.primaryRequested()
         }
         Text {
-            y: 68; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+            y: 134; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
             text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
             color: Theme.textDim; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
         }

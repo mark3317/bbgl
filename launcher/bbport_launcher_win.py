@@ -281,7 +281,7 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR / 'game'), 'user_dir
                 'play_mode': 'offline', 'coop_role': 'client', 'graphics_preset': 'balanced',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
                 # finished or skipped.
-                'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,
+                'setup_name_edited': False, 'setup_auto_name': '', 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,
                 **{'bbsc_' + item['id']: item['default'] for item in COOP_SETTINGS}}
 
 

@@ -10,7 +10,8 @@ Item {
     property bool gameValid: checks[0].level !== "error"
     property bool savesValid: checks[2].level !== "error" && launcher.savesWritable
     signal exitRequested(string page)
-    onVisibleChanged: if (visible) step = 0
+    onVisibleChanged: if (visible) { step = 0; launcher.prepareSetupName() }
+    Component.onCompleted: if (visible) launcher.prepareSetupName()
     function finish() { launcher.completeSetup(); wizard.exitRequested("Home") }
     Text { text: launcher.tr("FIRST-TIME SETUP"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13 }
     Text { y: 36; width: parent.width; text: [launcher.tr("Game files & saves"), launcher.tr("Co-op"), launcher.tr("Finish setup")][wizard.step]; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }

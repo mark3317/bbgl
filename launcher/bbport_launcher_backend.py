@@ -326,6 +326,7 @@ class LauncherBackend(QObject):
         self._output_timer.setSingleShot(True)
         self._output_timer.setInterval(100)
         self._output_timer.timeout.connect(self._flush_output)
+        self._setup_naming = False
         self._checks_started = False
         self._gpu_thread = None
         self.ini, self.ini_lines = core.load_ini()
@@ -485,13 +486,31 @@ class LauncherBackend(QObject):
         self._problem = ''
         self.changed.emit()
 
+    def _update_setup_name(self):
+        name = Path(self.value('user_dir')).name or 'user'
+        self.app.update(coop_name=name, player_name=name, setup_auto_name=name)
+
+    @Slot()
+    def prepareSetupName(self):
+        if self.app.get('setupCompleted') or self.app.get('setup_name_edited'):
+            return
+        name = self.app.get('coop_name', '')
+        hunter = self.app.get('player_name', '')
+        previous = self.app.get('setup_auto_name', '')
+        if (not name and not hunter) or (previous and name == previous and hunter == previous):
+            self._setup_naming = True
+            self._update_setup_name()
+            self._write()
+
     @Slot()
     def completeSetup(self):
+        self._setup_naming = False
         self.app.update(setupCompleted=True, setupSkipped=False, setupVersion=bbport_startup.SETUP_VERSION)
         self._write()
 
     @Slot()
     def skipSetup(self):
+        self._setup_naming = False
         self.app.update(setupSkipped=True, setupVersion=bbport_startup.SETUP_VERSION)
         if not bbport_startup.game_ok(self.app):
             self._problem = 'game'
@@ -861,6 +880,11 @@ class LauncherBackend(QObject):
                 self.presetApplied.emit()
             if key == 'coop_name':
                 self.app['player_name'] = value
+                self.app['setup_auto_name'] = ''
+                self.app['setup_name_edited'] = True
+                self._setup_naming = False
+            if key == 'user_dir' and self._setup_naming:
+                self._update_setup_name()
         self._write()
         if key in ('upscaler', 'frame_gen'):
             self.presetApplied.emit()

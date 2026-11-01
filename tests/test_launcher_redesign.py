@@ -20,6 +20,31 @@ class RedesignTests(unittest.TestCase):
         self.assertEqual(backend.app['player_name'],'NewHunter')
         self.assertEqual(backend._coop_account()[0],'NewHunter')
 
+    def test_setup_name_follows_save_folder_until_manually_edited(self):
+        backend = backend_module.LauncherBackend()
+        backend.prepareSetupName()
+        self.assertEqual(backend.value('coop_name'), 'user')
+        backend.setValue('user_dir', str(self.root / 'HunterSave'))
+        self.assertEqual(backend.app['player_name'], 'HunterSave')
+        restarted = backend_module.LauncherBackend()
+        restarted.prepareSetupName()
+        restarted.setValue('user_dir', str(self.root / 'SecondSave'))
+        self.assertEqual(restarted.value('coop_name'), 'SecondSave')
+        restarted.setValue('coop_name', 'MyName')
+        restarted.setValue('user_dir', str(self.root / 'ThirdSave'))
+        self.assertEqual(restarted.value('coop_name'), 'MyName')
+        restarted.setValue('coop_name', '')
+        restarted.prepareSetupName()
+        self.assertEqual(restarted.value('coop_name'), '')
+
+    def test_setup_does_not_rename_existing_accounts(self):
+        backend = backend_module.LauncherBackend()
+        backend.app.update(coop_name='ExistingAccount', player_name='ExistingHunter')
+        backend.prepareSetupName()
+        backend.setValue('user_dir', str(self.root / 'OtherSave'))
+        self.assertEqual(backend.app['coop_name'], 'ExistingAccount')
+        self.assertEqual(backend.app['player_name'], 'ExistingHunter')
+
     def test_host_without_tailscale_reports_download_and_stops_failed_host(self):
         backend = backend_module.LauncherBackend()
         backend.app.update(coop_name='Hunter',coop_password='test-only')

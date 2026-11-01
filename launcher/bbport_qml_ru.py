@@ -876,3 +876,5 @@ RU.update({'Reduced effects, 60 FPS.': 'Упрощённые эффекты, 60 
 'Standard effects, 120 FPS.': 'Обычные эффекты, 120 FPS.',
 'High quality, 120 FPS.': 'Высокое качество, 120 FPS.',
 'Maximum detail and reflections, 120 FPS.': 'Максимум деталей и отражений, 120 FPS.'})
+
+RU.update({'Single-player': 'Одиночный', 'Cooperative': 'Совместный'})

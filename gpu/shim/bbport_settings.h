@@ -73,7 +73,7 @@ inline constexpr int OutputDefault = 1; ///< 1920x1080, the game's own size
 
 struct Values {
     std::atomic<int> live_graphics_mask{0}; // Experimental engine hooks successfully installed.
-    std::atomic<int> upscaler{UpscalerFsr3};
+    std::atomic<int> upscaler{UpscalerOff};
     std::atomic<int> preset{NativeAA};
     std::atomic<bool> sharpen{true};
     std::atomic<float> sharpness{0.3f};
@@ -143,7 +143,7 @@ struct Values {
 
     /// Startup settings for the explicit BB_RENDER_RES compatibility patch only.
     int startup_preset = NativeAA;
-    int startup_upscaler = UpscalerFsr3;
+    int startup_upscaler = UpscalerOff;
     bool startup_object_motion = true;
     bool startup_effects[EffectCount]{};
     int startup_model_lod = 0;

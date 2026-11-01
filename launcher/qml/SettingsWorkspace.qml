@@ -236,10 +236,7 @@ Item {
                         }
                     }
                     Note { visible: is("Controls", "Button prompts"); text: launcher.tr("Which buttons the game shows, from the next start. Xbox (by Dommo) and Keyboard (PCBButtons by JinkiJinn) are bundled. Select your game folder, then choose the buttons; no separate download is needed. Keyboard also binds the keys its images show: E interact, Left Shift dodge, R blood vial, Q item, F transform, mouse buttons to attack.") }
-                    Flow { width: parent.width; visible: is("Visuals", "Upscaling"); spacing: 12
-                        GlassButton { text: launcher.tr("Download FSR 4 assets"); width: 180; height: 48; onClicked: launcher.downloadFsr4() }
-                        Note { text: launcher.fsrStatus; width: parent.width }
-                    }
+                    FsrAssets { width: parent.width; visible: is("Visuals", "Upscaling") }
                     Repeater {
                         model: is("Game & Saves", "Game files") ? [launcher.readiness[0], launcher.readiness[2]] : []
                         delegate: Note { text: modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.textDim }

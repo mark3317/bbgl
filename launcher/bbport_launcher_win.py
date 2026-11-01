@@ -260,7 +260,7 @@ def dlss_hardware_supported():
         return False
 
 
-INI_DEFAULTS = {'upscaler': 'dlss', 'preset': '2', 'sharpen': '1', 'sharpness': '0.50',
+INI_DEFAULTS = {'upscaler': 'off', 'preset': '2', 'sharpen': '1', 'sharpness': '0.50',
                 'object_motion': '1', 'show_fps': '1', 'output_res': display_resolution(), 'hud_position': '100', 'model_lod': '0',
                 'live_resolution': '1', 'mouse_camera': '1', 'mouse_sensitivity': '10', 'mouse_menu': '1',
                 'mouse_invert_y': '0', 'mouse_hide_cursor': '0', 'move_smoothing': '60', 'frame_gen': 'off', 'frame_gen_multiplier': '2', 'frame_gen_fit_display': '0',
@@ -303,7 +303,6 @@ def app_settings(saved):
 
 UPSCALERS = [('dlss', ('DLSS (NVIDIA GeForce RTX)',)),
              ('fsr4', ('FSR 4 (best quality)', 'FSR 4 (лучшее качество)')),
-             ('fsr411', ('FSR 4.1.1 (needs fsr4_411 assets)', 'FSR 4.1.1 (нужны ассеты fsr4_411)')),
              ('fsr3', ('FSR 3.1 (every GPU)', 'FSR 3.1 (любая видеокарта)')),
              ('taa', ('TAA (native resolution anti-aliasing)', 'TAA (нативное сглаживание)')),
              ('off', ('Off', 'Выключен'))]
@@ -404,13 +403,13 @@ VRAM_BUDGETS = [('', ('Automatic (recommended)', 'Автоматически (р
 # until a preset is chosen. All of it applies when the game next starts (the upscaling preset
 # live as well when live resolution is on).
 GRAPHICS_PRESETS = {
-    'low': {'preset': '3', 'model_lod': '1', 'effect_ssao': '0', 'effect_dynamic_shadows': '0',
+    'low': {'upscaler': 'off', 'preset': '3', 'model_lod': '1', 'effect_ssao': '0', 'effect_dynamic_shadows': '0',
             'effect_ssr': '0', 'fps_mode': '60'},
-    'balanced': {'preset': '2', 'model_lod': '0', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
+    'balanced': {'upscaler': 'off', 'preset': '2', 'model_lod': '0', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
                  'effect_ssr': '0', 'fps_mode': '120'},
-    'high': {'preset': '1', 'model_lod': '0', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
+    'high': {'upscaler': 'off', 'preset': '1', 'model_lod': '0', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
              'effect_ssr': '0', 'fps_mode': '120'},
-    'ultra': {'preset': '0', 'model_lod': '-2', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
+    'ultra': {'upscaler': 'off', 'preset': '0', 'model_lod': '-2', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
               'effect_ssr': '1', 'fps_mode': '120'},
 }
 GRAPHICS_PRESET_INFO = {
@@ -498,6 +497,8 @@ def load_ini():
         if '=' in line and not line.lstrip().startswith('#'):
             key, value = line.split('=', 1)
             values[key.strip()] = value.strip()
+    if values.get('upscaler') == 'fsr411' or (values.get('upscaler') == 'fsr4' and fsr4_missing()):
+        values['upscaler'] = 'off'
     return values, lines
 
 

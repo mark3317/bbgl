@@ -33,7 +33,7 @@ void Set(Values& v, const std::string& key, const std::string& value) {
     if (key == "upscaler") {
         for (int u = 0; u < UpscalerCount; ++u) {
             if (value == UpscalerName(u)) {
-                v.upscaler = u;
+                v.upscaler = u == UpscalerFsr411 ? UpscalerOff : u;
             }
         }
     } else if (key == "frame_gen") {
@@ -149,7 +149,7 @@ void Load() {
     if (const char* env = std::getenv("BB_UPSCALER")) {
         v.upscaler = UpscalerOff;
         for (int u = 0; u < UpscalerCount; ++u) {
-            if (std::strcmp(env, UpscalerName(u)) == 0) v.upscaler = u;
+            if (std::strcmp(env, UpscalerName(u)) == 0) v.upscaler = u == UpscalerFsr411 ? UpscalerOff : u;
         }
     }
     const std::pair<const char*, const char*> env_keys[] = {
@@ -184,10 +184,36 @@ void Load() {
     v.startup_live_resolution = v.live_resolution;
 }
 
+// Same complete v07 asset set that the launcher downloads. Never expose a partial install.
+static bool Fsr4AssetsPresent() {
+    const char* custom = std::getenv("BB_FSR4_DIR");
+    const std::filesystem::path root = custom && custom[0] ? custom : "fsr4_shaders";
+    const auto present = [&](const std::string& name) {
+        std::error_code error;
+        const auto size = std::filesystem::file_size(root / name, error);
+        return !error && size > 0;
+    };
+    for (const char* name : {"LICENSE-FSR4-v07.txt", "rcas.spv", "spd_auto_exposure.spv"})
+        if (!present(name)) return false;
+    for (const char* model : {"native", "quality", "balanced", "performance", "ultraperf", "drs"}) {
+        const std::string prefix = std::string("fsr4_model_v07_i8_") + model + "_";
+        for (const char* suffix : {"initializers.bin", "pre_weights.bin", "shader_manifest.json"})
+            if (!present(prefix + suffix)) return false;
+        for (const char* tier : {"1080", "2160", "4320"}) {
+            const std::string base = prefix + tier + "_";
+            if (!present(base + "pre.spv") || !present(base + "post.spv")) return false;
+            for (int pass = 1; pass <= 12; ++pass)
+                if (!present(base + "pass" + std::to_string(pass) + ".spv")) return false;
+        }
+    }
+    return true;
+}
+
 void ConfigureUpscalerSupport(bool fsr4, bool fsr411) {
     auto& v = Get();
-    v.fsr4_supported = fsr4;
-    v.fsr411_supported = fsr4 && fsr411;
+    (void)fsr411;
+    v.fsr4_supported = fsr4 && Fsr4AssetsPresent();
+    v.fsr411_supported = false;
     const int requested = v.upscaler;
     if ((requested == UpscalerFsr4 && !v.fsr4_supported) ||
         (requested == UpscalerFsr411 && !v.fsr411_supported)) {
@@ -415,7 +441,7 @@ extern "C" int bbgpu_upscaler_supported(int upscaler) {
     const auto& v = Get();
     switch (upscaler) {
     case UpscalerFsr4: return v.fsr4_supported.load();
-    case UpscalerFsr411: return v.fsr411_supported.load();
+    case UpscalerFsr411: return false;
     case UpscalerDlss: return v.dlss_supported.load();
     default: return upscaler >= 0 && upscaler < UpscalerCount;
     }

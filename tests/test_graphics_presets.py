@@ -30,12 +30,12 @@ class GraphicsPresetTests(unittest.TestCase):
         ini['effect_ssr'] = '0'
         self.assertEqual(core.graphics_preset_of(ini, app), 'custom')
 
-    def test_preset_leaves_upscaler_output_and_look_alone(self):
+    def test_preset_disables_upscaler_and_preserves_output_and_look(self):
         ini, app = self.defaults()
         ini.update(upscaler='fsr3', output_res='3840x2160', effect_dof='0', effect_motion_blur='0')
         core.apply_graphics_preset('low', ini, app)
         self.assertEqual((ini['upscaler'], ini['output_res'], ini['effect_dof'], ini['effect_motion_blur']),
-                         ('fsr3', '3840x2160', '0', '0'))
+                         ('off', '3840x2160', '0', '0'))
         self.assertEqual(app['fps_mode'], '60')
 
     def test_new_installs_run_120_and_saved_settings_keep_their_frame_rate(self):

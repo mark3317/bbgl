@@ -296,6 +296,7 @@ class LauncherBackend(QObject):
     workerNotice = Signal(str)
     gpuDetected = Signal(str)
     dlssDetected = Signal(bool)
+    fsrAssetsFinished = Signal()
     setupRunningChanged = Signal()
     setupCompleted = Signal(str)
     setupFailed = Signal(str)
@@ -338,6 +339,8 @@ class LauncherBackend(QObject):
         self._settings_revision = 0
         self._dlss_supported = False
         self._gpu_status = 'Checking graphics card…'
+        self._fsr_busy = False
+        self.fsrAssetsFinished.connect(self._fsr_assets_finished)
         self._setup_running = False
         self._game_download_progress = 0.0
         self._game_download_status = ''
@@ -587,7 +590,7 @@ class LauncherBackend(QObject):
 
     @Slot(str, result=str)
     def presetDescription(self, name):
-        return T({'low': 'Performance upscaling, reduced effects, 60 FPS.', 'balanced': 'Balanced upscaling, standard effects, 120 FPS.', 'high': 'Quality upscaling, standard effects, 120 FPS.', 'ultra': 'Native resolution, maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
+        return T({'low': 'Reduced effects, 60 FPS.', 'balanced': 'Standard effects, 120 FPS.', 'high': 'High quality, 120 FPS.', 'ultra': 'Native resolution, maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
 
     @Property(int, notify=presetApplied)
     def settingsRevision(self):
@@ -678,6 +681,8 @@ class LauncherBackend(QObject):
         return f'Now: the game renders at {rw} × {rh} and upscales it to {w} × {h}.'
 
     def live_field(self, field):
+        if field['key'] == 'upscaler':
+            field = {**field, 'options': [o for o in field['options'] if o['value'] != 'fsr4' or self.fsrReady]}
         if field['key'] in ('upscaler', 'frame_gen') and not self._dlss_supported:
             field = {**field, 'options': [o for o in field['options'] if o['value'] != 'dlss']}
         if field['key'] == 'preset':
@@ -1187,12 +1192,44 @@ class LauncherBackend(QObject):
             self.ini, self.ini_lines = core.load_ini()
         self.refresh_addons()
 
+    @Property(bool, notify=changed)
+    def fsrReady(self):
+        return not core.fsr4_missing()
+
+    @Property(bool, notify=changed)
+    def fsrBusy(self):
+        return self._fsr_busy
+
+    @Slot()
+    def _fsr_assets_finished(self):
+        self._fsr_busy = False
+        self._settings_revision += 1
+        self.presetApplied.emit()
+        self.changed.emit()
+
+    @Slot()
+    def removeFsr4(self):
+        if self.running or self._fsr_busy:
+            return
+        if self.ini.get('upscaler') == 'fsr4':
+            self.ini['upscaler'] = 'off'
+            self._write()
+        folder = core.PORT_DIR / 'fsr4_shaders'
+        try:
+            for name in core.fsr4_files():
+                (folder / name).unlink(missing_ok=True)
+            self._set_notice('FSR 4 assets removed.')
+        except OSError as error:
+            self._set_notice(f'FSR 4: {error}')
+        self._fsr_assets_finished()
+
     @Slot()
     def downloadFsr4(self):
-        missing = core.fsr4_missing()
-        if not missing:
-            self._set_notice('FSR 4 assets are already installed.')
+        if self.running or self._fsr_busy or self.fsrReady:
             return
+        missing = core.fsr4_missing()
+        self._fsr_busy = True
+        self.changed.emit()
         self._set_notice(f'Downloading {len(missing)} FSR 4 files…')
         def work():
             try:
@@ -1206,7 +1243,8 @@ class LauncherBackend(QObject):
                 self.workerNotice.emit('FSR 4 assets installed.')
             except OSError as error:
                 self.workerNotice.emit(f'FSR 4 download failed: {error}')
-            self.changed.emit()
+            finally:
+                self.fsrAssetsFinished.emit()
         threading.Thread(target=work, daemon=True).start()
 
     @Slot(bool)

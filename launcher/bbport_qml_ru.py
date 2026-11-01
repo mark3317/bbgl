@@ -855,3 +855,8 @@ RU.update({'Start server': 'Запустить сервер', 'Stop server': 'О
 RU.update({'Cheats': 'Читы', 'Advanced system': 'Расширенные настройки'})
 
 RU.update({'Logs': 'Журнал', 'Open launcher folder': 'Открыть папку лаунчера'})
+
+RU.update({'Remove FSR 4 assets': 'Удалить ресурсы FSR 4', 'FSR 4 assets removed.': 'Ресурсы FSR 4 удалены.',
+'Reduced effects, 60 FPS.': 'Упрощённые эффекты, 60 FPS. Апскейлер выключен.',
+'Standard effects, 120 FPS.': 'Обычные эффекты, 120 FPS. Апскейлер выключен.',
+'High quality, 120 FPS.': 'Высокое качество, 120 FPS. Апскейлер выключен.'})

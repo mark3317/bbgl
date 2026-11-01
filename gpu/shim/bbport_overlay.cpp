@@ -613,6 +613,8 @@ void SettingsTab() {
     int upscaler = s.upscaler;
     if (ComboRow("Upscaler", upscalers[upscaler])) {
         for (int i = 0; i < BbSettings::UpscalerCount; ++i) {
+            if (i == BbSettings::UpscalerFsr411 ||
+                (i == BbSettings::UpscalerFsr4 && !s.fsr4_supported.load())) continue;
             const bool supported = i == BbSettings::UpscalerFsr4 ? s.fsr4_supported.load()
                 : i == BbSettings::UpscalerFsr411 ? s.fsr411_supported.load()
                 : i == BbSettings::UpscalerDlss   ? s.dlss_supported.load() : true;

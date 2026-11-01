@@ -2,7 +2,37 @@
 
 **English** · [Русский](README.ru.md) · [Download 1.0.0](https://github.com/mark3317/bbgl/releases/latest) · [Report a problem](https://github.com/mark3317/bbgl/issues)
 
-A Windows launcher for playing Bloodborne alone or with friends. BBGL builds on [yharnam-pc](https://github.com/Jgamrot/yharnam-pc) and includes **[BBSC-GL](https://github.com/mark3317/bbsc-gl)**, our fork of Bloodborne Seamless Co-op. The co-op client and hosting tools come with the download: no separate mod installation or DLL replacement.
+**Bloodborne for Windows, focused on convenience and playing through the game with friends.** BBGL is a fork of [yharnam-pc](https://github.com/Jgamrot/yharnam-pc), created to make getting into the game easier, especially in co-op. Game downloading is built into the launcher, and the modified **[BBSC-GL](https://github.com/mark3317/bbsc-gl)** co-op client and hosting server are bundled. After downloading BBGL, you do not need to find separate mod, loader or server packages and match their versions yourself.
+
+## Why this fork exists
+
+BBGL brings installation, configuration and launching into one interface. Guided setup helps prepare the game, choose a save folder and configure co-op. Play alone or gather friends without manually installing DLLs or assembling separate BBSC components.
+
+Version **1.0.0** implements almost all of the planned core functionality. The latest build has passed gameplay validation; further work focuses on refinements and broader gameplay coverage.
+
+## Co-op: changes from BBSC
+
+BBSC-GL builds on [Bloodborne Seamless Co-op](https://github.com/CLSAMG22/BBSC). Seamless sessions, networking and the underlying co-op mechanics were created by the original authors. This fork extends that foundation for playing through the game together:
+
+- **Personal quests, shared main story.** Each player keeps their own NPC quest progress and personal rewards, while main-story progress is synchronized across the party. Play together while retaining your own character and world.
+- **Personal chalice progress, seamless group exploration.** Players retain their individual chalice progress while the party can play through chalice dungeons seamlessly together. This extends the original BBSC, where this scenario is not yet implemented.
+- **Return to your own world.** Guest exit, world recovery and return locations have been improved, including after visiting the host's chalice dungeon.
+- **Personal interactions and rewards.** Extended guest NPC interactions and personal quest-item grants, with an option to use your own Hunter's Dream.
+- **Fixes to the original mod.** Addressed repeat-summon and stale-session issues, chalice combat latency, guest return problems and the camera after a party wipe. Key-item retries, death handling and guest menu exit have also been improved.
+
+Core scenarios have been validated with two players. Broader coverage of chalices, progression stages and larger parties is ongoing. [BBSC-GL source and development status](https://github.com/mark3317/bbsc-gl/tree/develop).
+
+## BBGL features
+
+- **One package for getting started.** Built-in game downloading, bundled co-op client and server, and ready-to-use button prompt packs. Game files are downloaded separately through the interface and are not included in the launcher ZIP.
+- **Full Russian interface localization.** The launcher, added in-game menus and overlay are translated into Russian; English is also available.
+- **Graphics settings during gameplay.** Change resolution, upscaling and supported graphics effects through the in-game menu without restarting the game, so you can tune image quality and performance during a session.
+- **Redesigned interface.** Guided first launch, settings search, solo/co-op launch selection and local server management from the launcher.
+- **In-game overlay.** Open trophies, map options and diagnostics with **Insert** or **L3 + R3**. The overlay follows the launcher's language.
+- **Included control prompts.** PlayStation, Xbox and keyboard prompts, with the alternative packs already bundled.
+- **Profile stored separately.** Settings, launcher-managed saves and co-op data live in `%LOCALAPPDATA%\Bloodborne Game Launcher`. Manually selected save folders stay where you chose them.
+
+Bundled mod/server integration, personal versus main-story progress, seamless chalice play, Russian in-game menus and expanded live graphics controls are key additions in this fork. Features inherited from the original port and BBSC remain credited to their authors.
 
 ## Launcher
 
@@ -12,27 +42,14 @@ The redesigned interface supports English and Russian. Screenshots show the Russ
 
 ![Graphics settings](docs/screenshots/launcher-graphics.png)
 
-![Co-op setup](docs/screenshots/launcher-coop.png)
-
 ## Start playing
 
 1. Download `bbgl-1.0.0-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
-2. Run **Bloodborne.exe** and select your own decrypted Bloodborne **CUSA03173, update 1.09** files. Game files are not included.
+2. Run **Bloodborne.exe**. Use the built-in download button in setup or select an existing Bloodborne **CUSA03173, update 1.09** folder. Game files are not included in the launcher archive.
 3. For solo play, launch the game normally. For co-op, choose Co-op, enter your account and the host's invite code. One player can choose **Host a session**; friends need network access to that PC, for example through Tailscale.
 4. Use the in-game co-op bells to gather your party. Keep everyone on the same BBGL release.
 
 Windows x64 and a compatible Vulkan driver are required. For graphics, hardware, controls, extracting your game and other port details, use the **[original yharnam-pc README](https://github.com/Jgamrot/yharnam-pc#readme)**.
-
-## What this fork adds
-
-- A matched launcher, BBSC-GL client and hosting server in one package, pinned to known source revisions.
-- Co-op focused on playing through the game together, with guest world recovery, personal NPC rewards and an own Hunter's Dream option. See [how BBSC-GL differs from BBSC](https://github.com/mark3317/bbsc-gl#readme).
-- PlayStation, Xbox and keyboard button prompts; the alternative packs are included.
-- Updates from **mark3317/bbgl**. Settings, saves managed by the launcher, co-op journals and host data live in `%LOCALAPPDATA%\Bloodborne Game Launcher`; the previous bbgl profile is migrated automatically. A manually selected save folder remains where you chose it.
-
-The latest version passed user gameplay validation on 1 November 2026. Two-player testing has confirmed co-op combat, repeat summons, guest menu exit and return to the guest's own world. Broader chalice, progression and larger-party coverage remains ongoing. Keep save backups. [Development status](https://github.com/mark3317/bbsc-gl/tree/develop).
-
-The in-game overlay opens with **Insert** or **L3 + R3**. It includes trophies, map options and diagnostics, and follows the launcher's language.
 
 ## Source and credits
 

@@ -355,6 +355,7 @@ class LauncherBackend(QObject):
         self._coop_host = coop.Host()
         self._coop_busy = False
         self._coop_status = ''
+        self._coop_firewall_error = False
         self._coop_invite = ''
         self._coop_launch_env = None
         self._coopDone.connect(self._coop_finished)
@@ -1356,6 +1357,10 @@ class LauncherBackend(QObject):
             return T('Server is running. Send the invite code to friends.')
         return T('Start hosting to invite friends.') if self.coopRole == 'host' else T('Enter your details and play co-op.')
 
+    @Property(bool, notify=coopChanged)
+    def coopFirewallError(self):
+        return self._coop_firewall_error
+
     @Property(str, notify=changed)
     def coopRole(self):
         return self.app.get('coop_role', 'client')
@@ -1380,9 +1385,11 @@ class LauncherBackend(QObject):
         self.coopChanged.emit()
 
         def run():
+            self._coop_firewall_error = False
             try:
                 result = work()
             except (coop.CoopError, OSError, ValueError) as error:
+                self._coop_firewall_error = any(word in str(error).casefold() for word in ('firewall', 'брандмауэр', 'access denied', 'blocked'))
                 result = f'Co-op: {error}'
             except Exception as error:  # download and process errors: report, never crash the UI
                 result = f'Co-op: {type(error).__name__}: {error}'

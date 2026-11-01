@@ -9,7 +9,8 @@ Item {
     property bool hasHint: (field.hint || "") !== ""
     property bool isFolder: field.kind === "folder"
     property real controlWidth: Math.min(330, width * 0.44)
-    implicitHeight: isFolder ? 110 : Math.max(62, labels.implicitHeight + 28)
+    property real minimumHeight: 62
+    implicitHeight: isFolder ? 110 : Math.max(minimumHeight, labels.implicitHeight + 28)
     height: implicitHeight
 
     Column {

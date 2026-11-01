@@ -33,12 +33,11 @@ Item {
                 model: [wizard.checks[0], wizard.checks[2]]
                 delegate: Note { text: (modelData.level === "error" ? "●  " : "✓  ") + modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.good }
             }
-            GlassButton { text: launcher.tr("Check again"); onClicked: launcher.refreshReadiness() }
         }
         Column {
             id: coopStep; width: parent.width - 12; spacing: 12; visible: wizard.step === 1
             Note { text: launcher.tr("Optional. You can set up co-op later in Settings.") }
-            CoopConnection { width: parent.width }
+            CoopConnection { width: parent.width; onAttentionRequested: (target) => { if (wizard.visible && wizard.step === 1) scroll.contentY = Math.max(0, Math.min(target.mapToItem(coopStep, 0, 0).y - 24, scroll.contentHeight - scroll.height)) } }
         }
         Column {
             id: finishStep; width: parent.width - 12; spacing: 20; visible: wizard.step === 2

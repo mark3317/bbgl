@@ -2,13 +2,15 @@ import QtQuick
 import QtQuick.Controls
 
 Column {
+    property bool showDownloadButton: true
     spacing: 10
     Row {
         spacing: 12
         GlassButton {
+            visible: showDownloadButton
             text: launcher.tr("Download game")
             width: 180; height: 48
-            enabled: !launcher.setupRunning && !launcher.running
+            enabled: !launcher.setupRunning && !launcher.running && launcher.readiness[0].level === "error"
             onClicked: launcher.downloadGame()
         }
         GlassButton {

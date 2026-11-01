@@ -20,11 +20,12 @@ Item {
         }
     }
     Flickable {
-        x: Theme.railWidth + 44; y: 64; width: home.panelWidth - 88; height: parent.height - 172
+        id: homeScroll
+        x: Theme.railWidth + 44; y: 64; width: home.panelWidth - 64; height: parent.height - 218
         clip: true; contentHeight: content.implicitHeight
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
-            id: content; width: parent.width; spacing: 22
+            id: content; width: parent.width - 24; spacing: 24
             Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
             Rectangle { width: 64; height: 2; color: Theme.accent }
             Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 14; wrapMode: Text.WordWrap }
@@ -45,7 +46,13 @@ Item {
                     }
                 }
             }
-            CoopConnection { width: parent.width; visible: launcher.playMode === "coop" }
+            CoopConnection {
+                width: parent.width; visible: launcher.playMode === "coop"
+                onAttentionRequested: (target) => {
+                    if (!home.visible) return
+                    homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))
+                }
+            }
             GlassButton { visible: launcher.running; text: launcher.tr("Stop"); onClicked: launcher.stop() }
             Text {
                 width: parent.width; visible: home.gameBlocked || home.savesBlocked || launcher.setupRunning
@@ -56,13 +63,21 @@ Item {
             Text { width: parent.width; visible: text !== ""; text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
         }
     }
-    GlassButton {
-        x: Theme.railWidth + (home.panelWidth - width) / 2
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 24
-        width: 250; height: 56; serif: true; highlighted: true
-        text: launcher.tr("Play")
-        enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
-        onClicked: home.primaryRequested()
+    Rectangle {
+        x: Theme.railWidth + 28; width: home.panelWidth - 32
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 16
+        height: 136; radius: 10; color: "#e60e1115"; border.color: Theme.line
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter; y: 16; spacing: 8
+            Rectangle { width: 7; height: 7; radius: 4; color: home.gameBlocked || home.savesBlocked || home.onlineBlocked ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: launcher.playMode === "coop" ? launcher.tr("Multiplayer") : launcher.tr("Single player"); color: Theme.textDim; font.pixelSize: 13 }
+        }
+        GlassButton {
+            anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+            width: 250; height: 56; serif: true; highlighted: true
+            text: launcher.tr("Play")
+            enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
+            onClicked: home.primaryRequested()
+        }
     }
-
 }

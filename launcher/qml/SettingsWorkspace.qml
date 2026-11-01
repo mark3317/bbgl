@@ -244,16 +244,19 @@ Item {
                         model: is("Game & Saves", "Game files") ? [launcher.readiness[0], launcher.readiness[2]] : []
                         delegate: Note { text: modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.textDim }
                     }
-                    GameDownload { width: parent.width; visible: is("Game & Saves", "Game files") }
+                    GameDownload { width: parent.width; visible: is("Game & Saves", "Game files"); showDownloadButton: false }
                     Flow { visible: is("Game & Saves", "Game files"); width: parent.width; spacing: 10
                         GlassButton { text: launcher.tr("Open saves folder"); width: 180; onClicked: launcher.action("openSaves") }
-                        GlassButton { text: launcher.tr("Check again"); onClicked: launcher.refreshReadiness() }
+                        GlassButton { text: launcher.tr("Download game"); enabled: !launcher.setupRunning && !launcher.running && launcher.readiness[0].level === "error"; onClicked: launcher.downloadGame() }
                         GlassButton { text: launcher.tr("Setup wizard"); width: 180; onClicked: workspace.openSetup(0) }
                     }
                     Flow { visible: is("Game & Saves", "Advanced"); width: parent.width; spacing: 10
                         GlassButton { text: launcher.tr("Import trophy keys"); width: 180; onClicked: launcher.importTrophyKeys() }
                     }
-                    CoopConnection { width: parent.width; visible: is("Co-op", "Seamless co-op") }
+                    CoopConnection {
+                        width: parent.width; visible: is("Co-op", "Seamless co-op")
+                        onAttentionRequested: (target) => { if (workspace.visible) detailScroll.contentY = Math.max(0, Math.min(target.mapToItem(detailColumn, 0, 0).y - 24, detailScroll.contentHeight - detailScroll.height)) }
+                    }
                     Note { visible: is("Mods & Patches", "Gameplay patches"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
                     Repeater {
                         model: is("Mods & Patches", "Installed mods") ? launcher.contentMods : []

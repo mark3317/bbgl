@@ -848,3 +848,6 @@ RU.update({
 'Native resolution, maximum detail and reflections, 120 FPS.': 'Полное разрешение, максимум деталей и отражений, 120 FPS.',
 'Custom graphics settings.': 'Собственные настройки графики.'
 })
+
+RU.update({'Start server': 'Запустить сервер', 'Stop server': 'Остановить сервер',
+'Allows co-op server connections through Windows Firewall on local and Tailscale networks.': 'Разрешает подключения к серверу в локальной сети и Tailscale через брандмауэр Windows.'})

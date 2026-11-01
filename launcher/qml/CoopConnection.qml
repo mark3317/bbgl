@@ -3,11 +3,17 @@ import QtQuick.Controls
 
 Column {
     id: connection
-    spacing: 12
+    spacing: 16
+    signal attentionRequested(var target)
+    onVisibleChanged: if (visible && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) })
+    Connections {
+        target: launcher
+        function onCoopChanged() { if (connection.visible && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) }) }
+    }
     property bool hosting: launcher.coopRole === "host"
     Repeater {
         model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op")
-        delegate: FieldRow { width: connection.width; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: 104; field: modelData }
     }
     ToggleRow {
         width: parent.width
@@ -19,14 +25,34 @@ Column {
     }
     Repeater {
         model: connection.hosting ? [] : launcher.sectionFields("Co-op", "Join a host")
-        delegate: FieldRow { width: connection.width; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: 104; field: modelData }
     }
-    Flow {
-        visible: connection.hosting; width: parent.width; spacing: 10
-        GlassButton { text: launcher.coopHosting ? launcher.tr("Restart hosting") : launcher.tr("Start hosting"); width: 180; enabled: !launcher.coopBusy && !launcher.running; onClicked: launcher.coopStartHosting() }
-        GlassButton { text: launcher.tr("Copy invite code"); width: 180; enabled: launcher.coopInvite !== ""; onClicked: launcher.coopCopyInvite() }
-        GlassButton { text: launcher.tr("Stop hosting"); width: 180; enabled: launcher.coopHosting && !launcher.running; onClicked: launcher.coopStopHosting() }
+    Row {
+        width: parent.width; spacing: 10
+        GlassButton {
+            visible: connection.hosting
+            width: Math.min(180, (connection.width - 20) / 3)
+            text: launcher.coopHosting ? launcher.tr("Stop server") : launcher.tr("Start server")
+            enabled: !launcher.coopBusy && !launcher.running
+            onClicked: launcher.coopHosting ? launcher.coopStopHosting() : launcher.coopStartHosting()
+        }
+        GlassButton {
+            id: firewallButton
+            width: Math.min(180, (connection.width - 20) / 3)
+            text: launcher.tr("Configure firewall")
+            highlighted: launcher.coopFirewallError
+            enabled: !launcher.coopBusy && !launcher.running
+            onClicked: launcher.coopConfigureFirewall()
+        }
+        GlassButton {
+            visible: connection.hosting && launcher.coopHosting
+            width: Math.min(180, (connection.width - 20) / 3)
+            text: launcher.tr("Copy invite code")
+            enabled: launcher.coopInvite !== ""
+            onClicked: launcher.coopCopyInvite()
+        }
     }
+    Note { text: launcher.tr("Allows co-op server connections through Windows Firewall on local and Tailscale networks.") }
     Note { text: launcher.coopStatus }
     Text {
         visible: launcher.coopStatus.indexOf("https://tailscale.com/download/windows") >= 0
@@ -34,5 +60,4 @@ Column {
         linkColor: Theme.accentHover; font.pixelSize: 14
         onLinkActivated: (link) => Qt.openUrlExternally(link)
     }
-    CoopFirewall { width: parent.width }
 }

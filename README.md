@@ -4,6 +4,16 @@
 
 A Windows launcher for playing Bloodborne alone or with friends. BBGL builds on [yharnam-pc](https://github.com/Jgamrot/yharnam-pc) and includes **[BBSC-GL](https://github.com/mark3317/bbsc-gl)**, our fork of Bloodborne Seamless Co-op. The co-op client and hosting tools come with the download: no separate mod installation or DLL replacement.
 
+## Launcher
+
+The redesigned interface supports English and Russian. Screenshots show the Russian interface.
+
+![Home](docs/screenshots/launcher-home.png)
+
+![Graphics settings](docs/screenshots/launcher-graphics.png)
+
+![Co-op setup](docs/screenshots/launcher-coop.png)
+
 ## Start playing
 
 1. Download `bbgl-1.0.0-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
@@ -20,7 +30,13 @@ Windows x64 and a compatible Vulkan driver are required. For graphics, hardware,
 - PlayStation, Xbox and keyboard button prompts; the alternative packs are included.
 - Updates from **mark3317/bbgl**. Settings, saves managed by the launcher, co-op journals and host data live in `%LOCALAPPDATA%\Bloodborne Game Launcher`; the previous bbgl profile is migrated automatically. A manually selected save folder remains where you chose it.
 
-Co-op is experimental. Chalice combat latency, uncommon death/disconnect recovery and larger parties still need further checks. Keep save backups; automatic backups do not replace them. [Current issues and test status](https://github.com/mark3317/bbsc-gl/blob/mark/bbport-fixes/docs/BACKLOG.md).
+The latest version passed user gameplay validation on 1 November 2026. Two-player testing has confirmed co-op combat, repeat summons, guest menu exit and return to the guest's own world. Broader chalice, progression and larger-party coverage remains ongoing. Keep save backups. [Development status](https://github.com/mark3317/bbsc-gl/tree/develop).
+
+The in-game overlay opens with **Insert** or **L3 + R3**. It includes trophies, map options and diagnostics, and follows the launcher's language.
+
+## Updating from the test 1.0.0
+
+Download this archive manually: the version number is unchanged, so the updater may not offer it. Extract into a separate folder and run **Bloodborne.exe**. Your profile is stored separately from the installation.
 
 ## Source and credits
 

@@ -79,6 +79,8 @@ cp -r scripts patches "$dest/"
 # Legacy CPU (Intel 3rd generation and older): the translation plan scripts/cpu_compat.py applies.
 mkdir -p "$dest/tools" && cp tools/legacy-cpu-plan.json "$dest/tools/"
 cp run.py LICENSE README.md README.ru.md THIRD_PARTY.md packaging/windows/README-Windows.txt "$dest/"
+mkdir -p "$dest/docs"
+cp -r docs/screenshots "$dest/docs/"
 if [[ -d fsr4_shaders ]]; then cp -r fsr4_shaders "$dest/"; fi
 # Shader pre-build catalog (scripts/shader_catalog.py): records only, no game code or SPIR-V.
 if [[ -d shader_catalog ]]; then cp -r shader_catalog "$dest/"; fi

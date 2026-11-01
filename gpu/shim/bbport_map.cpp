@@ -1,3 +1,4 @@
+#include "bbport_overlay_text.h"
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_map.h"
 #include "bbport_map_art.h"
@@ -514,17 +515,17 @@ bool HandleEvent(const SDL_Event& e) {
 }
 void Settings() {
     std::lock_guard<std::recursive_mutex> map_guard(map_mutex);
-    ImGui::SeparatorText("Navigation map");
+    ImGui::SeparatorText(BbOverlayText::L("Navigation map"));
     ImGui::BeginDisabled(std::getenv("BB_ATLAS_ENABLED")!=nullptr);
-    if(ImGui::Checkbox("Enable full-screen map",&enabled)){if(!enabled)Close();controller_chord.SetEnabled(enabled && chord==2);Save();}
+    if(ImGui::Checkbox(BbOverlayText::L("Enable full-screen map"),&enabled)){if(!enabled)Close();controller_chord.SetEnabled(enabled && chord==2);Save();}
     ImGui::EndDisabled();
-    if(std::getenv("BB_ATLAS_ENABLED"))ImGui::TextDisabled("Enable or disable Hunter's Atlas in the launcher.");
-    if(ImGui::Combo("Map key",&keyboard,key_names,3))Save();
-    const char* chords[]={"Disabled","Open game menu, then click right stick (R3)","Hold LB / L1 + RB / R1 + Menu / Options for about 650 ms"};
-    if(ImGui::Combo("Map controller shortcut",&chord,chords,3)){controller_chord.SetEnabled(enabled && chord==2);Save();}
-    if(enabled && ImGui::Button("Open map"))SetOpen(true);
-    ImGui::TextWrapped("Select Map in the game's quick menu, or click its fourth tile. Back returns to the same menu. Keyboard and controller shortcuts are optional.");
-    if(!atlas_error.empty())ImGui::TextWrapped("Map data unavailable: %s",atlas_error.c_str());
+    if(std::getenv("BB_ATLAS_ENABLED"))ImGui::TextDisabled(BbOverlayText::L("Enable or disable Hunter's Atlas in the launcher."));
+    if(ImGui::Combo(BbOverlayText::L("Map key"),&keyboard,key_names,3))Save();
+    const char* chords[]={BbOverlayText::L("Disabled"),BbOverlayText::L("Open game menu, then click right stick (R3)"),BbOverlayText::L("Hold LB / L1 + RB / R1 + Menu / Options for about 650 ms")};
+    if(ImGui::Combo(BbOverlayText::L("Map controller shortcut"),&chord,chords,3)){controller_chord.SetEnabled(enabled && chord==2);Save();}
+    if(enabled && ImGui::Button(BbOverlayText::L("Open map")))SetOpen(true);
+    ImGui::TextWrapped(BbOverlayText::L("Select Map in the game's quick menu, or click its fourth tile. Back returns to the same menu. Keyboard and controller shortcuts are optional."));
+    if(!atlas_error.empty())ImGui::TextWrapped(BbOverlayText::L("Map data unavailable: %s"),atlas_error.c_str());
 }
 void SetTitleFont(ImFont* font){title_font=font;}
 ImFont* TitleFont(){return title_font?title_font:ImGui::GetFont();}

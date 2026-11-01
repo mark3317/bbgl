@@ -648,6 +648,7 @@ def game_environment(s):
     env['BB_MODS_ENABLED'] = '1' if s['mods_enabled'] else '0'
     env['BB_PATCHES_DIR'] = s['patches_dir'] or str(DATA_DIR / 'patches')
     env['BB_PATCHES_CONFIG'] = str(DATA_DIR / 'patches.json')
+    env['BB_UI_LANGUAGE'] = s.get('ui_language') or windows_language()
     env['BB_LANGUAGE'] = game_language(s)
     env['BB_VOICE_LANGUAGE'] = s.get('voice_language') or 'auto'
     if str(s['player_name']).strip():

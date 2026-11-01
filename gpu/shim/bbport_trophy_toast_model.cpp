@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_trophy_toast_model.h"
+#include "bbport_overlay_text.h"
 
 #include <algorithm>
 #include <charconv>
@@ -144,17 +145,17 @@ std::string FormatOptions(const Options& o) {
 }
 
 std::string UnlockedText(const Options& o) {
-    return o.text_unlocked.empty() ? "Trophy unlocked!" : o.text_unlocked;
+    return o.text_unlocked.empty() ? BbOverlayText::L("Trophy unlocked!") : o.text_unlocked;
 }
 
 std::string BannerText(const Options& o, bool preview) {
     if (!o.text_banner.empty()) return o.text_banner;
-    return preview ? "Achievement preview" : "Achievement unlocked";
+    return BbOverlayText::L(preview ? "Achievement preview" : "Achievement unlocked");
 }
 
 std::string GradeName(const Options& o, int grade) {
     if (grade < 1 || grade > 4) return "";
-    return o.grade_names[grade].empty() ? kGradeNames[grade] : o.grade_names[grade];
+    return o.grade_names[grade].empty() ? BbOverlayText::L(kGradeNames[grade]) : o.grade_names[grade];
 }
 
 AnimationSettings ParseAnimationSettings(std::string_view text) {

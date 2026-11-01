@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_trophy_toast.h"
+#include "bbport_overlay_text.h"
 
 #include <algorithm>
 #include <array>
@@ -999,23 +1000,23 @@ void ReloadSounds() { Post(LoadSounds); }
 std::string SoundSummary() {
     Audio& a = audio();
     std::scoped_lock lock{a.mutex};
-    if (!a.loaded) return "loading...";
+    if (!a.loaded) return BbOverlayText::L("loading...");
     const Options o = GetOptions();
     std::string out;
     for (int g = 1; g < 5; ++g) {
         if (g > 1) out += "  ·  ";
-        out += GradeName(o, g) + ": " + (a.sources[size_t(g)].empty() ? "none" : a.sources[size_t(g)]);
+        out += GradeName(o, g) + ": " + (a.sources[size_t(g)].empty() ? BbOverlayText::L("none") : a.sources[size_t(g)]);
     }
     return out;
 }
 
 std::string PictureSummary() {
     const Options o = GetOptions();
-    std::string out = "Badge: " + (badge_picture.Ready() ? badge_source : std::string("drawn"));
+    std::string out = std::string(BbOverlayText::L("Badge: ")) + (badge_picture.Ready() ? badge_source : std::string(BbOverlayText::L("drawn")));
     for (int g = 1; g < 5; ++g) {
         const Animation* anim = AnimationFor(Grade(g));
         const bool artwork = g == 4 && !o.platinum_animation;
-        out += "  ·  " + GradeName(o, g) + ": " + (artwork ? "artwork" : anim ? anim->source : g == 4 ? "drawn" : "artwork");
+        out += "  ·  " + GradeName(o, g) + ": " + (artwork ? BbOverlayText::L("artwork") : anim ? anim->source : g == 4 ? BbOverlayText::L("drawn") : BbOverlayText::L("artwork"));
     }
     return out;
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_overlay.h"
+#include "bbport_overlay_text.h"
 #include "bbport_map.h"
 #include "bbport_map_art.h"
 #include "bbport_atlas_menu.h"
@@ -71,6 +72,8 @@ extern "C" const unsigned char bb_font_ttf_end[];
 namespace BbOverlay {
 
 namespace {
+
+using BbOverlayText::L;
 
 std::mutex imgui_mutex; // the ImGui context: window thread (input) and present thread
 std::atomic<bool> initialized{false};
@@ -318,19 +321,19 @@ void Store(std::atomic<T>& target, T value, bool changed) {
 }
 
 // The guide's look, shared with the launcher (launcher/qml/Theme.qml): near-black panels, warm
-// off-white text, one crimson accent. Colours go through GetColorU32 so disabled rows fade.
+// off-white text, one teal accent. Colours go through GetColorU32 so disabled rows fade.
 namespace Ink {
 constexpr ImU32 Text = IM_COL32(236, 231, 223, 255);
 constexpr ImU32 Dim = IM_COL32(163, 158, 151, 255);
 constexpr ImU32 Faint = IM_COL32(111, 107, 102, 255);
 constexpr ImU32 Line = IM_COL32(38, 43, 49, 255);
 constexpr ImU32 LineStrong = IM_COL32(54, 60, 67, 255);
-constexpr ImU32 Panel = IM_COL32(11, 13, 16, 255);
+constexpr ImU32 Panel = IM_COL32(14, 17, 21, 255);
 constexpr ImU32 Rail = IM_COL32(9, 11, 14, 255);
 constexpr ImU32 Surface = IM_COL32(20, 24, 29, 255);
 constexpr ImU32 SurfaceHover = IM_COL32(26, 31, 37, 255);
-constexpr ImU32 Accent = IM_COL32(200, 50, 63, 255);
-constexpr ImU32 AccentSoft = IM_COL32(42, 18, 22, 255);
+constexpr ImU32 Accent = IM_COL32(40, 124, 141, 255);
+constexpr ImU32 AccentSoft = IM_COL32(17, 38, 44, 255);
 constexpr ImU32 Good = IM_COL32(143, 197, 156, 255);
 constexpr ImU32 Warn = IM_COL32(227, 168, 120, 255);
 } // namespace Ink
@@ -368,13 +371,18 @@ void OpenRows() {
 // the given height.
 void RowLabel(const char* label, float control_height) {
     OpenRows();
-    const float h = RowHeight();
+    label = L(label);
+    const float label_width = std::max(Px(80.0f), ImGui::GetContentRegionAvail().x - ControlWidth() - Px(24.0f));
+    const float text_height = ImGui::CalcTextSize(label, nullptr, false, label_width).y;
+    const float h = std::max(RowHeight(), text_height + Px(20.0f));
     ImGui::TableNextRow(ImGuiTableRowFlags_None, h);
     ImGui::TableSetColumnIndex(0);
     const float y = ImGui::GetCursorPosY();
-    ImGui::SetCursorPosY(y + (h - ImGui::GetTextLineHeight()) * 0.5f - ImGui::GetStyle().CellPadding.y);
+    ImGui::SetCursorPosY(y + (h - text_height) * 0.5f - ImGui::GetStyle().CellPadding.y);
     ImGui::PushStyleColor(ImGuiCol_Text, Vec(Ink::Text));
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + label_width);
     ImGui::TextUnformatted(label);
+    ImGui::PopTextWrapPos();
     ImGui::PopStyleColor();
     last_label_min = ImGui::GetItemRectMin();
     last_label_max = ImGui::GetItemRectMax();
@@ -519,8 +527,8 @@ bool PrimaryButton(const char* label) {
     CloseRows();
     ImGui::Dummy(ImVec2(0, Px(6.0f)));
     ImGui::PushStyleColor(ImGuiCol_Button, Vec(Ink::Accent));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Vec(IM_COL32(217, 65, 78, 255)));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Vec(IM_COL32(169, 42, 53, 255)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Vec(IM_COL32(51, 149, 166, 255)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Vec(IM_COL32(32, 100, 115, 255)));
     const bool pressed = ImGui::Button(label, ImVec2(-FLT_MIN, Px(48.0f)));
     ImGui::PopStyleColor(3);
     return pressed;
@@ -573,10 +581,10 @@ std::string FpsText() {
     char text[96];
     const int generated = s.frame_gen != BbSettings::FrameGenOff ? s.frame_gen_now.load() : 0;
     if (generated > 0 && s.game_fps > 0.0f) {
-        std::snprintf(text, sizeof(text), "%.0f FPS (game %.0f, frame gen %dx)", shown,
+        std::snprintf(text, sizeof(text), L("%.0f FPS (game %.0f, frame gen %dx)"), shown,
                       s.game_fps.load(), int(shown / s.game_fps + 0.5f));
     } else {
-        std::snprintf(text, sizeof(text), "%.0f FPS  %.1f ms", shown, frame_ms_avg);
+        std::snprintf(text, sizeof(text), L("%.0f FPS  %.1f ms"), shown, frame_ms_avg);
     }
     return text;
 }
@@ -600,18 +608,18 @@ bool ExtrasRestartNeeded() {
 
 void RestartPrompt() {
     if (!RestartNeeded()) return;
-    Note("Changes apply after restarting the game.", Ink::Warn);
+    Note(L("Changes apply after restarting the game."), Ink::Warn);
 }
 
 void SettingsTab() {
     auto& s = BbSettings::Get();
-    PageTitle("Visual settings");
-    Section("Temporal upscaling");
-    static const char* upscalers[] = {"Off", "FSR 3.1", "FSR 4 (INT8)", "FSR 4.1.1 (INT8)",
-                                     "TAA (native anti-aliasing)", "DLSS (NVIDIA RTX)"};
+    PageTitle(L("Visual settings"));
+    Section(L("Temporal upscaling"));
+    static const char* upscalers[] = {L("Off"), "FSR 3.1", "FSR 4 (INT8)", "FSR 4.1.1 (INT8)",
+                                     L("TAA (native anti-aliasing)"), "DLSS (NVIDIA RTX)"};
     static const char* later[] = {"XeSS"};
     int upscaler = s.upscaler;
-    if (ComboRow("Upscaler", upscalers[upscaler])) {
+    if (ComboRow(L("Upscaler"), upscalers[upscaler])) {
         for (int i = 0; i < BbSettings::UpscalerCount; ++i) {
             if (i == BbSettings::UpscalerFsr411 ||
                 (i == BbSettings::UpscalerFsr4 && !s.fsr4_supported.load())) continue;
@@ -625,7 +633,7 @@ void SettingsTab() {
             ImGui::EndDisabled();
             if (!supported) {
                 ImGui::SameLine();
-                ImGui::TextDisabled("- unsupported by this GPU");
+                ImGui::TextDisabled(L("- unsupported by this GPU"));
             }
         }
         for (const char* name : later) {
@@ -633,7 +641,7 @@ void SettingsTab() {
             ImGui::Selectable(name, false);
             ImGui::EndDisabled();
             ImGui::SameLine();
-            ImGui::TextDisabled("- in development");
+            ImGui::TextDisabled(L("- in development"));
         }
         ImGui::EndCombo();
     }
@@ -641,19 +649,19 @@ void SettingsTab() {
         NoteF(Ink::Warn, "DLSS: %s", problem);
     }
     if (const char* problem = s.fsr4_problem.load()) {
-        NoteF(Ink::Warn, "FSR 4 unavailable: %s", problem);
+        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), problem);
         if (!BbSettings::IsFsr4(s.upscaler))
-            Note("The selected mode is active. You can select FSR 4 again.");
+            Note(L("The selected mode is active. You can select FSR 4 again."));
     }
     if (BbSettings::IsFsr4(s.upscaler)) {
         if (s.upscaler == BbSettings::UpscalerFsr411) {
-            Hint("FSR 4.1.1 INT8: AMD 4.1.1 DLL model reproduced in Vulkan. One model covers Native through Performance, with another for Ultra Performance. Assets: tools/fsr4cap/build_assets.sh (requires the DLL and Proton).");
+            Hint(L("FSR 4.1.1 INT8: AMD 4.1.1 DLL model reproduced in Vulkan. One model covers Native through Performance, with another for Ultra Performance. Assets: tools/fsr4cap/build_assets.sh (requires the DLL and Proton)."));
         } else {
-            Hint("FSR 4 INT8 uses the v07 model from the AMD FidelityFX SDK. Higher quality than FSR 3.1, with more GPU work. Changing presets rebuilds the model and may pause briefly. Assets: tools/fetch_fsr4_assets.sh.");
+            Hint(L("FSR 4 INT8 uses the v07 model from the AMD FidelityFX SDK. Higher quality than FSR 3.1, with more GPU work. Changing presets rebuilds the model and may pause briefly. Assets: tools/fetch_fsr4_assets.sh."));
         }
-        Checkbox("FSR 4: auto exposure", s.fsr4_auto_exposure);
-        Checkbox("FSR 4: invert jitter", s.fsr4_invert_jitter);
-        Hint("Ghosting diagnostics: FSR 4 uses exposure to normalize color and decide when to discard history. These options apply immediately.");
+        Checkbox(L("FSR 4: auto exposure"), s.fsr4_auto_exposure);
+        Checkbox(L("FSR 4: invert jitter"), s.fsr4_invert_jitter);
+        Hint(L("Ghosting diagnostics: FSR 4 uses exposure to normalize color and decide when to discard history. These options apply immediately."));
     }
     const bool upscaler_on = s.upscaler != BbSettings::UpscalerOff;
     const bool taa = s.upscaler == BbSettings::UpscalerTaa;
@@ -661,15 +669,15 @@ void SettingsTab() {
     ImGui::BeginDisabled(taa);
     int preset = taa ? BbSettings::NativeAA : s.preset.load();
     char preset_label[64];
-    std::snprintf(preset_label, sizeof(preset_label), "%s (x%.1f)", BbSettings::PresetName(preset),
+    std::snprintf(preset_label, sizeof(preset_label), "%s (x%.1f)", L(BbSettings::PresetName(preset)),
                   BbSettings::PresetScale(preset));
-    if (ComboRow("Preset", preset_label)) {
+    if (ComboRow(L("Preset"), preset_label)) {
         for (int i = 0; i < BbSettings::PresetCount; ++i) {
             char label[64];
             const float scale = BbSettings::PresetScale(i);
             const int output = s.output_res;
-            std::snprintf(label, sizeof(label), "%s (x%.1f, render %dx%d)",
-                          BbSettings::PresetName(i), scale,
+            std::snprintf(label, sizeof(label), L("%s (x%.1f, render %dx%d)"),
+                          L(BbSettings::PresetName(i)), scale,
                           int(std::lround(BbSettings::OutputWidths[output] / scale / 2) * 2),
                           int(std::lround(BbSettings::OutputHeights[output] / scale / 2) * 2));
             if (ImGui::Selectable(label, i == preset)) {
@@ -680,58 +688,58 @@ void SettingsTab() {
     }
     ImGui::EndDisabled();
     if (taa) {
-        Note("TAA smooths the scene at output resolution without FSR upscaling. The saved upscaling preset returns when you select an upscaler.");
+        Note(L("TAA smooths the scene at output resolution without FSR upscaling. The saved upscaling preset returns when you select an upscaler."));
     }
-    InfoRow("Active scene resolution", "%d x %d", s.active_render_width.load(),
+    InfoRow(L("Active scene resolution"), "%d x %d", s.active_render_width.load(),
             s.active_render_height.load());
     if (BbSettings::AspectNeedsRestart()) {
-        Hint("Changing aspect ratio requires a restart. Ultrawide outputs (21:9, 32:9) widen the camera and HUD (HUD position: in the launcher); other aspect ratios keep a centred 16:9 HUD.");
+        Hint(L("Changing aspect ratio requires a restart. Ultrawide outputs (21:9, 32:9) widen the camera and HUD (HUD position: in the launcher); other aspect ratios keep a centred 16:9 HUD."));
     } else if (BbSettings::FixedRenderSession()) {
-        InfoRow("Startup preset", "%s", BbSettings::PresetName(s.startup_preset));
+        InfoRow(L("Startup preset"), "%s", L(BbSettings::PresetName(s.startup_preset)));
         if (const char* automatic = std::getenv("BB_AUTO_RENDER_RES");
             automatic && automatic[0] == '1') {
-            Hint("At outputs other than 1080p, the scene resolution is patched at startup. Changes to the preset or output require a restart. This saves GPU work on older GPUs. Non-16:9 outputs always use this path to keep camera and HUD geometry synchronized.");
+            Hint(L("At outputs other than 1080p, the scene resolution is patched at startup. Changes to the preset or output require a restart. This saves GPU work on older GPUs. Non-16:9 outputs always use this path to keep camera and HUD geometry synchronized."));
         } else {
-            Hint("BB_RENDER_RES fixes the scene resolution at startup. Remove this explicit override to allow live resolution and preset changes. Changes to aspect ratio still require a restart.");
+            Hint(L("BB_RENDER_RES fixes the scene resolution at startup. Remove this explicit override to allow live resolution and preset changes. Changes to aspect ratio still require a restart."));
         }
     } else {
-        Hint("Native AA uses the upscaler for anti-aliasing. Other presets reduce scene resolution relative to the output. The HUD is drawn at output resolution. Preset changes apply on the next frame in a live session.");
+        Hint(L("Native AA uses the upscaler for anti-aliasing. Other presets reduce scene resolution relative to the output. The HUD is drawn at output resolution. Preset changes apply on the next frame in a live session."));
     }
-    Checkbox("Sharpening (RCAS)", s.sharpen);
+    Checkbox(L("Sharpening (RCAS)"), s.sharpen);
     ImGui::BeginDisabled(!s.sharpen);
-    Slider("Sharpness", s.sharpness, 0.0f, 2.0f);
-    Hint("Up to 1 uses the upscaler sharpening pass (RCAS). Values above 1 add another RCAS pass. Ctrl+click the slider to enter an exact value.");
+    Slider(L("Sharpness"), s.sharpness, 0.0f, 2.0f);
+    Hint(L("Up to 1 uses the upscaler sharpening pass (RCAS). Values above 1 add another RCAS pass. Ctrl+click the slider to enter an exact value."));
     ImGui::EndDisabled();
-    Checkbox("Subpixel jitter", s.jitter);
-    Hint("The camera shifts by a fraction of a pixel each frame so the upscaler can recover detail across multiple frames. Without jitter, it only smooths using frame history.");
+    Checkbox(L("Subpixel jitter"), s.jitter);
+    Hint(L("The camera shifts by a fraction of a pixel each frame so the upscaler can recover detail across multiple frames. Without jitter, it only smooths using frame history."));
 
-    Section("Reactive mask");
+    Section(L("Reactive mask"));
     ImGui::BeginDisabled(taa);
-    Checkbox("Enable mask", s.reactive);
-    Hint("Marks transparent effects such as particles and fog so the upscaler relies less on history. Reduces trails, but can increase shimmer behind those effects.");
+    Checkbox(L("Enable mask"), s.reactive);
+    Hint(L("Marks transparent effects such as particles and fog so the upscaler relies less on history. Reduces trails, but can increase shimmer behind those effects."));
     ImGui::BeginDisabled(!s.reactive);
-    Slider("Scale", s.reactive_scale, 0.0f, 4.0f);
-    Slider("Threshold", s.reactive_threshold, 0.0f, 1.0f);
-    Slider("Maximum", s.reactive_max, 0.0f, 1.0f);
+    Slider(L("Scale"), s.reactive_scale, 0.0f, 4.0f);
+    Slider(L("Threshold"), s.reactive_threshold, 0.0f, 1.0f);
+    Slider(L("Maximum"), s.reactive_max, 0.0f, 1.0f);
     bool show_mask = s.debug_view == BbSettings::DebugReactive;
-    if (Toggle("Show mask (debug)", &show_mask)) {
+    if (Toggle(L("Show mask (debug)"), &show_mask)) {
         s.debug_view = show_mask ? BbSettings::DebugReactive : BbSettings::DebugNone;
     }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
-    Checkbox("Object motion vectors", s.object_motion);
-    Hint("Accurate vectors for animated objects reduce breakup on clothing and weapons during movement. Static geometry receives no extra pass. Changes require a restart.");
+    Checkbox(L("Object motion vectors"), s.object_motion);
+    Hint(L("Accurate vectors for animated objects reduce breakup on clothing and weapons during movement. Static geometry receives no extra pass. Changes require a restart."));
     bool show_motion = s.debug_view == BbSettings::DebugMotion;
-    if (Toggle("Show motion vectors (debug)", &show_motion)) {
+    if (Toggle(L("Show motion vectors (debug)"), &show_motion)) {
         s.debug_view = show_motion ? BbSettings::DebugMotion : BbSettings::DebugNone;
     }
-    Hint("Red/green: horizontal/vertical motion (8 pixels = full brightness). Blue: the pixel has accurate object motion, beyond camera motion. A moving object with no blue or red/green is treated as stationary and may leave trails.");
+    Hint(L("Red/green: horizontal/vertical motion (8 pixels = full brightness). Blue: the pixel has accurate object motion, beyond camera motion. A moving object with no blue or red/green is treated as stationary and may leave trails."));
     ImGui::EndDisabled(); // upscaler off
 
-    Section("Frame generation");
-    static const char* frame_gens[] = {"Off", "FSR 3.1 (any GPU)", "DLSS (NVIDIA RTX 40/50)"};
+    Section(L("Frame generation"));
+    static const char* frame_gens[] = {L("Off"), L("FSR 3.1 (any GPU)"), "DLSS (NVIDIA RTX 40/50)"};
     const int frame_gen = s.frame_gen;
-    if (ComboRow("Frame generation", frame_gens[frame_gen])) {
+    if (ComboRow(L("Frame generation"), frame_gens[frame_gen])) {
         for (int i = 0; i < BbSettings::FrameGenCount; ++i) {
             const bool supported = i != BbSettings::FrameGenDlss || s.dlssg_max_multiplier > 1;
             ImGui::BeginDisabled(!supported);
@@ -741,39 +749,39 @@ void SettingsTab() {
             ImGui::EndDisabled();
             if (!supported) {
                 ImGui::SameLine();
-                ImGui::TextDisabled("- unsupported by this GPU");
+                ImGui::TextDisabled(L("- unsupported by this GPU"));
             }
         }
         ImGui::EndCombo();
     }
-    Hint("Generates frames between two of the game's frames: 60 FPS on screen becomes 120. Needs a display with that refresh rate (120 Hz or more at 60 FPS); it pauses when the display cannot show the extra frames, and 3x/4x drop to what it can. Adds a little input latency. Menus and movies are not generated.");
+    Hint(L("Generates frames between two of the game's frames: 60 FPS on screen becomes 120. Needs a display with that refresh rate (120 Hz or more at 60 FPS); it pauses when the display cannot show the extra frames, and 3x/4x drop to what it can. Adds a little input latency. Menus and movies are not generated."));
     const int max_multiplier =
         s.frame_gen == BbSettings::FrameGenDlss ? s.dlssg_max_multiplier.load() : 2;
     ImGui::BeginDisabled(s.frame_gen == BbSettings::FrameGenOff || max_multiplier <= 2);
     int multiplier = std::min(s.frame_gen_multiplier.load(), max_multiplier);
-    if (ImGui::SliderInt("Multiplier", &multiplier, 2, std::max(max_multiplier, 2), "%dx")) {
+    if (ImGui::SliderInt(L("Multiplier"), &multiplier, 2, std::max(max_multiplier, 2), "%dx")) {
         Store(s.frame_gen_multiplier, multiplier, true);
     }
     ImGui::EndDisabled();
     ImGui::BeginDisabled(s.frame_gen == BbSettings::FrameGenOff);
-    Checkbox("Fit to display refresh", s.frame_gen_fit_display);
+    Checkbox(L("Fit to display refresh"), s.frame_gen_fit_display);
     ImGui::EndDisabled();
-    Hint("On: no more frames than the display shows (an uncapped game gets fewer generated frames, and the GPU does less). Off: the multiplier as chosen; past the refresh rate the display shows the newest frames.");
+    Hint(L("On: no more frames than the display shows (an uncapped game gets fewer generated frames, and the GPU does less). Off: the multiplier as chosen; past the refresh rate the display shows the newest frames."));
     // What runs now (fitted: at most the frames the display shows between two of the game's).
     if (s.frame_gen != BbSettings::FrameGenOff && s.frame_gen_display_hz > 0) {
         const int now = std::min(s.frame_gen_now.load(), multiplier - 1);
         if (now > 0 && s.frame_gen_flip_limit > 0) {
-            ImGui::TextDisabled("Now %dx on a %d Hz display; V-Sync (FIFO) caps the game at %d FPS",
+            ImGui::TextDisabled(L("Now %dx on a %d Hz display; V-Sync (FIFO) caps the game at %d FPS"),
                                 now + 1, s.frame_gen_display_hz.load(),
                                 s.frame_gen_flip_limit.load());
         } else if (now > 0) {
-            ImGui::TextDisabled("Now %dx on a %d Hz display", now + 1,
+            ImGui::TextDisabled(L("Now %dx on a %d Hz display"), now + 1,
                                 s.frame_gen_display_hz.load());
         } else if (s.frame_gen_fit_display) {
-            ImGui::TextDisabled("Paused: no room on a %d Hz display at this frame rate",
+            ImGui::TextDisabled(L("Paused: no room on a %d Hz display at this frame rate"),
                                 s.frame_gen_display_hz.load());
         } else {
-            ImGui::TextDisabled("Paused: presenting fell behind (V-Sync on a slower display?)");
+            ImGui::TextDisabled(L("Paused: presenting fell behind (V-Sync on a slower display?)"));
         }
     }
     if (const char* problem = s.frame_gen_problem.load()) {
@@ -781,13 +789,13 @@ void SettingsTab() {
     }
 
 
-    Section("Output resolution");
+    Section(L("Output resolution"));
     auto output_label = [](int i) {
         return std::to_string(BbSettings::OutputWidths[i]) + " x " +
                std::to_string(BbSettings::OutputHeights[i]);
     };
     int output = s.output_res;
-    if (ComboRow("Output resolution", output_label(output).c_str())) {
+    if (ComboRow(L("Output resolution"), output_label(output).c_str())) {
         for (int i = 0; i < BbSettings::OutputCount; ++i) {
             if (ImGui::Selectable(output_label(i).c_str(), i == output)) {
                 Store(s.output_res, i, true);
@@ -796,15 +804,15 @@ void SettingsTab() {
         ImGui::EndCombo();
     }
     if (BbSettings::AspectNeedsRestart()) {
-        Hint("Changing aspect ratio requires a restart. Ultrawide outputs (21:9, 32:9) widen the camera and HUD (HUD position: in the launcher); other aspect ratios keep a centred 16:9 HUD.");
+        Hint(L("Changing aspect ratio requires a restart. Ultrawide outputs (21:9, 32:9) widen the camera and HUD (HUD position: in the launcher); other aspect ratios keep a centred 16:9 HUD."));
     } else if (BbSettings::FixedRenderSession()) {
-        Hint("Final image and HUD resolution. The preset controls scene resolution relative to the output. 4K Performance is approximately 1920x1080. Changes require a restart.");
+        Hint(L("Final image and HUD resolution. The preset controls scene resolution relative to the output. 4K Performance is approximately 1920x1080. Changes require a restart."));
     } else {
-        Hint("Output and HUD resolution changes at the next frame boundary. The preset controls scene resolution relative to the output. Resizing resets upscaler history and may pause briefly.");
+        Hint(L("Output and HUD resolution changes at the next frame boundary. The preset controls scene resolution relative to the output. Resizing resets upscaler history and may pause briefly."));
     }
-    static const char* live_modes[] = {"Auto (based on GPU)", "Off (faster)", "On"};
+    static const char* live_modes[] = {L("Auto (based on GPU)"), L("Off (faster)"), L("On")};
     int live = s.live_resolution + 1;
-    if (ComboRow("Live resolution changes", live_modes[live])) {
+    if (ComboRow(L("Live resolution changes"), live_modes[live])) {
         for (int i = 0; i < 3; ++i) {
             if (ImGui::Selectable(live_modes[i], i == live)) {
                 Store(s.live_resolution, i - 1, true);
@@ -812,15 +820,15 @@ void SettingsTab() {
         }
         ImGui::EndCombo();
     }
-    Hint("On: output and presets change without restarting, while game post-processing stays at 1080p. Off: the scene is patched to the preset resolution at startup. Auto enables the live path on capable discrete GPUs, except for outputs above 1080p with depth of field on (the live path blurs those scenes). Changes apply after restarting the game.");
-    Section("Game effects (restart required)");
-    static const char* lods[] = {"Highest (-2)", "Original", "Lower (1)", "Lowest (2)"};
+    Hint(L("On: output and presets change without restarting, while game post-processing stays at 1080p. Off: the scene is patched to the preset resolution at startup. Auto enables the live path on capable discrete GPUs, except for outputs above 1080p with depth of field on (the live path blurs those scenes). Changes apply after restarting the game."));
+    Section(L("Game effects (restart required)"));
+    static const char* lods[] = {L("Highest (-2)"), L("Original"), L("Lower (1)"), L("Lowest (2)")};
     static constexpr int lod_values[] = {-2, 0, 1, 2};
     int lod_index = 1;
     for (int i = 0; i < 4; ++i) {
         if (lod_values[i] == s.model_lod) lod_index = i;
     }
-    if (ComboRow("Model detail", lods[lod_index])) {
+    if (ComboRow(L("Model detail"), lods[lod_index])) {
         for (int i = 0; i < 4; ++i) {
             if (ImGui::Selectable(lods[i], i == lod_index)) {
                 Store(s.model_lod, lod_values[i], true);
@@ -831,64 +839,64 @@ void SettingsTab() {
     for (int e = 0; e < 8; ++e) {
         Checkbox(BbSettings::Effects[e].label, s.effects[e]);
     }
-    Hint("Effects are applied through game patches at startup (patches/Bloodborne.xml). Motion blur and dynamic shadows can increase GPU load.");
+    Hint(L("Effects are applied through game patches at startup (patches/Bloodborne.xml). Motion blur and dynamic shadows can increase GPU load."));
 
     RestartPrompt();
 
-    Section("Other");
-    Checkbox("Show FPS counter", s.show_fps);
+    Section(L("Other"));
+    Checkbox(L("Show FPS counter"), s.show_fps);
 }
 
 void ImageToolsTab() {
     auto& s = BbSettings::Get();
-    PageTitle("Image tools");
-    Note("Graphics, display, effects and the FPS counter are in Pause > System. These tools are "
-         "diagnostics beyond the game menu.");
+    PageTitle(L("Image tools"));
+    Note(L("Graphics, display, effects and the FPS counter are in Pause > System. These tools are "
+         "diagnostics beyond the game menu."));
     // Hunter's Atlas: the map's keys and shortcuts, while the launcher has it on.
     if (BbMap::Enabled()) BbMap::Settings();
-    Section("Current image");
-    InfoRow("Scene resolution", "%d x %d", s.active_render_width.load(),
+    Section(L("Current image"));
+    InfoRow(L("Scene resolution"), "%d x %d", s.active_render_width.load(),
             s.active_render_height.load());
     if (BbSettings::FixedRenderSession())
-        InfoRow("Startup preset", "%s (changes need a restart)",
-                BbSettings::PresetName(s.startup_preset));
+        InfoRow(L("Startup preset"), L("%s (changes need a restart)"),
+                L(BbSettings::PresetName(s.startup_preset)));
     if (const char* problem = s.dlss_problem.load();
         problem && s.upscaler == BbSettings::UpscalerDlss)
         NoteF(Ink::Warn, "DLSS: %s", problem);
     if (const char* problem = s.fsr4_problem.load())
-        NoteF(Ink::Warn, "FSR 4 unavailable: %s", problem);
+        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), problem);
 
-    Section("Fine tuning");
+    Section(L("Fine tuning"));
     ImGui::BeginDisabled(!s.sharpen);
-    Slider("Sharpness", s.sharpness, 0.0f, 2.0f);
+    Slider(L("Sharpness"), s.sharpness, 0.0f, 2.0f);
     ImGui::EndDisabled();
-    Hint("Enable Sharpening in System > PC Graphics first. Values above 1 add another RCAS pass.");
+    Hint(L("Enable Sharpening in System > PC Graphics first. Values above 1 add another RCAS pass."));
     if (BbSettings::IsFsr4(s.upscaler)) {
-        Checkbox("FSR 4: auto exposure", s.fsr4_auto_exposure);
-        Checkbox("FSR 4: invert jitter", s.fsr4_invert_jitter);
-        Hint("Provider checks for FSR 4. These changes apply immediately.");
+        Checkbox(L("FSR 4: auto exposure"), s.fsr4_auto_exposure);
+        Checkbox(L("FSR 4: invert jitter"), s.fsr4_invert_jitter);
+        Hint(L("Provider checks for FSR 4. These changes apply immediately."));
     }
     const bool temporal = s.upscaler != BbSettings::UpscalerOff &&
                           s.upscaler != BbSettings::UpscalerTaa;
     ImGui::BeginDisabled(!temporal);
-    Checkbox("Reactive mask", s.reactive);
+    Checkbox(L("Reactive mask"), s.reactive);
     ImGui::BeginDisabled(!s.reactive);
-    Slider("Mask scale", s.reactive_scale, 0.0f, 4.0f);
-    Slider("Mask threshold", s.reactive_threshold, 0.0f, 1.0f);
-    Slider("Mask maximum", s.reactive_max, 0.0f, 1.0f);
+    Slider(L("Mask scale"), s.reactive_scale, 0.0f, 4.0f);
+    Slider(L("Mask threshold"), s.reactive_threshold, 0.0f, 1.0f);
+    Slider(L("Mask maximum"), s.reactive_max, 0.0f, 1.0f);
     ImGui::EndDisabled();
     ImGui::EndDisabled();
-    Hint("Marks particles and fog so the upscaler relies less on frame history.");
+    Hint(L("Marks particles and fog so the upscaler relies less on frame history."));
 
-    Section("Debug views");
+    Section(L("Debug views"));
     int view = s.debug_view;
-    if (ChoiceRow("Normal image", view == BbSettings::DebugNone))
+    if (ChoiceRow(L("Normal image"), view == BbSettings::DebugNone))
         s.debug_view = BbSettings::DebugNone;
-    if (ChoiceRow("Reactive mask view", view == BbSettings::DebugReactive))
+    if (ChoiceRow(L("Reactive mask view"), view == BbSettings::DebugReactive))
         s.debug_view = BbSettings::DebugReactive;
-    if (ChoiceRow("Motion vector view", view == BbSettings::DebugMotion))
+    if (ChoiceRow(L("Motion vector view"), view == BbSettings::DebugMotion))
         s.debug_view = BbSettings::DebugMotion;
-    Hint("Debug views are temporary diagnostics; return to Normal image to play.");
+    Hint(L("Debug views are temporary diagnostics; return to Normal image to play."));
 }
 
 std::filesystem::path ModConfigPath() {
@@ -956,16 +964,16 @@ bool SetPromptEnabled(const std::string& folder, bool enabled) {
 void ModsTab() {
     auto& s = BbSettings::Get();
     const bool native = NativePcMenuAvailable();
-    PageTitle(native ? "Gameplay extras" : "Mods & patches");
+    PageTitle(native ? L("Gameplay extras") : L("Mods & patches"));
     Note(native ?
-        "Gameplay tweaks and PC settings are in Pause > System. Cheats and enhancements stay here because the game menu has no room for them." :
-        "Choose button prompts and gameplay patches, then restart to apply them.");
+        L("Gameplay tweaks and PC settings are in Pause > System. Cheats and enhancements stay here because the game menu has no room for them.") :
+        L("Choose button prompts and gameplay patches, then restart to apply them."));
     if (const char* enabled = std::getenv("BB_MODS_ENABLED"); enabled && std::strcmp(enabled,"0") == 0)
-        Note("Mod loading is off in the launcher. Turn it on there first.", Ink::Warn);
+        Note(L("Mod loading is off in the launcher. Turn it on there first."), Ink::Warn);
     // 0 the game's PlayStation buttons, 1 the Xbox prompt mod, 2 the keyboard key images
     // (PCBButtons). Both mods are the player's own Nexus downloads, which the launcher adds to the
     // mods folder; run.py reads the choice again at every start.
-    Section("Button prompts");
+    Section(L("Button prompts"));
     static const auto xbox_folder = XboxPromptFolder();
     static const std::optional<std::string> keyboard_folder = [] () -> std::optional<std::string> {
         const char* configured = std::getenv("BB_MODS_DIR");
@@ -981,12 +989,12 @@ void ModsTab() {
         prompt_choice = keyboard_folder && PromptEnabled(*keyboard_folder) ? 2
                       : xbox_folder && PromptEnabled(*xbox_folder) ? 1 : 0;
     int choice = prompt_choice;
-    if (ChoiceRow("PlayStation buttons", choice == 0)) choice = 0;
+    if (ChoiceRow(L("PlayStation buttons"), choice == 0)) choice = 0;
     ImGui::BeginDisabled(!xbox_folder);
-    if (ChoiceRow("Xbox buttons", choice == 1)) choice = 1;
+    if (ChoiceRow(L("Xbox buttons"), choice == 1)) choice = 1;
     ImGui::EndDisabled();
     ImGui::BeginDisabled(!keyboard_folder);
-    if (ChoiceRow("Keyboard keys", choice == 2)) choice = 2;
+    if (ChoiceRow(L("Keyboard keys"), choice == 2)) choice = 2;
     ImGui::EndDisabled();
     if (choice != prompt_choice) {
         const bool saved = (!xbox_folder || SetPromptEnabled(*xbox_folder, choice == 1)) &&
@@ -995,16 +1003,16 @@ void ModsTab() {
             prompt_choice = choice;
             mod_selection_changed = true;
             mod_selection_error.clear();
-        } else mod_selection_error = "Could not save mods.json. Check the port folder permissions.";
+        } else mod_selection_error = L("Could not save mods.json. Check the port folder permissions.");
     }
     if (!xbox_folder)
-        Note("Xbox buttons are a Nexus Mods download (Bloodborne mod 30): choose Xbox in the launcher's Controls page to add it.", Ink::Faint);
+        Note(L("Xbox buttons are a Nexus Mods download (Bloodborne mod 30): choose Xbox in the launcher's Controls page to add it."), Ink::Faint);
     if (!keyboard_folder)
-        Note("Keyboard keys are a Nexus Mods download (PCBButtons, Bloodborne mod 460): choose Keyboard in the launcher's Controls page to add it.", Ink::Faint);
+        Note(L("Keyboard keys are a Nexus Mods download (PCBButtons, Bloodborne mod 460): choose Keyboard in the launcher's Controls page to add it."), Ink::Faint);
     if (!mod_selection_error.empty())
         Note(mod_selection_error.c_str(), Ink::Accent);
-    if (!native) Section("Gameplay and debug");
-    else Section("Cheats (restart required)");
+    if (!native) Section(L("Gameplay and debug"));
+    else Section(L("Cheats (restart required)"));
     for (int e = native ? 0 : 8; e < BbSettings::FirstEnhancement; ++e) {
         if (native && !IsCheat(e)) continue;
         const char* label = BbSettings::Effects[e].label;
@@ -1013,17 +1021,17 @@ void ModsTab() {
         Checkbox(shown.c_str(), s.effects[e]);
     }
     if (!native)
-        Hint("Free camera: hold Cross/A and press L3 (keyboard: E + Left Ctrl). The debug menu needs DbgFont14h.ccm and DbgFont14h.tpf in dvdroot_ps4/font.");
-    Section("PC enhancements (restart required)");
+        Hint(L("Free camera: hold Cross/A and press L3 (keyboard: E + Left Ctrl). The debug menu needs DbgFont14h.ccm and DbgFont14h.tpf in dvdroot_ps4/font."));
+    Section(L("PC enhancements (restart required)"));
     for (int e = BbSettings::FirstEnhancement; e < BbSettings::EffectCount; ++e)
         Checkbox(BbSettings::Effects[e].label, s.effects[e]);
-    Hint("Made from your own game files at start; off is the game as it shipped. The mirror in the Hunter's Dream opens the appearance editor. Two invaders: Mensis, Mergo's Loft, the Nightmare Frontier and the Old Hunters' areas allow two, as the chalice dungeons do. After bbhost by droogie.");
+    Hint(L("Made from your own game files at start; off is the game as it shipped. The mirror in the Hunter's Dream opens the appearance editor. Two invaders: Mensis, Mergo's Loft, the Nightmare Frontier and the Old Hunters' areas allow two, as the chalice dungeons do. After bbhost by droogie."));
     CloseRows();
     const bool needs_restart = mod_selection_changed ||
         (native ? ExtrasRestartNeeded() : RestartNeeded());
     if (needs_restart)
-        Note("Changes are ready. Restart to apply them.", Ink::Warn);
-    Note("Other mods and their load order are in the launcher.", Ink::Faint);
+        Note(L("Changes are ready. Restart to apply them."), Ink::Warn);
+    Note(L("Other mods and their load order are in the launcher."), Ink::Faint);
 }
 
 std::string UnlockDate(std::int64_t timestamp) {
@@ -1032,7 +1040,7 @@ std::string UnlockDate(std::int64_t timestamp) {
     const std::tm* local = std::localtime(&when);
     if (!local) return {};
     char date[48]{};
-    std::strftime(date, sizeof(date), "%d %b %Y", local);
+    std::strftime(date, sizeof(date), BbOverlayText::Russian() ? "%d.%m.%Y" : "%d %b %Y", local);
     return date;
 }
 
@@ -1060,15 +1068,15 @@ void AchievementRow(const BbTrophies::Entry& entry) {
     const float text_x = icon_max.x + 14.0f * base_scale;
     const float right_x = max.x - 64.0f * base_scale;
     const bool secret = entry.hidden && !earned;
-    const std::string name = secret ? "Secret trophy" : entry.name;
-    const std::string detail = secret ? "Unlock to reveal this achievement" : entry.description;
+    const std::string name = secret ? L("Secret trophy") : entry.name;
+    const std::string detail = secret ? L("Unlock to reveal this achievement") : entry.description;
     const std::string score = secret || entry.score < 0 ? "??G" :
                               std::to_string(entry.score) + "G";
     const ImVec4 name_clip(text_x, min.y, right_x - 7.0f * base_scale, max.y);
     const float name_y = gallery ? min.y + (h - ImGui::GetFontSize()) * 0.5f : min.y + 10.0f * base_scale;
     draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(text_x, name_y),
                   earned ? Ink::Text : Ink::Dim, name.c_str(), nullptr, 0.0f, &name_clip);
-    const char* state = gallery ? (earned ? "Earned" : "Locked") : score.c_str();
+    const char* state = gallery ? (earned ? L("Earned") : L("Locked")) : score.c_str();
     draw->AddText(ImVec2(max.x - ImGui::CalcTextSize(state).x - 4.0f * base_scale, name_y),
                   earned ? Ink::Good : Ink::Faint, state);
     if (!gallery && !detail.empty())
@@ -1108,8 +1116,8 @@ bool FoldSection(const char* title, const char* hint, bool* open) {
     const ImVec2 right[3] = {ImVec2(c.x - s * .45f, c.y - s), ImVec2(c.x + s * .55f, c.y), ImVec2(c.x - s * .45f, c.y + s)};
     draw->AddPolyline(*open ? down : right, 3, ink, 0, Px(1.7f));
     const float text_y = min.y + (h - ImGui::GetTextLineHeight()) * .5f;
-    draw->AddText(ImVec2(min.x + s * 3.2f, text_y), ink, title);
-    if (!*open && hint)
+    draw->AddText(ImVec2(min.x + s * 3.2f, text_y), ink, L(title));
+    if (!*open && hint && ImGui::CalcTextSize(title).x + ImGui::CalcTextSize(hint).x + Px(32.0f) < max.x - min.x)
         draw->AddText(ImVec2(max.x - ImGui::CalcTextSize(hint).x, text_y), Ink::Faint, hint);
     Rule(draw, min.x, max.x, max.y + Px(8.0f));
     ImGui::Dummy(ImVec2(0, Px(6.0f)));
@@ -1122,7 +1130,7 @@ bool FoldSection(const char* title, const char* hint, bool* open) {
 void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
     using BbToast::Theme;
     static bool open = false; // closed: the page opens on the trophy list
-    if (!FoldSection("TROPHY NOTIFICATIONS", "Theme, sound and previews", &open)) return;
+    if (!FoldSection(L("TROPHY NOTIFICATIONS"), L("Theme, sound and previews"), &open)) return;
     auto o = BbToast::GetOptions();
     bool changed = false;
     // The four looks, all in sight: one row each.
@@ -1131,26 +1139,26 @@ void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
             o.theme = Theme(i);
             changed = true;
         }
-    changed |= Toggle("Mute the sound", &o.muted);
-    RowLabel("Volume", ImGui::GetFrameHeight());
+    changed |= Toggle(L("Mute the sound"), &o.muted);
+    RowLabel(L("Volume"), ImGui::GetFrameHeight());
     ImGui::SetNextItemWidth(-FLT_MIN);
     ImGui::BeginDisabled(o.muted);
     changed |= ImGui::SliderInt("##toast_volume", &o.volume, 0, 100, "%d%%");
     ImGui::EndDisabled();
-    RowLabel("Time on screen", ImGui::GetFrameHeight());
+    RowLabel(L("Time on screen"), ImGui::GetFrameHeight());
     ImGui::SetNextItemWidth(-FLT_MIN);
     changed |= ImGui::SliderFloat("##toast_hold", &o.hold_seconds, 0.0f, 20.0f,
-                                  o.hold_seconds < 0.05f ? "Theme default" : "%.1f s");
+                                  o.hold_seconds < 0.05f ? L("Theme default") : L("%.1f s"));
     if (o.hold_seconds < 0.05f) o.hold_seconds = 0.0f;
     if (o.theme == Theme::CardCinematic) {
-        RowLabel("Platinum light", ImGui::GetFrameHeight());
+        RowLabel(L("Platinum light"), ImGui::GetFrameHeight());
         ImGui::SetNextItemWidth(-FLT_MIN);
         changed |= ImGui::SliderInt("##toast_intensity", &o.cinematic_intensity, 0, 100, "%d%%");
     }
     if (o.theme != Theme::Original) {
-        changed |= Toggle("Animate the platinum", &o.platinum_animation);
-        Hint("Off: the platinum shows its own picture, like the other trophies.");
-        changed |= Toggle("Write the grade", &o.grade_label);
+        changed |= Toggle(L("Animate the platinum"), &o.platinum_animation);
+        Hint(L("Off: the platinum shows its own picture, like the other trophies."));
+        changed |= Toggle(L("Write the grade"), &o.grade_label);
     }
     if (changed) BbToast::SetOptions(o);
     CloseRows();
@@ -1167,7 +1175,7 @@ void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
     };
     using G = BbTrophies::Grade;
     const std::pair<const char*, G> grades[] = {
-        {"Bronze", G::Bronze}, {"Silver", G::Silver}, {"Gold", G::Gold}, {"Platinum", G::Platinum}};
+        {L("Bronze"), G::Bronze}, {L("Silver"), G::Silver}, {L("Gold"), G::Gold}, {L("Platinum"), G::Platinum}};
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const float button_w = (ImGui::GetContentRegionAvail().x - spacing * 3) / 4;
     for (int i = 0; i < 4; ++i) {
@@ -1177,18 +1185,18 @@ void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
         if (i < 3) ImGui::SameLine();
     }
     const float half = (ImGui::GetContentRegionAvail().x - spacing) / 2;
-    if (ImGui::Button("All four in a row", ImVec2(half, 0)))
+    if (ImGui::Button(L("All four in a row"), ImVec2(half, 0)))
         for (const auto& item : grades) preview(item.second);
     ImGui::SameLine();
-    if (ImGui::Button("Three at once", ImVec2(-FLT_MIN, 0)))
+    if (ImGui::Button(L("Three at once"), ImVec2(-FLT_MIN, 0)))
         for (int i = 0; i < 3; ++i) preview(G::Bronze);
     ImGui::EndDisabled();
-    Note("Previews look and sound like an unlock; nothing is unlocked or saved.", Ink::Faint);
-    NoteF(Ink::Faint, "Sounds: %s", BbToast::SoundSummary().c_str());
-    NoteF(Ink::Faint, "Pictures: %s", BbToast::PictureSummary().c_str());
-    Note("Your own sounds, pictures, animations and texts go in user/custom_trophy (see README.md). "
-         "Sounds reload here; pictures when the game starts.", Ink::Faint);
-    if (ImGui::Button("Reload sounds")) BbToast::ReloadSounds();
+    Note(L("Previews look and sound like an unlock; nothing is unlocked or saved."), Ink::Faint);
+    NoteF(Ink::Faint, L("Sounds: %s"), BbToast::SoundSummary().c_str());
+    NoteF(Ink::Faint, L("Pictures: %s"), BbToast::PictureSummary().c_str());
+    Note(L("Your own sounds, pictures, animations and texts go in user/custom_trophy (see README.md). "
+         "Sounds reload here; pictures when the game starts."), Ink::Faint);
+    if (ImGui::Button(L("Reload sounds"))) BbToast::ReloadSounds();
     ImGui::Dummy(ImVec2(0, Px(6.0f)));
 }
 
@@ -1199,24 +1207,24 @@ void AchievementsTab() {
     int earned = 0;
     for (const auto& entry : entries) earned += entry.unlocked_at > 0;
     const int score = BbTrophies::EarnedScore();
-    PageTitle(gallery ? "Trophy gallery" : "Trophies");
+    PageTitle(gallery ? L("Trophy gallery") : L("Trophies"));
     if (gallery)
-        Note("Trophy artwork. Full details, dates and Gamerscore are in Pause > System > Achievements.");
+        Note(L("Trophy artwork. Full details, dates and Gamerscore are in Pause > System > Achievements."));
     else {
         if (BbTrophies::TotalScore() == 1000)
-            ImGui::Text("Gamerscore: %d / 1000G", score);
+            ImGui::Text(L("Gamerscore: %d / 1000G"), score);
         else
-            ImGui::Text("Gamerscore: -- / 1000G");
-        ImGui::Text("%d of %d unlocked", earned, total);
+            ImGui::Text(L("Gamerscore: -- / 1000G"));
+        ImGui::Text(L("%d of %d unlocked"), earned, total);
         ImGui::ProgressBar(total ? float(earned) / total : 0.0f,
                            ImVec2(-1, 9.0f * base_scale), "");
     }
     ToastSection(entries);
     if (!BbTrophies::HasMetadata())
-        Note("Names and scores need the trophy key from your own PS4. Icons and local unlock history still work.");
+        Note(L("Names and scores need the trophy key from your own PS4. Icons and local unlock history still work."));
     ImGui::Dummy(ImVec2(0, Px(8.0f)));
     if (entries.empty()) {
-        Note("No trophy pack in the selected game folder.", Ink::Faint);
+        Note(L("No trophy pack in the selected game folder."), Ink::Faint);
         return;
     }
     ImGuiListClipper clipper;
@@ -1224,7 +1232,7 @@ void AchievementsTab() {
     while (clipper.Step())
         for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
             AchievementRow(entries[i]);
-    if (!gallery) ImGui::TextDisabled("Local achievements only. No online account is connected.");
+    if (!gallery) ImGui::TextDisabled(L("Local achievements only. No online account is connected."));
 }
 
 // Line icons, the launcher's set (launcher/qml/NavIcon.qml) on its 24 × 24 grid.
@@ -1276,10 +1284,10 @@ struct GuideSection {
 };
 GuideSection GuideSectionOf(int tab, bool native) {
     switch (tab) {
-    case 0: return {"hunter", "The Hunt"};
-    case 1: return {"trophy", native ? "Trophy gallery" : "View trophies"};
-    case 2: return {"gear", native ? "Image tools" : "Visual settings"};
-    default: return {"puzzle", native ? "Gameplay extras" : "Mods & patches"};
+    case 0: return {"hunter", L("The Hunt")};
+    case 1: return {"trophy", native ? L("Trophy gallery") : L("View trophies")};
+    case 2: return {"gear", native ? L("Image tools") : L("Visual settings")};
+    default: return {"puzzle", native ? L("Gameplay extras") : L("Mods & patches")};
     }
 }
 void SectionGlyph(ImDrawList* draw, int tab, ImVec2 center, float size, ImU32 ink) {
@@ -1303,7 +1311,7 @@ void HomeTab() {
     const float width = ImGui::GetContentRegionAvail().x;
     ImDrawList* draw = ImGui::GetWindowDrawList();
     ImGui::PushFont(guide_serif_font, 48.0f);
-    ImGui::TextUnformatted("The Hunt");
+    ImGui::TextUnformatted(L("The Hunt"));
     ImGui::PopFont();
     ImGui::Dummy(ImVec2(0, 10.0f * s));
     Rule(draw, ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().x + width, ImGui::GetCursorScreenPos().y);
@@ -1318,10 +1326,10 @@ void HomeTab() {
     TrophyGlyph(draw, ImVec2(at.x + 21.0f * s, at.y + 24.0f * s), 44.0f * s, .85f);
     ImGui::SetCursorScreenPos(ImVec2(at.x + 70.0f * s, at.y));
     ImGui::PushFont(guide_serif_font, 22.0f);
-    if (entries.empty()) ImGui::TextUnformatted("No trophy pack");
-    else ImGui::Text("%d of %d trophies", earned, int(entries.size()));
+    if (entries.empty()) ImGui::TextUnformatted(L("No trophy pack"));
+    else ImGui::Text(L("%d of %d trophies"), earned, int(entries.size()));
     ImGui::PopFont();
-    const char* local = "Local only";
+    const char* local = L("Local only");
     const ImVec2 local_size = ImGui::CalcTextSize(local);
     draw->AddText(ImVec2(at.x + width - local_size.x, at.y + 4.0f * s), ImGui::GetColorU32(Ink::Dim), local);
     const float bar_x = at.x + 70.0f * s, bar_y = at.y + 38.0f * s;
@@ -1363,7 +1371,7 @@ void HomeTab() {
     hunt_row_focused_last = any_focused;
     if (native) {
         ImGui::Dummy(ImVec2(0, 6.0f * s));
-        Note("The game's own options, and the PC settings, are in Pause > System.", Ink::Faint);
+        Note(L("The game's own options, and the PC settings, are in Pause > System."), Ink::Faint);
     }
 }
 
@@ -1375,9 +1383,9 @@ void Menu() {
         ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y),
         IM_COL32(0, 0, 0, int(56 * appear)));
     const float panel_width = std::min(viewport->WorkSize.x,
-        std::clamp(viewport->WorkSize.x * .43f, 500.0f * s, 840.0f * s));
-    const float rail_width = 112.0f * s;
-    const float pad = 40.0f * s;
+        std::clamp(viewport->WorkSize.x * .56f, 760.0f * s, 1080.0f * s));
+    const float rail_width = 76.0f * s;
+    const float pad = 28.0f * s;
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x - (1.0f - appear) * 36.0f * s, viewport->WorkPos.y));
     ImGui::SetNextWindowSize(ImVec2(panel_width, viewport->WorkSize.y));
     ImGui::SetNextWindowBgAlpha(.985f * appear);
@@ -1393,7 +1401,7 @@ void Menu() {
     frame->AddRectFilled(ImVec2(panel_pos.x + panel_width - 1.0f, panel_pos.y),
                          ImVec2(panel_pos.x + panel_width, panel_pos.y + panel_h), Ink::LineStrong);
 
-    // The rail: the four sections as icons, the open one marked in crimson.
+    // The rail: the four sections as icons, the open one marked in teal.
     ImGui::SetCursorPos(ImVec2(0, 0));
     // The rail, the page and its content share one navigation space (NavFlattened), so the D-pad
     // moves from a section icon straight into its rows and back.
@@ -1471,18 +1479,18 @@ void Menu() {
     ImGui::PopStyleColor();
     ImGui::SameLine(0.0f, 16.0f * s);
     ImGui::PushStyleColor(ImGuiCol_Text, Vec(Ink::Dim));
-    ImGui::TextUnformatted("HUNTER'S GUIDE");
+    ImGui::TextUnformatted(L("HUNTER'S GUIDE"));
     ImGui::PopStyleColor();
     // How to close: the buttons that do it (L3 + R3), as key caps. Clickable with the mouse, but
     // not a navigation stop, so the D-pad never lands on it.
     {
         const float cap_w = 40.0f * s, cap_h = 28.0f * s, gap = 8.0f * s;
-        const ImVec2 word = ImGui::CalcTextSize("Close");
+        const ImVec2 word = ImGui::CalcTextSize(L("Close"));
         const ImVec2 plus = ImGui::CalcTextSize("+");
         const float total = cap_w * 2.0f + plus.x + gap * 3.0f + word.x;
         const float x0 = main_size.x - pad - total, y0 = 50.0f * s;
         ImGui::SetCursorPos(ImVec2(x0, y0));
-        if (ImGui::InvisibleButton("Close guide", ImVec2(total, cap_h))) SetOpen(false);
+        if (ImGui::InvisibleButton(L("Close guide"), ImVec2(total, cap_h))) SetOpen(false);
         const bool close_hot = ImGui::IsItemHovered();
         const ImU32 ink = close_hot ? IM_COL32(255, 250, 245, 255) : Ink::Text;
         float x = main_pos.x + x0;
@@ -1498,7 +1506,7 @@ void Menu() {
                 x += plus.x + gap;
             }
         }
-        main->AddText(ImVec2(x, ty), ink, "Close");
+        main->AddText(ImVec2(x, ty), ink, L("Close"));
     }
     Rule(main, main_pos.x + pad, main_pos.x + main_size.x - pad, main_pos.y + 112.0f * s);
 
@@ -1527,9 +1535,9 @@ void Menu() {
     page_focused_last = !rail_focused && ImGui::GetFocusID() != 0;
     Rule(main, main_pos.x + pad, main_pos.x + main_size.x - pad, main_pos.y + main_size.y - 112.0f * s);
     main->AddText(ImVec2(main_pos.x + pad, main_pos.y + main_size.y - 84.0f * s), Ink::Dim,
-                  "D-pad  Move    ·    A  Select    ·    B  Back    ·    LB/RB  Sections");
+                  L("D-pad  Move    ·    A  Select    ·    B  Back    ·    LB/RB  Sections"));
     main->AddText(ImVec2(main_pos.x + pad, main_pos.y + main_size.y - 52.0f * s), Ink::Faint,
-                  "Keyboard: Insert opens and closes the guide  ·  Arrows move  ·  Enter selects");
+                  L("Keyboard: Insert opens and closes the guide  ·  Arrows move  ·  Enter selects"));
     ImGui::EndChild();
     ImGui::End();
     ImGui::PopStyleVar(2);
@@ -1548,14 +1556,14 @@ void TextEntryBox() {
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                      ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
                      ImGuiWindowFlags_NoFocusOnAppearing);
-    ImGui::TextColored(ImVec4(0.85f, 0.72f, 0.45f, 1.0f), "%s", text_entry_prompt.c_str());
+    ImGui::TextColored(Vec(Ink::Text), "%s", text_entry_prompt.c_str());
     ImGui::Separator();
     ImGui::SetWindowFontScale(1.4f);
     ImGui::Text("%s_", text_entry_text.c_str());
     ImGui::SetWindowFontScale(1.0f);
     ImGui::Separator();
-    ImGui::TextDisabled("Keyboard: type, Backspace to erase, Enter = OK, Esc = cancel");
-    ImGui::TextDisabled("Controller: Cross (A) = OK, Circle (B) = cancel");
+    ImGui::TextDisabled(L("Keyboard: type, Backspace to erase, Enter = OK, Esc = cancel"));
+    ImGui::TextDisabled(L("Controller: Cross (A) = OK, Circle (B) = cancel"));
     ImGui::End();
 }
 
@@ -1596,7 +1604,7 @@ void TrophyBanner(int id, const char* first_line, float alpha, float appear) {
     ImGui::SetNextWindowBgAlpha(.96f * alpha);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, h * .5f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(.055f, .48f, .065f, 1));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, Vec(Ink::Surface));
     ImGui::Begin("##trophy_toast", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
                      ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
@@ -1629,7 +1637,7 @@ void ConfigureContext() {
     ImGuiIO& io = ImGui::GetIO();
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();
-    // The launcher's theme (launcher/qml/Theme.qml): flat near-black surfaces, hairlines, crimson.
+    // The launcher's theme (launcher/qml/Theme.qml): flat near-black surfaces, hairlines, teal.
     style.WindowRounding = 0.0f;
     style.ChildRounding = 0.0f;
     style.PopupRounding = 6.0f;
@@ -1662,7 +1670,7 @@ void ConfigureContext() {
     c[ImGuiCol_HeaderHovered] = Vec(Ink::SurfaceHover);
     c[ImGuiCol_HeaderActive] = Vec(Ink::AccentSoft);
     c[ImGuiCol_SliderGrab] = Vec(Ink::Accent);
-    c[ImGuiCol_SliderGrabActive] = Vec(IM_COL32(217, 65, 78, 255));
+    c[ImGuiCol_SliderGrabActive] = Vec(IM_COL32(51, 149, 166, 255));
     c[ImGuiCol_CheckMark] = Vec(Ink::Accent);
     c[ImGuiCol_Separator] = Vec(Ink::Line);
     c[ImGuiCol_TableBorderLight] = Vec(Ink::Line);

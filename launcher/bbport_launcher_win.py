@@ -2238,7 +2238,27 @@ class GameJob:
         kernel32.CreateJobObjectW.restype = ctypes.c_void_p
         self.handle = kernel32.CreateJobObjectW(None, None)
         if self.handle:
-            kernel32.AssignProcessToJobObject(ctypes.c_void_p(self.handle), ctypes.c_void_p(int(process._handle)))
+            if not kernel32.AssignProcessToJobObject(ctypes.c_void_p(self.handle), ctypes.c_void_p(int(process._handle))):
+                self.close()
+
+    def wait(self, process):
+        """Wait for run.py and all in-game restart successors, independently of stdout."""
+        code = process.wait()
+        if self.handle:
+            # JOBOBJECT_BASIC_ACCOUNTING_INFORMATION (four LARGE_INTEGERs,
+            # followed by four DWORDs); class 1 reports active job processes.
+            class Accounting(ctypes.Structure):
+                _fields_ = [('times', ctypes.c_int64 * 4),
+                            ('faults', ctypes.c_uint32), ('total', ctypes.c_uint32),
+                            ('active', ctypes.c_uint32), ('terminated', ctypes.c_uint32)]
+            info = Accounting()
+            kernel32 = ctypes.windll.kernel32
+            while kernel32.QueryInformationJobObject(ctypes.c_void_p(self.handle), 1,
+                                                     ctypes.byref(info), ctypes.sizeof(info), None):
+                if not info.active:
+                    break
+                time.sleep(0.1)
+        return code
 
     def terminate(self):
         if self.handle:

@@ -965,15 +965,45 @@ class LauncherBackend(QObject):
         self.job = core.GameJob(self.process)
         self.runningChanged.emit()
         self._set_notice('Preparing the game…')
-        threading.Thread(target=self._read_output, args=(self.process,), daemon=True).start()
+        reader = threading.Thread(target=self._read_output, args=(self.process,), daemon=True)
+        reader.start()
+        threading.Thread(target=self._wait_for_game, args=(self.process, self.job, reader),
+                         daemon=True).start()
+
+    def _wait_for_game(self, process, job, reader):
+        # EOF is not a process-exit notification: an inherited pipe writer can
+        # outlive the game, and a failed log reader must not strand a hidden UI.
+        # The job includes successors created by Apply and restart.
+        code = job.wait(process)
+        reader.join(timeout=2)
+        self._gameExited.emit(code)
 
     def _read_output(self, process):
-        with core.open_run_log(self.app.get('user_dir') or core.DATA_DIR / 'user') as log:
+        log = None
+        try:
+            try:
+                log = core.open_run_log(self.app.get('user_dir') or core.DATA_DIR / 'user')
+            except OSError as error:
+                self._outputLine.emit(f'Could not open game log: {error}\n')
             for raw in iter(process.stdout.readline, b''):
                 line = raw.decode('utf-8', errors='replace')
-                log.write(line)
+                if log is not None:
+                    try:
+                        log.write(line)
+                    except OSError as error:
+                        self._outputLine.emit(f'Could not write game log: {error}\n')
+                        try:
+                            log.close()
+                        except OSError:
+                            pass
+                        log = None
                 self._outputLine.emit(line)
-        self._gameExited.emit(process.wait())
+        finally:
+            if log is not None:
+                try:
+                    log.close()
+                except OSError:
+                    pass
 
     _outputLine = Signal(str)
     _gameExited = Signal(int)

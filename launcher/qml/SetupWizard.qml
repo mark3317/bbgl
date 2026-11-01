@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 
-// First-time setup, four steps on the launcher's panel: welcome, game files, your data, finish.
+// First-time setup, five steps on the launcher's panel: welcome, game files, your data, co-op, finish.
 Item {
     id: wizard
     objectName: "setupWizard"
@@ -43,7 +43,7 @@ Item {
         }
         launcher.completeSetup()
         wizard.exitRequested("Home")
-        if (play) launcher.play()
+        if (play) launcher.playSelected()
     }
 
     // A status line: dot, label, detail.
@@ -80,13 +80,13 @@ Item {
         }
         Text {
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-            text: launcher.tr("Step ") + (wizard.step + 1) + launcher.tr(" of 4"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
+            text: launcher.tr("Step ") + (wizard.step + 1) + launcher.tr(" of 5"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
         }
     }
     Rectangle { y: 40; width: parent.width; height: 1; color: Theme.line }
     Text {
         y: 70; width: parent.width
-        text: [launcher.tr("Welcome to Yharnam"), launcher.tr("Add your game files"), launcher.tr("Your data"), launcher.tr("Ready to hunt")][wizard.step]
+        text: [launcher.tr("Welcome to Yharnam"), launcher.tr("Add your game files"), launcher.tr("Your data"), launcher.tr("Co-op"), launcher.tr("Ready to hunt")][wizard.step]
         color: Theme.text; font.family: Theme.serif; font.pixelSize: 44
     }
 
@@ -94,19 +94,20 @@ Item {
     Row {
         y: 142; width: parent.width; spacing: 10
         Repeater {
-            model: ["Welcome", "Game files", "Your data", "Finish"]
+            model: ["Welcome", "Game files", "Your data", "Co-op", "Finish"]
             delegate: Item {
                 id: tab
                 property bool current: index === wizard.step
                 property bool reachable: index < wizard.step || wizard.canReach(index)
                 property string level: index === 1 ? checks[0].level : index === 2 ? wizard.dataLevel() : ""
-                width: (wizard.width - 30) / 4; height: 40
+                width: (wizard.width - 40) / 5; height: 40
                 opacity: reachable || current ? 1 : 0.45
                 Rectangle { width: parent.width; height: 3; radius: 1.5; color: index <= wizard.step ? Theme.accent : Theme.lineStrong }
                 Row {
-                    y: 14; spacing: 8
+                    y: 14; width: parent.width; spacing: 8
                     Rectangle { visible: tab.level !== ""; width: 7; height: 7; radius: 3.5; anchors.verticalCenter: parent.verticalCenter; color: wizard.levelColor(tab.level) }
                     Text {
+                        width: tab.width - (tab.level !== "" ? 15 : 0); elide: Text.ElideRight
                         text: launcher.tr(modelData); color: tab.current ? Theme.text : tabMouse.containsMouse && tab.reachable ? "#d6d1c9" : Theme.textDim
                         font.family: Theme.sans; font.pixelSize: 13
                     }
@@ -125,7 +126,7 @@ Item {
     Flickable {
         y: 206; width: parent.width; height: parent.height - y - 84
         clip: true; boundsBehavior: Flickable.StopAtBounds
-        contentHeight: Math.max(step0.implicitHeight, step1.implicitHeight, step2.implicitHeight, step3.implicitHeight)
+        contentHeight: Math.max(step0.implicitHeight, step1.implicitHeight, step2.implicitHeight, step3.implicitHeight, step4.implicitHeight)
 
         Column {
             id: step0; width: parent.width; spacing: 18; visible: wizard.step === 0
@@ -187,6 +188,16 @@ Item {
 
         Column {
             id: step3; width: parent.width; spacing: 16; visible: wizard.step === 3
+            Body { text: launcher.tr("Enter your co-op name, password and server invite code. You can skip this step for offline play and return to Settings → Co-op later.") }
+            Repeater {
+                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op").concat(launcher.sectionFields("Co-op", "Join a host"))
+                delegate: FieldRow { width: step3.width; field: modelData }
+            }
+            CoopFirewall { width: parent.width }
+        }
+
+        Column {
+            id: step4; width: parent.width; spacing: 16; visible: wizard.step === 4
             Body {
                 text: gameValid && savesValid ? launcher.tr("Your game files and saves are ready. Choose a graphics preset, then start playing or open the launcher.") :
                        launcher.tr("A required check needs attention. Go back to Game files or Your data to fix it.")
@@ -230,17 +241,17 @@ Item {
         GlassButton { visible: wizard.step === 0; text: launcher.tr("Skip for now"); width: Math.max(132, implicitWidth); height: 42; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
         GlassButton { visible: wizard.step > 0; text: launcher.tr("Back"); width: Math.max(96, implicitWidth); height: 42; onClicked: wizard.step-- }
         GlassButton {
-            visible: wizard.step === 1 || wizard.step === 2
+            visible: wizard.step >= 1 && wizard.step <= 3
             text: launcher.tr("Continue"); width: Math.max(150, implicitWidth); height: 42; highlighted: true
             enabled: wizard.stepValid(wizard.step)
             onClicked: wizard.step++
         }
         GlassButton {
-            visible: wizard.step === 3; text: launcher.tr("Play"); serif: true; width: Math.max(160, implicitWidth); height: 42; highlighted: true
+            visible: wizard.step === 4; text: launcher.tr("Play"); serif: true; width: Math.max(160, implicitWidth); height: 42; highlighted: true
             enabled: gameValid && savesValid && !launcher.running && !launcher.setupRunning
             onClicked: wizard.finish(true)
         }
-        GlassButton { visible: wizard.step === 3; text: launcher.tr("Open launcher"); width: Math.max(140, implicitWidth); height: 42; onClicked: wizard.finish(false) }
+        GlassButton { visible: wizard.step === 4; text: launcher.tr("Open launcher"); width: Math.max(140, implicitWidth); height: 42; onClicked: wizard.finish(false) }
     }
     Row {
         anchors.right: parent.right; y: parent.height - 50; height: 42; spacing: 14

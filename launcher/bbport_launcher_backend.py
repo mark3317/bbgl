@@ -1375,6 +1375,16 @@ class LauncherBackend(QObject):
         webbrowser.open(coop.RELEASES)
 
     @Slot()
+    def coopConfigureFirewall(self):
+        if self.process or self._coop_busy:
+            return
+
+        def work():
+            coop.run_setup(self._coop_game_exe())
+            return 'Firewall configured. You can start co-op without administrator rights.'
+        self._coop_run('Configuring firewall: approve the Windows administrator prompt…', work)
+
+    @Slot()
     def coopStartHosting(self):
         name, password = self._coop_account()
         if not name or not password:
@@ -1387,10 +1397,6 @@ class LauncherBackend(QObject):
             address, network = coop.host_address()
             if not address:
                 raise coop.CoopError('No network found. Connect Tailscale, then try again.')
-            game = self._coop_game_exe()
-            if not coop.setup_done(game):
-                self._coop_progress('First time: say Yes to the Windows prompt (firewall and C++ runtime)…')
-                coop.run_setup(game)
             key = coop.registration_key()
             self._coop_host.start(address)
             how = coop.create_account(address, key, name, password)
@@ -1437,9 +1443,6 @@ class LauncherBackend(QObject):
         def work():
             self._coop_ensure_packages()
             game = self._coop_probe()
-            if not coop.setup_done(game):
-                self._coop_progress('First time: say Yes to the Windows prompt (firewall)…')
-                coop.run_setup(game)
             coop.create_account(address, key, name, password)
             backup = coop.backup_saves(self.app.get('user_dir') or core.DATA_DIR / 'user')
             self._coop_launch_env = coop.co_op_environment(core.game_environment(self.app), address,

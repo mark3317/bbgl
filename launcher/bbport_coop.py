@@ -360,7 +360,7 @@ def run_setup(game_exe):
     script.write_text(_firewall_script(game_exe), encoding='utf-8-sig')
     if not run_as_administrator('powershell.exe', f'-NoProfile -ExecutionPolicy Bypass -File "{script}"'):
         raise CoopError('Co-op needs a Yes on the Windows administrator prompt (firewall rules); '
-                        'the answer was No. Try Start hosting again.')
+                        'the answer was No. Try Configure firewall again, or continue without it.')
     if not setup_done(game_exe):
         raise CoopError('The firewall rules were not made although Windows allowed the setup. '
                         'A firewall program other than Windows Defender Firewall may manage them; '

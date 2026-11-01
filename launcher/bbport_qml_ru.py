@@ -9,6 +9,15 @@ The classic Tk launcher keeps its own table (bbport_i18n.py).
 import re
 
 RU = {
+    ' of 5': ' из 5',
+    'Configure firewall': 'Настроить брандмауэр',
+    'Firewall setup is optional. If players cannot connect, use this button to allow incoming connections. Only this action asks for administrator rights; starting co-op does not.': 'Настройка брандмауэра необязательна. Если игроки не могут подключиться, нажмите кнопку, чтобы разрешить входящие соединения. Права администратора запрашиваются только для этого действия, а не при запуске коопа.',
+    'Enter your co-op name, password and server invite code. You can skip this step for offline play and return to Settings → Co-op later.': 'Укажите ник, пароль и код приглашения сервера для совместной игры. Для офлайн-игры этот шаг можно пропустить и вернуться к нему позже в настройках коопа.',
+    'Firewall configured. You can start co-op without administrator rights.': 'Брандмауэр настроен. Совместную игру можно запускать без прав администратора.',
+    'Configuring firewall: approve the Windows administrator prompt…': 'Настройка брандмауэра: подтвердите запрос прав администратора Windows…',
+    'Co-op needs a Yes on the Windows administrator prompt (firewall rules); the answer was No. Try Configure firewall again, or continue without it.': 'Настройка брандмауэра отменена в запросе Windows. Нажмите «Настроить брандмауэр» ещё раз или продолжите без настройки.',
+    "Starts BBSC's two servers on this PC. If connections are blocked, use Configure firewall in Seamless co-op. After Play, the launcher window closes; the servers stay active until you exit the game.": 'Запускает серверы BBSC на этом ПК. Если подключения заблокированы, настройте брандмауэр кнопкой в разделе «Совместная игра». После запуска игры окно лаунчера закрывается; серверы работают до выхода из игры.',
+
     'Insert or L3+R3 opens the guide in game': 'Во время игры Insert или L3+R3 открывает меню.',
     'In the game, Insert or L3+R3 opens the guide. Setup can be run again from Game & Saves.': 'Во время игры Insert или L3+R3 открывает меню. Мастер настройки можно повторно открыть в разделе «Игра и сохранения».',
     'Game installed.': 'Игра установлена.',

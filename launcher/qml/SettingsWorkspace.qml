@@ -260,13 +260,14 @@ Item {
                         GlassButton { text: launcher.tr("Open saves folder"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("openSaves") }
                         GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 38; onClicked: launcher.refreshReadiness() }
                     }
+                    CoopFirewall { width: parent.width; visible: is("Co-op", "Seamless co-op") }
                     Note { visible: is("Co-op", "Seamless co-op"); text: launcher.tr("Experimental. This launcher includes the BBSC-GL fork: one session through deaths, lamps, areas and bosses, each hunter keeping their own character. Play on a co-op server (an invite code, or the one this launcher comes with), or host one on your PC for friends on Tailscale or your home network. BBSC-GL client and hosting files are included and ready to use. Your saves are backed up before every session. Normal play and online are unchanged.") }
                     Note { visible: is("Co-op", "Seamless co-op") || is("Co-op", "Host a session") || is("Co-op", "Join a host"); text: launcher.coopStatus }
                     Row { visible: is("Co-op", "Seamless co-op"); spacing: 10
                         GlassButton { text: launcher.tr("Play co-op"); width: Math.max(140, implicitWidth); height: 38; enabled: !launcher.coopBusy && !launcher.running; onClicked: launcher.coopPlay() }
                         GlassButton { text: launcher.tr("About BBSC"); width: Math.max(130, implicitWidth); height: 38; onClicked: launcher.openCoopHelp() }
                     }
-                    Note { visible: is("Co-op", "Host a session"); text: launcher.tr("Starts BBSC's two servers on this PC (the first time, Windows asks once to open the firewall for Tailscale and your home network only). After Play, the launcher window closes; the servers stay active until you exit the game.") }
+                    Note { visible: is("Co-op", "Host a session"); text: launcher.tr("Starts BBSC's two servers on this PC. If connections are blocked, use Configure firewall in Seamless co-op. After Play, the launcher window closes; the servers stay active until you exit the game.") }
                     Row { visible: is("Co-op", "Host a session"); spacing: 10
                         GlassButton { text: launcher.coopHosting ? launcher.tr("Restart hosting") : launcher.tr("Start hosting"); width: Math.max(160, implicitWidth); height: 38; enabled: !launcher.coopBusy; onClicked: launcher.coopStartHosting() }
                         GlassButton { text: launcher.tr("Copy invite code"); width: Math.max(160, implicitWidth); height: 38; enabled: launcher.coopInvite !== ""; onClicked: launcher.coopCopyInvite() }

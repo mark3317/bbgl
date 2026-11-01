@@ -218,15 +218,14 @@ SETTINGS_SECTIONS = {
         ('Join a host', ['coop_invite']),
     ],
     'Mods & Patches': [
-        ('Installed mods', ['mods_enabled', 'mods_dir']),
+        ('Installed mods', ['mods_enabled', 'mods_dir', 'patches_dir']),
         ('Built-in enhancements', [key for key, _, _ in core.ENHANCEMENTS]),
-        ('External patches', ['patches_dir']),
-        ('Gameplay patches', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS]),
+        ('External patches', []),
+        ('Cheats', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS]),
     ],
     'System': [
-        ('Advanced system', ['ui_language', 'draw_pipe', 'readbacks', 'extra_env', 'debug_camera', 'debug_menu', 'frame_stats', 'gpu_profile', 'vk_validation']),
-        ('Updates', []),
-        ('Maintenance', []),
+        ('System', ['ui_language', 'debug_camera']),
+        ('Advanced system', ['draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'frame_stats', 'gpu_profile', 'vk_validation']),
         ('Logs', []),
     ],
 }
@@ -247,10 +246,10 @@ SEARCH_ACTIONS = [
     ('Game & Saves', 'Game files', 'Import trophy keys', 'keys.json trophies'),
     ('Game & Saves', 'Game files', 'Open saves folder', 'save path'),
     ('Mods & Patches', 'Installed mods', 'Refresh mods', 'load order'),
-    ('System', 'Advanced system', 'Desktop shortcut', 'start menu'),
-    ('System', 'Advanced system', 'Add to Steam', 'integration'),
+    ('System', 'System', 'Desktop shortcut', 'start menu'),
+    ('System', 'System', 'Add to Steam', 'integration'),
     ('System', 'Logs', 'Copy log', 'activity diagnostics'),
-    ('System', 'Maintenance', 'Clear shader cache', 'shaders'),
+    ('System', 'System', 'Clear shader cache', 'shaders'),
 ]
 
 LAUNCHER_ROUTE = {'mode': 'launcher', 'page': 'Home', 'step': 0, 'problem': ''}

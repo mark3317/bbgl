@@ -21,12 +21,12 @@ Item {
     }
     Flickable {
         id: homeScroll
-        x: Theme.railWidth + 44; y: 64; width: home.panelWidth - 64; height: parent.height - 218
+        x: Theme.railWidth + 44; y: 36; width: home.panelWidth - 64; height: parent.height - 186
         clip: true; contentHeight: content.implicitHeight
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
-            id: content; width: parent.width - 24; spacing: 24
-            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
+            id: content; width: parent.width - 24; spacing: 12
+            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 32; wrapMode: Text.WordWrap }
             Rectangle { width: 64; height: 2; color: Theme.accent }
             Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 14; wrapMode: Text.WordWrap }
             Text { width: parent.width; text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " + launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display; color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; wrapMode: Text.WordWrap }
@@ -47,7 +47,7 @@ Item {
                 }
             }
             CoopConnection {
-                width: parent.width; visible: launcher.playMode === "coop"
+                width: parent.width; compact: true; visible: launcher.playMode === "coop"
                 onAttentionRequested: (target) => {
                     if (!home.visible) return
                     homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))
@@ -60,24 +60,28 @@ Item {
                 color: Theme.warn; font.pixelSize: 13; wrapMode: Text.WordWrap
             }
             GlassButton { visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
-            Text { width: parent.width; visible: text !== ""; text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
         }
     }
-    Rectangle {
-        x: Theme.railWidth + 28; width: home.panelWidth - 32
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 16
-        height: 136; radius: 10; color: "#e60e1115"; border.color: Theme.line
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter; y: 16; spacing: 8
-            Rectangle { width: 7; height: 7; radius: 4; color: home.gameBlocked || home.savesBlocked || home.onlineBlocked ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: launcher.playMode === "coop" ? launcher.tr("Multiplayer") : launcher.tr("Single player"); color: Theme.textDim; font.pixelSize: 13 }
-        }
+    Item {
+        x: Theme.railWidth + 44; width: home.panelWidth - 88
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 126
         GlassButton {
-            anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; anchors.bottomMargin: 18
-            width: 250; height: 56; serif: true; highlighted: true
+            id: playButton
+            anchors.horizontalCenter: parent.horizontalCenter; y: 0
+            width: 230; height: 56; serif: true; highlighted: true
             text: launcher.tr("Play")
             enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
             onClicked: home.primaryRequested()
+        }
+        Row {
+            anchors.left: playButton.right; anchors.leftMargin: 14; y: 20; spacing: 6
+            Rectangle { width: 6; height: 6; radius: 3; color: home.onlineBlocked ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: launcher.playMode === "coop" ? launcher.tr("Multiplayer") : launcher.tr("Single player"); color: Theme.textDim; font.pixelSize: 12 }
+        }
+        Text {
+            y: 68; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+            text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
+            color: Theme.textDim; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
         }
     }
 }

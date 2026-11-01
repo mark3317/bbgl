@@ -6,7 +6,8 @@ Item {
     id: fieldRow
     property var field: ({})
     property string settingKey: field.key || ""
-    property bool hasHint: (field.hint || "") !== ""
+    property bool compact: false
+    property bool hasHint: !compact && (field.hint || "") !== ""
     property bool isFolder: field.kind === "folder"
     property real controlWidth: Math.min(330, width * 0.44)
     property real minimumHeight: 62
@@ -54,7 +55,7 @@ Item {
         x: isFolder ? 2 : parent.width - width
         y: isFolder ? 46 : (parent.height - height) / 2
         width: isFolder ? parent.width - 194 : fieldRow.controlWidth
-        height: 48
+        height: compact ? 40 : 48
         text: String(launcher.value(settingKey))
         placeholderText: isFolder ? launcher.tr("Default location") : ""
         echoMode: field.kind === "password" ? TextInput.Password : TextInput.Normal

@@ -3,7 +3,8 @@ import QtQuick.Controls
 
 Column {
     id: connection
-    spacing: 16
+    property bool compact: false
+    spacing: compact ? 8 : 16
     signal attentionRequested(var target)
     onVisibleChanged: if (visible && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) })
     Connections {
@@ -13,7 +14,7 @@ Column {
     property bool hosting: launcher.coopRole === "host"
     Repeater {
         model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op")
-        delegate: FieldRow { width: connection.width; minimumHeight: 104; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 62 : 104; compact: connection.compact; field: modelData }
     }
     ToggleRow {
         width: parent.width
@@ -25,7 +26,7 @@ Column {
     }
     Repeater {
         model: connection.hosting ? [] : launcher.sectionFields("Co-op", "Join a host")
-        delegate: FieldRow { width: connection.width; minimumHeight: 104; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 62 : 104; compact: connection.compact; field: modelData }
     }
     Row {
         width: parent.width; spacing: 10
@@ -53,7 +54,7 @@ Column {
         }
     }
     Note { text: launcher.tr("Allows co-op server connections through Windows Firewall on local and Tailscale networks.") }
-    Note { text: launcher.coopStatus }
+    Note { visible: !connection.compact; text: launcher.coopStatus }
     Text {
         visible: launcher.coopStatus.indexOf("https://tailscale.com/download/windows") >= 0
         text: '<a href="https://tailscale.com/download/windows">' + launcher.tr("Download Tailscale") + '</a>'

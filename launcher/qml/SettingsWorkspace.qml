@@ -257,7 +257,7 @@ Item {
                         width: parent.width; visible: is("Co-op", "Seamless co-op")
                         onAttentionRequested: (target) => { if (workspace.visible) detailScroll.contentY = Math.max(0, Math.min(target.mapToItem(detailColumn, 0, 0).y - 24, detailScroll.contentHeight - detailScroll.height)) }
                     }
-                    Note { visible: is("Mods & Patches", "Gameplay patches"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
+                    Note { visible: is("Mods & Patches", "Cheats"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
                     Repeater {
                         model: is("Mods & Patches", "Installed mods") ? launcher.contentMods : []
                         delegate: Item {
@@ -278,13 +278,13 @@ Item {
                     Repeater { model: is("Mods & Patches", "External patches") ? launcher.patches : []
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
-                    Column { visible: is("System", "Advanced system"); width: parent.width; spacing: 14
+                    Column { visible: is("System", "System"); width: parent.width; spacing: 14
                         Flow { width: parent.width; spacing: 10
                             GlassButton { text: launcher.tr("Desktop shortcut"); width: 180; height: 48; onClicked: launcher.createShortcut() }
                             GlassButton { text: launcher.tr("Add to Steam"); width: 180; height: 48; onClicked: launcher.addToSteam() }
                         }
                     }
-                    Column { visible: is("System", "Updates"); width: parent.width; spacing: 14
+                    Column { visible: is("System", "System"); width: parent.width; spacing: 14
                         ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks when the launcher opens and shows available updates here and on Home."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
                         Flow { width: parent.width; spacing: 10
                             GlassButton { visible: launcher.hasUpdate; highlighted: true; text: launcher.tr("Install the new version"); width: 180; height: 48; onClicked: launcher.installUpdate() }
@@ -292,7 +292,7 @@ Item {
                             GlassButton { text: launcher.tr("Releases ↗"); width: 180; height: 48; onClicked: launcher.action("releases") }
                         }
                     }
-                    Flow { width: parent.width; visible: is("System", "Maintenance"); spacing: 10
+                    Flow { width: parent.width; visible: is("System", "System"); spacing: 10
                         GlassButton { text: launcher.tr("Open port folder"); width: 180; height: 48; onClicked: launcher.action("openPort") }
                         GlassButton { text: launcher.tr("Open bbport.ini"); width: 180; height: 48; onClicked: launcher.action("openConfig") }
                         GlassButton { text: launcher.tr("Clear shader cache"); width: 180; height: 48; onClicked: launcher.action("clearCache") }

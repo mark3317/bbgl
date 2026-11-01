@@ -851,3 +851,5 @@ RU.update({
 
 RU.update({'Start server': 'Запустить сервер', 'Stop server': 'Остановить сервер',
 'Allows co-op server connections through Windows Firewall on local and Tailscale networks.': 'Разрешает подключения к серверу в локальной сети и Tailscale через брандмауэр Windows.'})
+
+RU.update({'Cheats': 'Читы', 'Advanced system': 'Расширенные настройки'})

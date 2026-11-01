@@ -51,7 +51,6 @@ Item {
             }
             Note { text: launcher.presetDescription(launcher.graphicsPreset) }
             GlassButton { text: launcher.tr("Add desktop shortcut"); width: 180; onClicked: launcher.createShortcut() }
-            Note { text: launcher.tr("The shortcut will be named Bloodborne.") }
             Note { text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice }
         }
     }

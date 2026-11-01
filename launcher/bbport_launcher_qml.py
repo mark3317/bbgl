@@ -36,6 +36,8 @@ def run_ui(route=None):
     icon_path = (Path(sys.executable).resolve().parent / 'launcher' / 'assets' / 'hunter-icon.ico') if getattr(sys, 'frozen', False) else (Path(__file__).resolve().parent / 'assets' / 'hunter-icon.ico')
     app.setWindowIcon(QIcon(str(icon_path)))
     backend = LauncherBackend(route)
+    backend.finish_graphics_detection()
+    app.processEvents()  # Deliver queued GPU capabilities before any combo box is created.
     if bbport_launcher_backend.RUSSIAN:
         # Qt's own texts (Yes/No, Open, Cancel in the dialogs) in Russian too.
         from PySide6.QtCore import QLibraryInfo, QTranslator

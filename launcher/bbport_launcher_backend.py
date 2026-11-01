@@ -199,9 +199,9 @@ SETTINGS_SECTIONS = {
     'Visuals': [
         ('Display & frame rate', ['output_res', 'hud_position', 'fullscreen', 'fullscreen_mode', 'display', 'hdr', 'fps_mode', 'frame_cap',
                                   'show_fps']),
+        ('Image effects', ['model_lod'] + [key for key, _, _ in core.EFFECTS]),
         ('Upscaling', ['upscaler', 'preset', 'sharpen', 'sharpness']),
         ('Frame generation', ['frame_gen', 'frame_gen_multiplier', 'frame_gen_fit_display']),
-        ('Image effects', ['model_lod'] + [key for key, _, _ in core.EFFECTS]),
         ('Advanced', ['vram_budget_mb', 'frames_ahead', 'present_mode', 'live_resolution', 'object_motion']),
     ],
     'Controls': [
@@ -210,8 +210,8 @@ SETTINGS_SECTIONS = {
     ],
     'Game & Saves': [
         ('Game files', ['game_dir', 'user_dir']),
-        ('Advanced', ['dlc_dir']),
-        ('In-game preferences', ['language', 'voice_language'] + [key for key, _, _ in core.EXTRAS[:1]]),
+        ('Advanced', ['dlc_dir'] + [key for key, _, _ in core.EXTRAS[:1]]),
+        ('In-game preferences', ['language', 'voice_language']),
     ],
     'Co-op': [
         ('Seamless co-op', ['coop_name', 'coop_password']),
@@ -221,10 +221,10 @@ SETTINGS_SECTIONS = {
     'Mods & Patches': [
         ('Installed mods', ['mods_enabled', 'mods_dir', 'patches_dir']),
         ('Built-in enhancements', [key for key, _, _ in core.ENHANCEMENTS]),
-        ('Cheats', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS]),
+        ('Cheats', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS] + ['debug_camera']),
     ],
     'System': [
-        ('System', ['ui_language', 'debug_camera']),
+        ('System', ['ui_language']),
         ('Advanced system', ['draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'frame_stats', 'gpu_profile', 'vk_validation']),
         ('Logs', []),
     ],
@@ -327,6 +327,7 @@ class LauncherBackend(QObject):
         self._output_timer.setInterval(100)
         self._output_timer.timeout.connect(self._flush_output)
         self._checks_started = False
+        self._gpu_thread = None
         self.ini, self.ini_lines = core.load_ini()
         self._remember_written()
         self.process = None
@@ -372,9 +373,15 @@ class LauncherBackend(QObject):
         if self._checks_started:
             return
         self._checks_started = True
-        threading.Thread(target=self._detect_gpu, daemon=True).start()
+        self._gpu_thread = threading.Thread(target=self._detect_gpu, daemon=True)
+        self._gpu_thread.start()
         if self.app.get('check_updates'):
             self.checkForUpdates(False)
+
+    def finish_graphics_detection(self):
+        """Complete the existing GPU probe before creating the first settings controls."""
+        if self._gpu_thread is not None:
+            self._gpu_thread.join(timeout=32)
 
     @Property(str, notify=noticeChanged)
     @translated
@@ -573,6 +580,7 @@ class LauncherBackend(QObject):
             if self.ini.get('frame_gen') == 'dlss': self.ini['frame_gen'] = 'off'
             self._write()
         self._settings_revision += 1
+        self.presetApplied.emit()
         self.changed.emit()
 
     # --- Graphics presets (core.GRAPHICS_PRESETS) ---------------------------------------------

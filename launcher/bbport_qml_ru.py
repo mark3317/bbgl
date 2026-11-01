@@ -867,3 +867,5 @@ RU.update({'Image effects': 'Графика', 'Seamless co-op: host or join': '�
 
 RU.update({'Sets the button icons shown in game menus. Keyboard also applies matching key bindings.': 'Вид значков кнопок в меню игры. Для клавиатуры также назначаются соответствующие клавиши.',
 'Checks for new launcher versions at startup.': 'Проверяет новые версии лаунчера при запуске.'})
+
+RU['Mods & Patches'] = 'Моды и читы'

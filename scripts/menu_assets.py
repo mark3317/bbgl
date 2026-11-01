@@ -650,6 +650,30 @@ def name_dropdown_parts(b):
 
 def build_option_movie(source):
     movie = name_dropdown_parts(bytes(source))
+    # The row's unnamed underline is separate from Text_0 and Cursor. Expose it
+    # so runtime can hide it on logical value-only rows below the six captions.
+    head, a, z = find_sprite(movie, 97)
+    body = bytearray(movie[a:a + 4])
+    found = False
+    for code, h, x, y in tags(movie, a + 4, z):
+        if code in (PLACE2, PLACE3):
+            raw = movie[x:y]
+            # This PlaceObject3 uses the ordinary fields plus a trailing filter.
+            # Preserve that filter and its second flag byte when adding the name.
+            if code == PLACE3:
+                raw = raw[:1] + raw[2:]
+            place = Place2(raw, 0, len(raw))
+            if place.depth == 2 and place.cid == 40:
+                named = place.build(place.depth, place.mat, 'Underline')
+                if code == PLACE3:
+                    named = named[:1] + movie[x + 1:x + 2] + named[1:]
+                body += tag_bytes(code, named)
+                found = True
+                continue
+        body += movie[h:y]
+    if not found:
+        raise Fail('unexpected option row underline layout')
+    movie = set_size(movie[:head] + tag_bytes(DEFINE_SPRITE, body) + movie[z:])
     movie = fit_command_list(movie, 'ItemList', 6, pitch=56.2)
     for name, title, depth, defaults_slot, drop in SECTIONS:
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)

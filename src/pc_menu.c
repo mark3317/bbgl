@@ -537,8 +537,8 @@ static int64_t open_section(Section *s, void *root, void *params, const void *ha
         /* Extra logical clips supply values only. Their labels/cursors are not
          * native visible slots and must never remain painted below the list. */
         for (int r = 6; r < s->count; ++r) {
-            static const char *parts[] = {"Text_0", "Cursor"};
-            for (int part = 0; part < 2; ++part) {
+            static const char *parts[] = {"Text_0", "Cursor", "Underline"};
+            for (int part = 0; part < 3; ++part) {
                 char path[64];
                 snprintf(path, sizeof(path), "Item_%d_0/%s", r, parts[part]);
                 _Alignas(16) unsigned char wrapper[0x80] = {0};

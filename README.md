@@ -34,10 +34,6 @@ The latest version passed user gameplay validation on 1 November 2026. Two-playe
 
 The in-game overlay opens with **Insert** or **L3 + R3**. It includes trophies, map options and diagnostics, and follows the launcher's language.
 
-## Updating from the test 1.0.0
-
-Download this archive manually: the version number is unchanged, so the updater may not offer it. Extract into a separate folder and run **Bloodborne.exe**. Your profile is stored separately from the installation.
-
 ## Source and credits
 
 [Build BBGL](BUILDING.md) · [Changes](CHANGELOG.md) · [Credits and licences](THIRD_PARTY.md)

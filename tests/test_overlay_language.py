@@ -16,7 +16,7 @@ class OverlayLanguageTests(unittest.TestCase):
             ('', '8', 'en', 'en'),
         ]:
             with self.subTest(ui=ui, game=game, system=system):
-                settings = core.app_settings(dict(ui_language=ui, language=game))
+                settings = dict(core.APP_DEFAULTS, ui_language=ui, language=game)
                 with patch.object(core, 'windows_language', return_value=system):
                     env = core.game_environment(settings)
                 self.assertEqual(env['BB_UI_LANGUAGE'], expected)

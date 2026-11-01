@@ -372,11 +372,11 @@ void OpenRows() {
 void RowLabel(const char* label, float control_height) {
     OpenRows();
     label = L(label);
-    const float label_width = std::max(Px(80.0f), ImGui::GetContentRegionAvail().x - ControlWidth() - Px(24.0f));
+    ImGui::TableNextRow(ImGuiTableRowFlags_None, RowHeight());
+    ImGui::TableSetColumnIndex(0);
+    const float label_width = std::max(Px(80.0f), ImGui::GetContentRegionAvail().x - Px(8.0f));
     const float text_height = ImGui::CalcTextSize(label, nullptr, false, label_width).y;
     const float h = std::max(RowHeight(), text_height + Px(20.0f));
-    ImGui::TableNextRow(ImGuiTableRowFlags_None, h);
-    ImGui::TableSetColumnIndex(0);
     const float y = ImGui::GetCursorPosY();
     ImGui::SetCursorPosY(y + (h - text_height) * 0.5f - ImGui::GetStyle().CellPadding.y);
     ImGui::PushStyleColor(ImGuiCol_Text, Vec(Ink::Text));

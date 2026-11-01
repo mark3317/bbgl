@@ -18,3 +18,12 @@ routing tests pass. The full QML window and new step load without warnings; Russ
 layout rendered and inspected. The existing wizard suite retains its four previously
 documented failures (direct launch, translated notices, old prompt download behavior).
 No network rules, saves or game files were changed by validation.
+
+## Hidden launcher lifetime
+
+An orphan Bloodborne.exe (PID 13820, no window, no game/server processes) was
+observed and terminated on 1 November. Its exact original hang cause is unproven.
+Window lifetime now explicitly quits a hidden idle launcher, connects game-exit
+handling before launching, and periodically rechecks hidden idle state. The reader
+still survives while a game is running. Three isolated real Qt event-loop tests
+pass: close while idle, hidden during a game then exit, and game exit while visible.

@@ -2,7 +2,7 @@
 from pathlib import Path
 import sys
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QUrl, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
@@ -10,6 +10,23 @@ from PySide6.QtWidgets import QApplication
 
 from bbport_launcher_backend import LauncherBackend
 import bbport_launcher_backend
+
+def manage_window_lifetime(app, backend, window):
+    """Keep the log reader alive only while a game owns the hidden launcher."""
+    app.setQuitOnLastWindowClosed(False)
+
+    def quit_if_idle(*_args):
+        if not window.isVisible() and not backend.running:
+            app.quit()
+
+    window.visibleChanged.connect(quit_if_idle)
+    backend.gameFinished.connect(quit_if_idle)
+    timer = QTimer(app)
+    timer.setInterval(1000)
+    timer.timeout.connect(quit_if_idle)
+    timer.start()
+    return timer
+
 
 def run_ui(route=None):
     """ROUTE comes from bbport_startup.route(); without one the launcher opens on Home."""
@@ -50,18 +67,15 @@ def run_ui(route=None):
         backend.start_background_checks()
         window = load('Main.qml')
         launcher_window.append(window)
+        manage_window_lifetime(app, backend, window)
         def close_after_launch():
             # The pipe reader writes last_run.log and must survive window closure
             # for every game, including guests and offline play. Hosted servers
             # also stay alive until the game exits.
-            if backend.running:
-                app.setQuitOnLastWindowClosed(False)
-                backend.gameFinished.connect(lambda _code, _started: app.quit())
             window.close()
 
         backend.closeRequested.connect(close_after_launch)
         app.aboutToQuit.connect(backend.shutdown_coop)
-        app.setQuitOnLastWindowClosed(True)
 
     open_launcher()
     return app.exec()

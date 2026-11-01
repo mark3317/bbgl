@@ -322,7 +322,7 @@ Item {
                     TextArea {
                         visible: is("System", "Logs")
                         width: detailColumn.width; height: visible ? 380 : 0; readOnly: true
-                        wrapMode: TextEdit.NoWrap; text: launcher.log; color: Theme.text; selectByMouse: true
+                        wrapMode: TextEdit.NoWrap; text: visible ? launcher.log : ""; color: Theme.text; selectByMouse: true
                         font.family: "Cascadia Mono"; font.pixelSize: 12
                         background: Rectangle { color: "#0f1216"; radius: Theme.radius; border.color: Theme.line }
                     }

@@ -4,6 +4,7 @@ The Qt Quick view talks to this object through a small set of slots. The game st
 uses the same settings.json, bbport.ini, mods.json and run.py as the original UI.
 """
 import ctypes
+from collections import deque
 import json
 import os
 from pathlib import Path
@@ -16,7 +17,7 @@ import urllib.request
 import webbrowser
 import zipfile
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QFileDialog as _QFileDialog, QMessageBox as _QMessageBox
 
@@ -263,6 +264,38 @@ SEARCH_ACTIONS = [
 LAUNCHER_ROUTE = {'mode': 'launcher', 'page': 'Home', 'step': 0, 'problem': ''}
 
 
+class PendingGameOutput:
+    """A bounded UI tail and one wakeup, independent of the complete disk log."""
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.lines = deque()
+        self.size = 0
+        self.pending = False
+        self.started = False
+        self.restarting = False
+
+    def append(self, line):
+        with self.lock:
+            self.started |= 'Entering original x86-64 code' in line
+            self.restarting |= 'restarting through run.py' in line
+            line = line[-64000:]
+            self.lines.append(line)
+            self.size += len(line)
+            while self.size > 64000:
+                self.size -= len(self.lines.popleft())
+            wake = not self.pending
+            self.pending = True
+            return wake
+
+    def drain(self):
+        with self.lock:
+            result = ''.join(self.lines), self.started, self.restarting
+            self.lines.clear()
+            self.size = 0
+            self.pending = self.started = self.restarting = False
+            return result
+
+
 class LauncherBackend(QObject):
     changed = Signal()
     logChanged = Signal()
@@ -296,6 +329,11 @@ class LauncherBackend(QObject):
         self._route = dict(route or LAUNCHER_ROUTE)
         self._problem = self._route.get('problem', '')
         self._game_started = False
+        self._pending_output = PendingGameOutput()
+        self._output_timer = QTimer(self)
+        self._output_timer.setSingleShot(True)
+        self._output_timer.setInterval(100)
+        self._output_timer.timeout.connect(self._flush_output)
         self._checks_started = False
         self.ini, self.ini_lines = core.load_ini()
         self._remember_written()
@@ -984,20 +1022,20 @@ class LauncherBackend(QObject):
             try:
                 log = core.open_run_log(self.app.get('user_dir') or core.DATA_DIR / 'user')
             except OSError as error:
-                self._outputLine.emit(f'Could not open game log: {error}\n')
+                self._queue_output(f'Could not open game log: {error}\n')
             for raw in iter(process.stdout.readline, b''):
                 line = raw.decode('utf-8', errors='replace')
                 if log is not None:
                     try:
                         log.write(line)
                     except OSError as error:
-                        self._outputLine.emit(f'Could not write game log: {error}\n')
+                        self._queue_output(f'Could not write game log: {error}\n')
                         try:
                             log.close()
                         except OSError:
                             pass
                         log = None
-                self._outputLine.emit(line)
+                self._queue_output(line)
         finally:
             if log is not None:
                 try:
@@ -1007,6 +1045,27 @@ class LauncherBackend(QObject):
 
     _outputLine = Signal(str)
     _gameExited = Signal(int)
+
+    def _queue_output(self, line):
+        if self._pending_output.append(line):
+            self._outputLine.emit('')
+
+    @Slot(str)
+    def _schedule_output(self, _line):
+        if not self._output_timer.isActive():
+            self._output_timer.start()
+
+    @Slot()
+    def _flush_output(self):
+        self._output_timer.stop()
+        text, started, restarting = self._pending_output.drain()
+        if text:
+            self._append_log(text)
+        # Control markers survive eviction of old UI lines during a burst.
+        if started:
+            self._receive_line('Entering original x86-64 code')
+        elif restarting:
+            self._receive_line('restarting through run.py')
 
     @Slot(str)
     def _receive_line(self, line):
@@ -1022,6 +1081,7 @@ class LauncherBackend(QObject):
 
     @Slot(int)
     def _receive_exit(self, code):
+        self._flush_output()
         self._append_log(f'\n— The game exited (code {code}) —\n')
         self.process = None
         if self.job:
@@ -1040,7 +1100,7 @@ class LauncherBackend(QObject):
         self.gameFinished.emit(code, self._game_started)
 
     def connect_workers(self):
-        self._outputLine.connect(self._receive_line)
+        self._outputLine.connect(self._schedule_output)
         self._gameExited.connect(self._receive_exit)
 
     @Slot()

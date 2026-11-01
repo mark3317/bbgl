@@ -1,5 +1,31 @@
 # Hidden launcher process exit — 1 November 2026
 
+## Confirmed cause after the user's failed retest
+
+The first deployment below did not fix the user's scenario. Live py-spy stacks
+on both remaining GUI processes (PC 20884, laptop 16792) show the main thread in
+`_receive_line -> _append_log`, with no game or runner processes remaining. The
+PC main thread had accumulated over 14 minutes of CPU time. The reader and job
+waiter had finished; game-exit notification was queued behind per-line UI signals.
+The hidden Settings TextArea still bound its text to the 350,000-character log,
+causing repeated text layout even when Logs was not displayed. This supersedes
+the earlier unproven EOF/log-error explanation as the cause of this observed run.
+
+The reader now keeps a bounded 64 KB UI tail with one outstanding wakeup. A
+100 ms single-shot timer batches delivery, while startup/restart markers survive
+tail eviction. Exit flushes the remaining tail directly. The complete disk log
+is unchanged. The TextArea binds the log only while visible. Consequently output
+volume cannot create an unbounded Qt event backlog ahead of game completion.
+
+Validation: full QML source harness with an actual child producing 100,000 lines
+passes in 0.66 seconds with seven UI updates; first and final lines remain in the
+disk log. Two bounded-buffer/marker tests and nine existing process/window/exit
+tests pass. Frozen verification and deployment are pending at this entry.
+User explicitly authorized stopping both verified hidden orphan launchers for
+deployment after capturing their stacks; both were stopped, without game processes.
+
+## Earlier investigation and first deployment (historical)
+
 The launcher deliberately remains alive after its window closes, to drain the
 game's output and host local servers. Previously `_read_output` was also the only
 source of `_gameExited`: it waited for pipe EOF, then waited for run.py. A writer

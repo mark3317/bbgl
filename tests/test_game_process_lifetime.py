@@ -25,6 +25,7 @@ class Backend(QObject):
     gameFinished = Signal(int, bool)
     _read_output = LauncherBackend._read_output
     _wait_for_game = LauncherBackend._wait_for_game
+    _queue_output = lambda self, line: self._outputLine.emit(line)
 app = QApplication([])
 window = QQuickWindow()
 window.show()

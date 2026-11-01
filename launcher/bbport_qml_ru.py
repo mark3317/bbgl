@@ -659,6 +659,8 @@ RU = {
 
 # Texts with values: {} in the English template, {0}, {1}, ... in the Russian one.
 PATTERNS = [
+    ('Firewall setup did not return a result. See {}.', 'Настройка брандмауэра не вернула результат. Скрипт: {}.'),
+    ('Firewall setup failed: {}', 'Ошибка настройки брандмауэра: {}'),
     ('Downloading {}/{} · {} / {} GiB', 'Загрузка {0}/{1} · {2} / {3} ГиБ'),
     ('Unpacking {}/{} · {}/{}', 'Распаковка {0}/{1} · {2}/{3}'),
     ('Not enough free space: need {} GiB', 'Недостаточно места: требуется {0} ГиБ'),

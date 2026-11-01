@@ -27,3 +27,17 @@ Window lifetime now explicitly quits a hidden idle launcher, connects game-exit
 handling before launching, and periodically rechecks hidden idle state. The reader
 still survives while a game is running. Three isolated real Qt event-loop tests
 pass: close while idle, hidden during a game then exit, and game exit while visible.
+
+## Windows 10 firewall result reporting
+
+On the laptop the launcher reported setup failure although all eight enabled rules
+were present and the game program filter matched the installed executable. Both
+BFE/MpsSvc were running. Reading the rules over the elevated SSH session succeeded;
+the exact failure of the original unelevated subprocess was not captured.
+
+Rule creation and verification now run together in elevated PowerShell. A per-request
+JSON result communicates success or the actual PowerShell error to the launcher,
+instead of querying NetSecurity again without elevation and attributing any failure
+to a third-party firewall. Errors stop setup instead of silently continuing. A stale
+result from another invocation cannot report success. No tests were run at the user's
+request; deployment checks are limited to file hashes and process availability.

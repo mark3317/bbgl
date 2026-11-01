@@ -325,7 +325,7 @@ def _quoted(text):
 
 def _firewall_script(game_exe):
     ranges = ','.join(f"'{r}'" for r in FIREWALL_RANGES)
-    lines = ['$ErrorActionPreference = "Continue"', f'$ranges = @({ranges})']
+    lines = ['$ErrorActionPreference = "Stop"', f'$ranges = @({ranges})']
     for label, protocol, port in FIREWALL_PORTS:
         rule = f'{RULE_PREFIX} {label} {port}'
         lines.append(f"Remove-NetFirewallRule -DisplayName '{rule}' -ErrorAction SilentlyContinue")
@@ -356,15 +356,43 @@ def run_setup(game_exe):
     """Firewall rules (Tailscale and home network only) and the C++ runtime the servers need.
     Windows asks the player once for administrator rights."""
     script = coop_dir() / 'setup-firewall.ps1'
+    result_file = coop_dir() / 'firewall-setup-result.json'
+    request = secrets.token_hex(16)
     coop_dir().mkdir(parents=True, exist_ok=True)
-    script.write_text(_firewall_script(game_exe), encoding='utf-8-sig')
+    # Verify in the elevated process as well: a normal Windows 10 process may
+    # not be able to read NetSecurity's CIM rules after successful elevation.
+    names = [f'{RULE_PREFIX} {label} {port}' for label, _, port in FIREWALL_PORTS]
+    names.append(f'{RULE_PREFIX} game')
+    verify = '\n'.join(
+        f"$r = Get-NetFirewallRule -DisplayName {_quoted(name)} -ErrorAction Stop; "
+        f"if (-not ($r | Where-Object {{ $_.Enabled -eq 'True' -and $_.Action -eq 'Allow' }})) "
+        f"{{ throw {_quoted('Firewall rule is not enabled: ' + name)} }}"
+        for name in names)
+    body = (
+        '$ErrorActionPreference = "Stop"\n'
+        f"$result = @{{ok=$false; error=''; request='{request}'}}\n"
+        'try {\n' + _firewall_script(game_exe) + verify + '\n'
+        f"$r = Get-NetFirewallRule -DisplayName {_quoted(names[-1])} -ErrorAction Stop\n"
+        f"if (($r | Get-NetFirewallApplicationFilter).Program -ne {_quoted(game_exe)}) "
+        "{ throw 'Firewall game path verification failed.' }\n"
+        '$result.ok = $true\n'
+        '} catch { $result.error = ($_ | Out-String) }\n'
+        'finally { $result | ConvertTo-Json -Compress | '
+        f'Set-Content -LiteralPath {_quoted(result_file)} -Encoding UTF8 }}\n'
+        'if (-not $result.ok) { exit 1 }\n')
+    with script.open('w', encoding='utf-8-sig', newline='') as output:
+        output.write(body)
     if not run_as_administrator('powershell.exe', f'-NoProfile -ExecutionPolicy Bypass -File "{script}"'):
         raise CoopError('Co-op needs a Yes on the Windows administrator prompt (firewall rules); '
                         'the answer was No. Try Configure firewall again, or continue without it.')
-    if not setup_done(game_exe):
-        raise CoopError('The firewall rules were not made although Windows allowed the setup. '
-                        'A firewall program other than Windows Defender Firewall may manage them; '
-                        f'the setup script is {script}.')
+    try:
+        result = json.loads(result_file.read_text(encoding='utf-8-sig'))
+    except (OSError, ValueError) as error:
+        raise CoopError(f'Firewall setup did not return a result. See {script}.') from error
+    if not isinstance(result, dict) or result.get('request') != request:
+        raise CoopError(f'Firewall setup did not return a result. See {script}.')
+    if result.get('ok') is not True:
+        raise CoopError(f"Firewall setup failed: {result.get('error') or 'Unknown Windows error'}")
 
 
 def run_as_administrator(program, parameters, verb='runas'):

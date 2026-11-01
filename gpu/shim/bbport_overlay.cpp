@@ -84,8 +84,6 @@ int active_tab = 0; // Hunt, Trophy gallery, Image tools, Gameplay extras
 // Where the controller's focus was last frame: on a rail icon, or on the page beside it.
 bool rail_focused_last = false, page_focused_last = false;
 bool dirty = false; // settings changed while open: saved on close
-bool mod_selection_changed = false;
-std::string mod_selection_error;
 // The game's text dialog (SetTextEntry), guarded by imgui_mutex. The flag is atomic:
 // RoutePad reads it on the game's pad thread without that lock.
 std::atomic<bool> text_entry_active{false};
@@ -476,36 +474,6 @@ bool Toggle(const char* label, bool* value) {
     return changed;
 }
 
-void Slider(const char* label, std::atomic<float>& value, float lo, float hi) {
-    RowLabel(label, ImGui::GetFrameHeight());
-    float v = value;
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    const std::string id = std::string("##slider_") + label;
-    const bool changed = ImGui::SliderFloat(id.c_str(), &v, lo, hi, "%.2f");
-    Store(value, v, changed);
-}
-
-// A pick list in a row: as ImGui::BeginCombo; EndCombo when it returns true.
-bool ComboRow(const char* label, const char* preview) {
-    RowLabel(label, ImGui::GetFrameHeight());
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    // An ID string, not PushID: an open combo continues in its popup window. The arrow is the
-    // launcher's thin chevron, drawn on the row's window after the frame.
-    const std::string id = std::string("##combo_") + label;
-    ImDrawList* draw = ImGui::GetWindowDrawList();
-    const ImVec2 at = ImGui::GetCursorScreenPos();
-    const float w = ImGui::GetContentRegionAvail().x, h = ImGui::GetFrameHeight();
-    const bool open = ImGui::BeginCombo(id.c_str(), preview, ImGuiComboFlags_NoArrowButton);
-    const ImVec2 c(at.x + w - Px(18.0f), at.y + h * 0.5f);
-    const float k = Px(4.5f);
-    draw->PathLineTo(ImVec2(c.x - k, c.y - k * 0.5f));
-    draw->PathLineTo(ImVec2(c.x, c.y + k * 0.5f));
-    draw->PathLineTo(ImVec2(c.x + k, c.y - k * 0.5f));
-    draw->PathStroke(ImGui::GetColorU32(open ? Ink::Text : Ink::Dim), ImDrawFlags_None, Px(1.6f));
-    return open;
-}
-
-// One of several choices: a row with a radio mark on the right.
 bool ChoiceRow(const char* label, bool selected) {
     RowLabel(label, Px(22.0f));
     const float d = Px(22.0f);
@@ -523,17 +491,6 @@ bool ChoiceRow(const char* label, bool selected) {
 }
 
 // The one primary action of a page (crimson, full width).
-bool PrimaryButton(const char* label) {
-    CloseRows();
-    ImGui::Dummy(ImVec2(0, Px(6.0f)));
-    ImGui::PushStyleColor(ImGuiCol_Button, Vec(Ink::Accent));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Vec(IM_COL32(51, 149, 166, 255)));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Vec(IM_COL32(32, 100, 115, 255)));
-    const bool pressed = ImGui::Button(label, ImVec2(-FLT_MIN, Px(48.0f)));
-    ImGui::PopStyleColor(3);
-    return pressed;
-}
-
 // What the last row does: a small marker after its label, the text on hover or focus.
 void Hint(const char* text) {
     const bool hot = ImGui::IsItemHovered() || ImGui::IsItemFocused();
@@ -552,24 +509,6 @@ void Hint(const char* text) {
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
-}
-
-bool IsCheat(int e) { return !std::strncmp(BbSettings::Effects[e].key, "cheat_", 6); }
-// The stamina cheats are set each frame (src/runtime_stamina.c), not patched at start.
-bool LiveSetting(int e) {
-    return (e < 7 && (BbSettings::Get().live_graphics_mask & (1 << e))) ||
-           std::strstr(BbSettings::Effects[e].key, "stamina") != nullptr;
-}
-
-bool RestartNeeded() {
-    const auto& s = BbSettings::Get();
-    bool restart = (!(s.live_graphics_mask & 256) && s.object_motion != s.startup_object_motion) ||
-                   (!(s.live_graphics_mask & 128) && s.model_lod != s.startup_model_lod) ||
-                   s.live_resolution != s.startup_live_resolution ||
-                   BbSettings::ResolutionNeedsRestart();
-    for (int e = 0; e < BbSettings::EffectCount; ++e)
-        restart |= !LiveSetting(e) && s.effects[e] != s.startup_effects[e];
-    return restart;
 }
 
 /// The presented frame rate; with frame generation adding frames also the game's own rate,
@@ -597,259 +536,9 @@ bool NativePcMenuAvailable() {
            (!enabled || std::strcmp(enabled, "0") != 0);
 }
 
-bool ExtrasRestartNeeded() {
-    const auto& s = BbSettings::Get();
-    for (int e = 0; e < BbSettings::EffectCount; ++e) // Cheats: native PC menu has no room for this section.
-        if (IsCheat(e) && !LiveSetting(e) && s.effects[e] != s.startup_effects[e]) return true;
-    for (int e = BbSettings::FirstEnhancement; e < BbSettings::EffectCount; ++e)
-        if (s.effects[e] != s.startup_effects[e]) return true;
-    return false;
-}
-
-void RestartPrompt() {
-    if (!RestartNeeded()) return;
-    Note(L("Changes apply after restarting the game."), Ink::Warn);
-}
-
-void SettingsTab() {
-    auto& s = BbSettings::Get();
-    PageTitle(L("Visual settings"));
-    Section(L("Temporal upscaling"));
-    static const char* upscalers[] = {L("Off"), "FSR 3.1", "FSR 4 (INT8)", "FSR 4.1.1 (INT8)",
-                                     L("TAA (native anti-aliasing)"), "DLSS (NVIDIA RTX)"};
-    static const char* later[] = {"XeSS"};
-    int upscaler = s.upscaler;
-    if (ComboRow(L("Upscaler"), upscalers[upscaler])) {
-        for (int i = 0; i < BbSettings::UpscalerCount; ++i) {
-            if (i == BbSettings::UpscalerFsr411 ||
-                (i == BbSettings::UpscalerFsr4 && !s.fsr4_supported.load())) continue;
-            const bool supported = i == BbSettings::UpscalerFsr4 ? s.fsr4_supported.load()
-                : i == BbSettings::UpscalerFsr411 ? s.fsr411_supported.load()
-                : i == BbSettings::UpscalerDlss   ? s.dlss_supported.load() : true;
-            ImGui::BeginDisabled(!supported);
-            if (ImGui::Selectable(upscalers[i], i == upscaler)) {
-                Store(s.upscaler, i, true);
-            }
-            ImGui::EndDisabled();
-            if (!supported) {
-                ImGui::SameLine();
-                ImGui::TextDisabled("%s", L("- unsupported by this GPU"));
-            }
-        }
-        for (const char* name : later) {
-            ImGui::BeginDisabled();
-            ImGui::Selectable(name, false);
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::TextDisabled("%s", L("- in development"));
-        }
-        ImGui::EndCombo();
-    }
-    if (const char* problem = s.dlss_problem.load(); problem && upscaler == BbSettings::UpscalerDlss) {
-        NoteF(Ink::Warn, "DLSS: %s", L(problem));
-    }
-    if (const char* problem = s.fsr4_problem.load()) {
-        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), L(problem));
-        if (!BbSettings::IsFsr4(s.upscaler))
-            Note(L("The selected mode is active. You can select FSR 4 again."));
-    }
-    if (BbSettings::IsFsr4(s.upscaler)) {
-        if (s.upscaler == BbSettings::UpscalerFsr411) {
-            Hint(L("FSR 4.1.1 INT8: AMD 4.1.1 DLL model reproduced in Vulkan. One model covers Native through Performance, with another for Ultra Performance. Assets: tools/fsr4cap/build_assets.sh (requires the DLL and Proton)."));
-        } else {
-            Hint(L("FSR 4 INT8 uses the v07 model from the AMD FidelityFX SDK. Higher quality than FSR 3.1, with more GPU work. Changing presets rebuilds the model and may pause briefly. Assets: tools/fetch_fsr4_assets.sh."));
-        }
-        Checkbox(L("FSR 4: auto exposure"), s.fsr4_auto_exposure);
-        Checkbox(L("FSR 4: invert jitter"), s.fsr4_invert_jitter);
-        Hint(L("Ghosting diagnostics: FSR 4 uses exposure to normalize color and decide when to discard history. These options apply immediately."));
-    }
-    const bool upscaler_on = s.upscaler != BbSettings::UpscalerOff;
-    const bool taa = s.upscaler == BbSettings::UpscalerTaa;
-    ImGui::BeginDisabled(!upscaler_on);
-    ImGui::BeginDisabled(taa);
-    int preset = taa ? BbSettings::NativeAA : s.preset.load();
-    char preset_label[192];
-    std::snprintf(preset_label, sizeof(preset_label), "%s (x%.1f)", L(BbSettings::PresetName(preset)),
-                  BbSettings::PresetScale(preset));
-    if (ComboRow(L("Preset"), preset_label)) {
-        for (int i = 0; i < BbSettings::PresetCount; ++i) {
-            char label[192];
-            const float scale = BbSettings::PresetScale(i);
-            const int output = s.output_res;
-            std::snprintf(label, sizeof(label), L("%s (x%.1f, render %dx%d)"),
-                          L(BbSettings::PresetName(i)), scale,
-                          int(std::lround(BbSettings::OutputWidths[output] / scale / 2) * 2),
-                          int(std::lround(BbSettings::OutputHeights[output] / scale / 2) * 2));
-            if (ImGui::Selectable(label, i == preset)) {
-                Store(s.preset, i, true);
-            }
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::EndDisabled();
-    if (taa) {
-        Note(L("TAA smooths the scene at output resolution without FSR upscaling. The saved upscaling preset returns when you select an upscaler."));
-    }
-    InfoRow(L("Active scene resolution"), "%d x %d", s.active_render_width.load(),
-            s.active_render_height.load());
-    if (BbSettings::AspectNeedsRestart()) {
-        Hint(L("Changing aspect ratio requires a restart. Ultrawide outputs (21:9, 32:9) widen the camera and HUD (HUD position: in the launcher); other aspect ratios keep a centred 16:9 HUD."));
-    } else if (BbSettings::FixedRenderSession()) {
-        InfoRow(L("Startup preset"), "%s", L(BbSettings::PresetName(s.startup_preset)));
-        if (const char* automatic = std::getenv("BB_AUTO_RENDER_RES");
-            automatic && automatic[0] == '1') {
-            Hint(L("At outputs other than 1080p, the scene resolution is patched at startup. Changes to the preset or output require a restart. This saves GPU work on older GPUs. Non-16:9 outputs always use this path to keep camera and HUD geometry synchronized."));
-        } else {
-            Hint(L("BB_RENDER_RES fixes the scene resolution at startup. Remove this explicit override to allow live resolution and preset changes. Changes to aspect ratio still require a restart."));
-        }
-    } else {
-        Hint(L("Native AA uses the upscaler for anti-aliasing. Other presets reduce scene resolution relative to the output. The HUD is drawn at output resolution. Preset changes apply on the next frame in a live session."));
-    }
-    Checkbox(L("Sharpening (RCAS)"), s.sharpen);
-    ImGui::BeginDisabled(!s.sharpen);
-    Slider(L("Sharpness"), s.sharpness, 0.0f, 2.0f);
-    Hint(L("Up to 1 uses the upscaler sharpening pass (RCAS). Values above 1 add another RCAS pass. Ctrl+click the slider to enter an exact value."));
-    ImGui::EndDisabled();
-    Checkbox(L("Subpixel jitter"), s.jitter);
-    Hint(L("The camera shifts by a fraction of a pixel each frame so the upscaler can recover detail across multiple frames. Without jitter, it only smooths using frame history."));
-
-    Section(L("Reactive mask"));
-    ImGui::BeginDisabled(taa);
-    Checkbox(L("Enable mask"), s.reactive);
-    Hint(L("Marks transparent effects such as particles and fog so the upscaler relies less on history. Reduces trails, but can increase shimmer behind those effects."));
-    ImGui::BeginDisabled(!s.reactive);
-    Slider(L("Scale"), s.reactive_scale, 0.0f, 4.0f);
-    Slider(L("Threshold"), s.reactive_threshold, 0.0f, 1.0f);
-    Slider(L("Maximum"), s.reactive_max, 0.0f, 1.0f);
-    bool show_mask = s.debug_view == BbSettings::DebugReactive;
-    if (Toggle(L("Show mask (debug)"), &show_mask)) {
-        s.debug_view = show_mask ? BbSettings::DebugReactive : BbSettings::DebugNone;
-    }
-    ImGui::EndDisabled();
-    ImGui::EndDisabled();
-    Checkbox(L("Object motion vectors"), s.object_motion);
-    Hint(L("Accurate vectors for animated objects reduce breakup on clothing and weapons during movement. Static geometry receives no extra pass. Changes require a restart."));
-    bool show_motion = s.debug_view == BbSettings::DebugMotion;
-    if (Toggle(L("Show motion vectors (debug)"), &show_motion)) {
-        s.debug_view = show_motion ? BbSettings::DebugMotion : BbSettings::DebugNone;
-    }
-    Hint(L("Red/green: horizontal/vertical motion (8 pixels = full brightness). Blue: the pixel has accurate object motion, beyond camera motion. A moving object with no blue or red/green is treated as stationary and may leave trails."));
-    ImGui::EndDisabled(); // upscaler off
-
-    Section(L("Frame generation"));
-    static const char* frame_gens[] = {L("Off"), L("FSR 3.1 (any GPU)"), "DLSS (NVIDIA RTX 40/50)"};
-    const int frame_gen = s.frame_gen;
-    if (ComboRow(L("Frame generation"), frame_gens[frame_gen])) {
-        for (int i = 0; i < BbSettings::FrameGenCount; ++i) {
-            const bool supported = i != BbSettings::FrameGenDlss || s.dlssg_max_multiplier > 1;
-            ImGui::BeginDisabled(!supported);
-            if (ImGui::Selectable(frame_gens[i], i == frame_gen)) {
-                Store(s.frame_gen, i, true);
-            }
-            ImGui::EndDisabled();
-            if (!supported) {
-                ImGui::SameLine();
-                ImGui::TextDisabled("%s", L("- unsupported by this GPU"));
-            }
-        }
-        ImGui::EndCombo();
-    }
-    Hint(L("Generates frames between two of the game's frames: 60 FPS on screen becomes 120. Needs a display with that refresh rate (120 Hz or more at 60 FPS); it pauses when the display cannot show the extra frames, and 3x/4x drop to what it can. Adds a little input latency. Menus and movies are not generated."));
-    const int max_multiplier =
-        s.frame_gen == BbSettings::FrameGenDlss ? s.dlssg_max_multiplier.load() : 2;
-    ImGui::BeginDisabled(s.frame_gen == BbSettings::FrameGenOff || max_multiplier <= 2);
-    int multiplier = std::min(s.frame_gen_multiplier.load(), max_multiplier);
-    if (ImGui::SliderInt(L("Multiplier"), &multiplier, 2, std::max(max_multiplier, 2), "%dx")) {
-        Store(s.frame_gen_multiplier, multiplier, true);
-    }
-    ImGui::EndDisabled();
-    ImGui::BeginDisabled(s.frame_gen == BbSettings::FrameGenOff);
-    Checkbox(L("Fit to display refresh"), s.frame_gen_fit_display);
-    ImGui::EndDisabled();
-    Hint(L("On: no more frames than the display shows (an uncapped game gets fewer generated frames, and the GPU does less). Off: the multiplier as chosen; past the refresh rate the display shows the newest frames."));
-    // What runs now (fitted: at most the frames the display shows between two of the game's).
-    if (s.frame_gen != BbSettings::FrameGenOff && s.frame_gen_display_hz > 0) {
-        const int now = std::min(s.frame_gen_now.load(), multiplier - 1);
-        if (now > 0 && s.frame_gen_flip_limit > 0) {
-            ImGui::TextDisabled(L("Now %dx on a %d Hz display; V-Sync (FIFO) caps the game at %d FPS"),
-                                now + 1, s.frame_gen_display_hz.load(),
-                                s.frame_gen_flip_limit.load());
-        } else if (now > 0) {
-            ImGui::TextDisabled(L("Now %dx on a %d Hz display"), now + 1,
-                                s.frame_gen_display_hz.load());
-        } else if (s.frame_gen_fit_display) {
-            ImGui::TextDisabled(L("Paused: no room on a %d Hz display at this frame rate"),
-                                s.frame_gen_display_hz.load());
-        } else {
-            ImGui::TextDisabled("%s", L("Paused: presenting fell behind (V-Sync on a slower display?)"));
-        }
-    }
-    if (const char* problem = s.frame_gen_problem.load()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "%s", L(problem));
-    }
-
-
-    Section(L("Output resolution"));
-    auto output_label = [](int i) {
-        return std::to_string(BbSettings::OutputWidths[i]) + " x " +
-               std::to_string(BbSettings::OutputHeights[i]);
-    };
-    int output = s.output_res;
-    if (ComboRow(L("Output resolution"), output_label(output).c_str())) {
-        for (int i = 0; i < BbSettings::OutputCount; ++i) {
-            if (ImGui::Selectable(output_label(i).c_str(), i == output)) {
-                Store(s.output_res, i, true);
-            }
-        }
-        ImGui::EndCombo();
-    }
-    if (BbSettings::AspectNeedsRestart()) {
-        Hint(L("Changing aspect ratio requires a restart. Ultrawide outputs (21:9, 32:9) widen the camera and HUD (HUD position: in the launcher); other aspect ratios keep a centred 16:9 HUD."));
-    } else if (BbSettings::FixedRenderSession()) {
-        Hint(L("Final image and HUD resolution. The preset controls scene resolution relative to the output. 4K Performance is approximately 1920x1080. Changes require a restart."));
-    } else {
-        Hint(L("Output and HUD resolution changes at the next frame boundary. The preset controls scene resolution relative to the output. Resizing resets upscaler history and may pause briefly."));
-    }
-    static const char* live_modes[] = {L("Auto (based on GPU)"), L("Off (faster)"), L("On")};
-    int live = s.live_resolution + 1;
-    if (ComboRow(L("Live resolution changes"), live_modes[live])) {
-        for (int i = 0; i < 3; ++i) {
-            if (ImGui::Selectable(live_modes[i], i == live)) {
-                Store(s.live_resolution, i - 1, true);
-            }
-        }
-        ImGui::EndCombo();
-    }
-    Hint(L("On: output and presets change without restarting, while game post-processing stays at 1080p. Off: the scene is patched to the preset resolution at startup. Auto enables the live path on capable discrete GPUs, except for outputs above 1080p with depth of field on (the live path blurs those scenes). Changes apply after restarting the game."));
-    Section(L("Game effects (restart required)"));
-    static const char* lods[] = {L("Highest (-2)"), L("Original"), L("Lower (1)"), L("Lowest (2)")};
-    static constexpr int lod_values[] = {-2, 0, 1, 2};
-    int lod_index = 1;
-    for (int i = 0; i < 4; ++i) {
-        if (lod_values[i] == s.model_lod) lod_index = i;
-    }
-    if (ComboRow(L("Model detail"), lods[lod_index])) {
-        for (int i = 0; i < 4; ++i) {
-            if (ImGui::Selectable(lods[i], i == lod_index)) {
-                Store(s.model_lod, lod_values[i], true);
-            }
-        }
-        ImGui::EndCombo();
-    }
-    for (int e = 0; e < 8; ++e) {
-        Checkbox(BbSettings::Effects[e].label, s.effects[e]);
-    }
-    Hint(L("Effects are applied through game patches at startup (patches/Bloodborne.xml). Motion blur and dynamic shadows can increase GPU load."));
-
-    RestartPrompt();
-
-    Section(L("Other"));
-    Checkbox(L("Show FPS counter"), s.show_fps);
-}
-
 void ImageToolsTab() {
     auto& s = BbSettings::Get();
-    PageTitle(L("Image tools"));
+    PageTitle(L("Image diagnostics"));
     Note(L("Graphics, display, effects and the FPS counter are in Pause > System. These tools are "
          "diagnostics beyond the game menu."));
     // Hunter's Atlas: the map's keys and shortcuts, while the launcher has it on.
@@ -857,37 +546,6 @@ void ImageToolsTab() {
     Section(L("Current image"));
     InfoRow(L("Scene resolution"), "%d x %d", s.active_render_width.load(),
             s.active_render_height.load());
-    if (BbSettings::FixedRenderSession())
-        InfoRow(L("Startup preset"), L("%s (changes need a restart)"),
-                L(BbSettings::PresetName(s.startup_preset)));
-    if (const char* problem = s.dlss_problem.load();
-        problem && s.upscaler == BbSettings::UpscalerDlss)
-        NoteF(Ink::Warn, "DLSS: %s", L(problem));
-    if (const char* problem = s.fsr4_problem.load())
-        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), L(problem));
-
-    Section(L("Fine tuning"));
-    ImGui::BeginDisabled(!s.sharpen);
-    Slider(L("Sharpness"), s.sharpness, 0.0f, 2.0f);
-    ImGui::EndDisabled();
-    Hint(L("Enable Sharpening in System > PC Graphics first. Values above 1 add another RCAS pass."));
-    if (BbSettings::IsFsr4(s.upscaler)) {
-        Checkbox(L("FSR 4: auto exposure"), s.fsr4_auto_exposure);
-        Checkbox(L("FSR 4: invert jitter"), s.fsr4_invert_jitter);
-        Hint(L("Provider checks for FSR 4. These changes apply immediately."));
-    }
-    const bool temporal = s.upscaler != BbSettings::UpscalerOff &&
-                          s.upscaler != BbSettings::UpscalerTaa;
-    ImGui::BeginDisabled(!temporal);
-    Checkbox(L("Reactive mask"), s.reactive);
-    ImGui::BeginDisabled(!s.reactive);
-    Slider(L("Mask scale"), s.reactive_scale, 0.0f, 4.0f);
-    Slider(L("Mask threshold"), s.reactive_threshold, 0.0f, 1.0f);
-    Slider(L("Mask maximum"), s.reactive_max, 0.0f, 1.0f);
-    ImGui::EndDisabled();
-    ImGui::EndDisabled();
-    Hint(L("Marks particles and fog so the upscaler relies less on frame history."));
-
     Section(L("Debug views"));
     int view = s.debug_view;
     if (ChoiceRow(L("Normal image"), view == BbSettings::DebugNone))
@@ -899,139 +557,19 @@ void ImageToolsTab() {
     Hint(L("Debug views are temporary diagnostics; return to Normal image to play."));
 }
 
-std::filesystem::path ModConfigPath() {
-    if (const char* value = std::getenv("BB_MODS_CONFIG"); value && *value) return value;
-    return std::filesystem::current_path() / "mods.json";
-}
-
-std::optional<std::string> XboxPromptFolder() {
-    const char* configured = std::getenv("BB_MODS_DIR");
-    const auto root = configured && *configured ? std::filesystem::path(configured) :
-                      std::filesystem::current_path() / "mods";
-    std::error_code ec;
-    if (!std::filesystem::is_directory(root, ec)) return std::nullopt;
-    for (const auto& entry : std::filesystem::directory_iterator(root, ec)) {
-        if (!entry.is_directory(ec)) continue;
-        auto name = entry.path().filename().string();
-        std::transform(name.begin(), name.end(), name.begin(),
-                       [](unsigned char c) { return char(std::tolower(c)); });
-        if (name.find("xbox") != std::string::npos && name.find("prompt") != std::string::npos)
-            return entry.path().filename().string();
-    }
-    return std::nullopt;
-}
-
-nlohmann::json ModProfile() {
-    std::ifstream file(ModConfigPath());
-    if (!file) return nlohmann::json::object();
-    try {
-        auto profile = nlohmann::json::parse(file);
-        return profile.is_object() ? profile : nlohmann::json::object();
-    } catch (const nlohmann::json::exception&) {
-        return nlohmann::json::object();
-    }
-}
-
-bool PromptEnabled(const std::string& folder) {
-    const auto profile = ModProfile();
-    const auto it = profile.find("disabled");
-    if (it == profile.end() || !it->is_array()) return true;
-    return std::find(it->begin(), it->end(), folder) == it->end();
-}
-
-bool SetPromptEnabled(const std::string& folder, bool enabled) {
-    nlohmann::json profile = nlohmann::json::object();
-    std::ifstream existing(ModConfigPath());
-    if (existing) {
-        try {
-            profile = nlohmann::json::parse(existing);
-            if (!profile.is_object()) return false;
-        } catch (const nlohmann::json::exception&) { return false; }
-    }
-    auto& disabled = profile["disabled"];
-    if (!disabled.is_array()) disabled = nlohmann::json::array();
-    nlohmann::json next = nlohmann::json::array();
-    for (const auto& name : disabled)
-        if (!name.is_string() || name.get<std::string>() != folder) next.push_back(name);
-    if (!enabled) next.push_back(folder);
-    profile["disabled"] = std::move(next);
-    std::ofstream file(ModConfigPath(), std::ios::trunc);
-    if (!file) return false;
-    file << profile.dump(2) << '\n';
-    return bool(file);
-}
-
-void ModsTab() {
+void GameplayTab() {
     auto& s = BbSettings::Get();
-    const bool native = NativePcMenuAvailable();
-    PageTitle(native ? L("Gameplay extras") : L("Mods & patches"));
-    Note(native ?
-        L("Gameplay tweaks and PC settings are in Pause > System. Cheats and enhancements stay here because the game menu has no room for them.") :
-        L("Choose button prompts and gameplay patches, then restart to apply them."));
-    if (const char* enabled = std::getenv("BB_MODS_ENABLED"); enabled && std::strcmp(enabled,"0") == 0)
-        Note(L("Mod loading is off in the launcher. Turn it on there first."), Ink::Warn);
-    // 0 the game's PlayStation buttons, 1 the Xbox prompt mod, 2 the keyboard key images
-    // (PCBButtons). Both mods are the player's own Nexus downloads, which the launcher adds to the
-    // mods folder; run.py reads the choice again at every start.
-    Section(L("Button prompts"));
-    static const auto xbox_folder = XboxPromptFolder();
-    static const std::optional<std::string> keyboard_folder = [] () -> std::optional<std::string> {
-        const char* configured = std::getenv("BB_MODS_DIR");
-        const auto root = configured && *configured ? std::filesystem::path(configured) :
-                          std::filesystem::current_path() / "mods";
-        std::error_code ec;
-        const std::string name = "Keyboard Prompts (PCBButtons)";
-        if (std::filesystem::is_directory(root / name, ec)) return name;
-        return std::nullopt;
-    }();
-    static int prompt_choice = -1;
-    if (prompt_choice < 0)
-        prompt_choice = keyboard_folder && PromptEnabled(*keyboard_folder) ? 2
-                      : xbox_folder && PromptEnabled(*xbox_folder) ? 1 : 0;
-    int choice = prompt_choice;
-    if (ChoiceRow(L("PlayStation buttons"), choice == 0)) choice = 0;
-    ImGui::BeginDisabled(!xbox_folder);
-    if (ChoiceRow(L("Xbox buttons"), choice == 1)) choice = 1;
-    ImGui::EndDisabled();
-    ImGui::BeginDisabled(!keyboard_folder);
-    if (ChoiceRow(L("Keyboard keys"), choice == 2)) choice = 2;
-    ImGui::EndDisabled();
-    if (choice != prompt_choice) {
-        const bool saved = (!xbox_folder || SetPromptEnabled(*xbox_folder, choice == 1)) &&
-                           (!keyboard_folder || SetPromptEnabled(*keyboard_folder, choice == 2));
-        if (saved) {
-            prompt_choice = choice;
-            mod_selection_changed = true;
-            mod_selection_error.clear();
-        } else mod_selection_error = L("Could not save mods.json. Check the port folder permissions.");
+    PageTitle(L("Gameplay extras"));
+    Note(L("These settings apply immediately. Other gameplay options are in the launcher."));
+    // These two cheats are read each frame by runtime_stamina.c; all patch-based
+    // cheats and enhancements belong in the launcher because they require a restart.
+    for (int e = 0; e < BbSettings::EffectCount; ++e) {
+        const char* key = BbSettings::Effects[e].key;
+        if (!std::strcmp(key, "cheat_no_stamina"))
+            Checkbox(L("No stamina use"), s.effects[e]);
+        else if (!std::strcmp(key, "cheat_stamina_out_of_combat"))
+            Checkbox(L("No stamina use out of combat"), s.effects[e]);
     }
-    if (!xbox_folder)
-        Note(L("Xbox buttons are a Nexus Mods download (Bloodborne mod 30): choose Xbox in the launcher's Controls page to add it."), Ink::Faint);
-    if (!keyboard_folder)
-        Note(L("Keyboard keys are a Nexus Mods download (PCBButtons, Bloodborne mod 460): choose Keyboard in the launcher's Controls page to add it."), Ink::Faint);
-    if (!mod_selection_error.empty())
-        Note(mod_selection_error.c_str(), Ink::Accent);
-    if (!native) Section(L("Gameplay and debug"));
-    else Section(L("Cheats (restart required)"));
-    for (int e = native ? 0 : 8; e < BbSettings::FirstEnhancement; ++e) {
-        if (native && !IsCheat(e)) continue;
-        const char* label = BbSettings::Effects[e].label;
-        if (!std::strncmp(label, "Cheat: ", 7)) label += 7;
-        const std::string shown = std::string(1, char(std::toupper((unsigned char)label[0]))) + (label + 1);
-        Checkbox(shown.c_str(), s.effects[e]);
-    }
-    if (!native)
-        Hint(L("Free camera: hold Cross/A and press L3 (keyboard: E + Left Ctrl). The debug menu needs DbgFont14h.ccm and DbgFont14h.tpf in dvdroot_ps4/font."));
-    Section(L("PC enhancements (restart required)"));
-    for (int e = BbSettings::FirstEnhancement; e < BbSettings::EffectCount; ++e)
-        Checkbox(BbSettings::Effects[e].label, s.effects[e]);
-    Hint(L("Made from your own game files at start; off is the game as it shipped. The mirror in the Hunter's Dream opens the appearance editor. Two invaders: Mensis, Mergo's Loft, the Nightmare Frontier and the Old Hunters' areas allow two, as the chalice dungeons do. After bbhost by droogie."));
-    CloseRows();
-    const bool needs_restart = mod_selection_changed ||
-        (native ? ExtrasRestartNeeded() : RestartNeeded());
-    if (needs_restart)
-        Note(L("Changes are ready. Restart to apply them."), Ink::Warn);
-    Note(L("Other mods and their load order are in the launcher."), Ink::Faint);
 }
 
 std::string UnlockDate(std::int64_t timestamp) {
@@ -1286,8 +824,8 @@ GuideSection GuideSectionOf(int tab, bool native) {
     switch (tab) {
     case 0: return {"hunter", L("The Hunt")};
     case 1: return {"trophy", native ? L("Trophy gallery") : L("View trophies")};
-    case 2: return {"gear", native ? L("Image tools") : L("Visual settings")};
-    default: return {"puzzle", native ? L("Gameplay extras") : L("Mods & patches")};
+    case 2: return {"gear", L("Image diagnostics")};
+    default: return {"puzzle", L("Gameplay extras")};
     }
 }
 void SectionGlyph(ImDrawList* draw, int tab, ImVec2 center, float size, ImU32 ink) {
@@ -1526,8 +1064,8 @@ void Menu() {
     switch (active_tab) {
     case 0: HomeTab(); break;
     case 1: AchievementsTab(); break;
-    case 2: if (native) ImageToolsTab(); else SettingsTab(); break;
-    case 3: ModsTab(); break;
+    case 2: ImageToolsTab(); break;
+    case 3: GameplayTab(); break;
     }
     CloseRows();
     ImGui::EndChild();
@@ -1535,9 +1073,9 @@ void Menu() {
     page_focused_last = !rail_focused && ImGui::GetFocusID() != 0;
     Rule(main, main_pos.x + pad, main_pos.x + main_size.x - pad, main_pos.y + main_size.y - 112.0f * s);
     main->AddText(ImVec2(main_pos.x + pad, main_pos.y + main_size.y - 84.0f * s), Ink::Dim,
-                  L("D-pad  Move    ·    A  Select    ·    B  Back    ·    LB/RB  Sections"));
+                  L("D-pad Move  ·  A Select  ·  B Back  ·  LB/RB Sections"));
     main->AddText(ImVec2(main_pos.x + pad, main_pos.y + main_size.y - 52.0f * s), Ink::Faint,
-                  L("Keyboard: Insert opens and closes the guide  ·  Arrows move  ·  Enter selects"));
+                  L("Insert Menu  ·  Arrows Move  ·  Enter Select"));
     ImGui::EndChild();
     ImGui::End();
     ImGui::PopStyleVar(2);

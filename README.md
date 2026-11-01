@@ -36,7 +36,7 @@ Bundled mod/server integration, personal versus main-story progress, seamless ch
 
 ## Launcher
 
-The redesigned interface supports English and Russian. Screenshots show the Russian interface.
+The redesigned interface supports English and Russian. Screenshots show the English interface.
 
 ![Home](docs/screenshots/launcher-home.png)
 

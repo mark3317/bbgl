@@ -901,6 +901,13 @@ void StartHandshakeInitiator(OrbisNpSignalingConnectionId conn_id) {
             return;
         }
         ConnectionInfo& ci = it->second;
+        // Activation is queued before ResolvePeer (which can wait on the server).
+        // The receive thread may have completed the handshake in the meantime.
+        // Never demote ACTIVE to PENDING with established_fired still set: the
+        // next CheckAck cannot repair that state and the game's join times out.
+        if (ci.state == ConnState::Established || ci.state == ConnState::Inactive || ci.dead_fired) {
+            return;
+        }
         ci.is_initiator = true;
         SetConnStateLocked(ci, ConnState::SendingOffer);
         if (!ci.timeout_callout_armed) {
@@ -1010,10 +1017,10 @@ void ProcessPendingActivations() {
                      act.conn_id, act.peer_online_id, peer_addr, sceNetNtohs(peer_port),
                      act.start_handshake ? "" : " (existing connection)");
         }
-        if (act.start_handshake) {
-            StartHandshakeInitiator(act.conn_id);
-        } else if (already_established) {
+        if (already_established) {
             EstablishConnection(act.conn_id, false);
+        } else if (act.start_handshake) {
+            StartHandshakeInitiator(act.conn_id);
         }
     }
 }

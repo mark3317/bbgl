@@ -633,7 +633,7 @@ void SettingsTab() {
             ImGui::EndDisabled();
             if (!supported) {
                 ImGui::SameLine();
-                ImGui::TextDisabled(L("- unsupported by this GPU"));
+                ImGui::TextDisabled("%s", L("- unsupported by this GPU"));
             }
         }
         for (const char* name : later) {
@@ -641,15 +641,15 @@ void SettingsTab() {
             ImGui::Selectable(name, false);
             ImGui::EndDisabled();
             ImGui::SameLine();
-            ImGui::TextDisabled(L("- in development"));
+            ImGui::TextDisabled("%s", L("- in development"));
         }
         ImGui::EndCombo();
     }
     if (const char* problem = s.dlss_problem.load(); problem && upscaler == BbSettings::UpscalerDlss) {
-        NoteF(Ink::Warn, "DLSS: %s", problem);
+        NoteF(Ink::Warn, "DLSS: %s", L(problem));
     }
     if (const char* problem = s.fsr4_problem.load()) {
-        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), problem);
+        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), L(problem));
         if (!BbSettings::IsFsr4(s.upscaler))
             Note(L("The selected mode is active. You can select FSR 4 again."));
     }
@@ -668,12 +668,12 @@ void SettingsTab() {
     ImGui::BeginDisabled(!upscaler_on);
     ImGui::BeginDisabled(taa);
     int preset = taa ? BbSettings::NativeAA : s.preset.load();
-    char preset_label[64];
+    char preset_label[192];
     std::snprintf(preset_label, sizeof(preset_label), "%s (x%.1f)", L(BbSettings::PresetName(preset)),
                   BbSettings::PresetScale(preset));
     if (ComboRow(L("Preset"), preset_label)) {
         for (int i = 0; i < BbSettings::PresetCount; ++i) {
-            char label[64];
+            char label[192];
             const float scale = BbSettings::PresetScale(i);
             const int output = s.output_res;
             std::snprintf(label, sizeof(label), L("%s (x%.1f, render %dx%d)"),
@@ -749,7 +749,7 @@ void SettingsTab() {
             ImGui::EndDisabled();
             if (!supported) {
                 ImGui::SameLine();
-                ImGui::TextDisabled(L("- unsupported by this GPU"));
+                ImGui::TextDisabled("%s", L("- unsupported by this GPU"));
             }
         }
         ImGui::EndCombo();
@@ -781,11 +781,11 @@ void SettingsTab() {
             ImGui::TextDisabled(L("Paused: no room on a %d Hz display at this frame rate"),
                                 s.frame_gen_display_hz.load());
         } else {
-            ImGui::TextDisabled(L("Paused: presenting fell behind (V-Sync on a slower display?)"));
+            ImGui::TextDisabled("%s", L("Paused: presenting fell behind (V-Sync on a slower display?)"));
         }
     }
     if (const char* problem = s.frame_gen_problem.load()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "%s", problem);
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "%s", L(problem));
     }
 
 
@@ -862,9 +862,9 @@ void ImageToolsTab() {
                 L(BbSettings::PresetName(s.startup_preset)));
     if (const char* problem = s.dlss_problem.load();
         problem && s.upscaler == BbSettings::UpscalerDlss)
-        NoteF(Ink::Warn, "DLSS: %s", problem);
+        NoteF(Ink::Warn, "DLSS: %s", L(problem));
     if (const char* problem = s.fsr4_problem.load())
-        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), problem);
+        NoteF(Ink::Warn, L("FSR 4 unavailable: %s"), L(problem));
 
     Section(L("Fine tuning"));
     ImGui::BeginDisabled(!s.sharpen);
@@ -1214,7 +1214,7 @@ void AchievementsTab() {
         if (BbTrophies::TotalScore() == 1000)
             ImGui::Text(L("Gamerscore: %d / 1000G"), score);
         else
-            ImGui::Text(L("Gamerscore: -- / 1000G"));
+            ImGui::Text("%s", L("Gamerscore: -- / 1000G"));
         ImGui::Text(L("%d of %d unlocked"), earned, total);
         ImGui::ProgressBar(total ? float(earned) / total : 0.0f,
                            ImVec2(-1, 9.0f * base_scale), "");
@@ -1232,7 +1232,7 @@ void AchievementsTab() {
     while (clipper.Step())
         for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
             AchievementRow(entries[i]);
-    if (!gallery) ImGui::TextDisabled(L("Local achievements only. No online account is connected."));
+    if (!gallery) ImGui::TextDisabled("%s", L("Local achievements only. No online account is connected."));
 }
 
 // Line icons, the launcher's set (launcher/qml/NavIcon.qml) on its 24 × 24 grid.
@@ -1453,7 +1453,7 @@ void Menu() {
         const bool hot = ImGui::IsItemHovered() || ImGui::IsItemFocused();
         const ImVec2 min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
         if (selected || hot)
-            rail->AddRectFilled(min, max, selected ? IM_COL32(30, 19, 22, 255) : IM_COL32(21, 24, 28, 255), 4.0f * s);
+            rail->AddRectFilled(min, max, selected ? Ink::AccentSoft : IM_COL32(21, 24, 28, 255), 4.0f * s);
         if (selected)
             rail->AddRectFilled(ImVec2(rail_pos.x, min.y), ImVec2(rail_pos.x + 4.0f * s, max.y), Ink::Accent);
         SectionGlyph(rail, i, ImVec2((min.x + max.x) * .5f, (min.y + max.y) * .5f), 38.0f * s,
@@ -1562,8 +1562,8 @@ void TextEntryBox() {
     ImGui::Text("%s_", text_entry_text.c_str());
     ImGui::SetWindowFontScale(1.0f);
     ImGui::Separator();
-    ImGui::TextDisabled(L("Keyboard: type, Backspace to erase, Enter = OK, Esc = cancel"));
-    ImGui::TextDisabled(L("Controller: Cross (A) = OK, Circle (B) = cancel"));
+    ImGui::TextDisabled("%s", L("Keyboard: type, Backspace to erase, Enter = OK, Esc = cancel"));
+    ImGui::TextDisabled("%s", L("Controller: Cross (A) = OK, Circle (B) = cancel"));
     ImGui::End();
 }
 
@@ -1602,7 +1602,7 @@ void TrophyBanner(int id, const char* first_line, float alpha, float appear) {
                                        30.0f * base_scale + slide));
     ImGui::SetNextWindowSize(ImVec2(w, h));
     ImGui::SetNextWindowBgAlpha(.96f * alpha);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, h * .5f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Px(6.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, Vec(Ink::Surface));
     ImGui::Begin("##trophy_toast", nullptr,
@@ -1613,7 +1613,7 @@ void TrophyBanner(int id, const char* first_line, float alpha, float appear) {
     const ImVec2 pos = ImGui::GetWindowPos();
     const float icon = 72.0f * base_scale;
     const ImVec2 center(pos.x + 49.0f * base_scale, pos.y + h * .5f);
-    draw->AddCircleFilled(center, icon * .5f, IM_COL32(64, 170, 37, int(255 * alpha)));
+    draw->AddCircleFilled(center, icon * .5f, IM_COL32(40, 124, 141, int(255 * alpha)));
     draw->AddCircle(center, icon * .49f, GradeColor(entry.grade, alpha), 0,
                     2.0f * base_scale);
     TrophyGlyph(draw, center, 45.0f * base_scale, alpha);

@@ -275,13 +275,13 @@ Item {
                         GlassButton { text: launcher.tr("Refresh"); width: 180; height: 48; onClicked: launcher.refresh_addons() }
                         GlassButton { text: launcher.tr("Open mods folder"); width: 180; height: 48; onClicked: launcher.action("openMods") }
                     }
-                    Repeater { model: is("Mods & Patches", "External patches") ? launcher.patches : []
+                    Repeater { model: is("Mods & Patches", "Installed mods") ? launcher.patches : []
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
                     Column { visible: is("System", "System"); width: parent.width; spacing: 14
                         Flow { width: parent.width; spacing: 10
                             GlassButton { text: launcher.tr("Desktop shortcut"); width: 180; height: 48; onClicked: launcher.createShortcut() }
-                            GlassButton { text: launcher.tr("Add to Steam"); width: 180; height: 48; onClicked: launcher.addToSteam() }
+                            GlassButton { text: launcher.tr("Open launcher folder"); width: 180; height: 48; onClicked: launcher.action("openPort") }
                         }
                     }
                     Column { visible: is("System", "System"); width: parent.width; spacing: 14
@@ -292,8 +292,7 @@ Item {
                             GlassButton { text: launcher.tr("Releases ↗"); width: 180; height: 48; onClicked: launcher.action("releases") }
                         }
                     }
-                    Flow { width: parent.width; visible: is("System", "System"); spacing: 10
-                        GlassButton { text: launcher.tr("Open port folder"); width: 180; height: 48; onClicked: launcher.action("openPort") }
+                    Flow { width: parent.width; visible: is("System", "Advanced system"); spacing: 10
                         GlassButton { text: launcher.tr("Open bbport.ini"); width: 180; height: 48; onClicked: launcher.action("openConfig") }
                         GlassButton { text: launcher.tr("Clear shader cache"); width: 180; height: 48; onClicked: launcher.action("clearCache") }
                         GlassButton { text: launcher.tr("Setup wizard"); width: 180; height: 48; onClicked: workspace.openSetup(0) }

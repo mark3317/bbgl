@@ -220,7 +220,6 @@ SETTINGS_SECTIONS = {
     'Mods & Patches': [
         ('Installed mods', ['mods_enabled', 'mods_dir', 'patches_dir']),
         ('Built-in enhancements', [key for key, _, _ in core.ENHANCEMENTS]),
-        ('External patches', []),
         ('Cheats', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS]),
     ],
     'System': [
@@ -247,9 +246,9 @@ SEARCH_ACTIONS = [
     ('Game & Saves', 'Game files', 'Open saves folder', 'save path'),
     ('Mods & Patches', 'Installed mods', 'Refresh mods', 'load order'),
     ('System', 'System', 'Desktop shortcut', 'start menu'),
-    ('System', 'System', 'Add to Steam', 'integration'),
+    ('System', 'System', 'Open launcher folder', 'folder'),
     ('System', 'Logs', 'Copy log', 'activity diagnostics'),
-    ('System', 'System', 'Clear shader cache', 'shaders'),
+    ('System', 'Advanced system', 'Clear shader cache', 'shaders'),
 ]
 
 LAUNCHER_ROUTE = {'mode': 'launcher', 'page': 'Home', 'step': 0, 'problem': ''}
@@ -707,13 +706,22 @@ class LauncherBackend(QObject):
     def categorySections(self, category):
         return [name for name, _ in SETTINGS_SECTIONS.get(category, [])]
 
+    def _field_visible(self, key):
+        if key == 'frame_cap':
+            return self.app.get('fps_mode') == 'uncap'
+        if key in ('preset', 'sharpen', 'sharpness', 'live_resolution', 'object_motion'):
+            return self.ini.get('upscaler', 'off') != 'off'
+        if key in ('frame_gen_multiplier', 'frame_gen_fit_display'):
+            return self.ini.get('frame_gen', 'off') != 'off'
+        return True
+
     @Slot(str, str, result='QVariantList')
     def sectionFields(self, category, section):
         for name, keys in SETTINGS_SECTIONS.get(category, []):
             if name == section:
                 # The revision makes the rows differ after a preset, so the page builds them anew.
                 return [{**self.live_field(SETTING_FIELDS[key]), 'revision': self._settings_revision}
-                        for key in keys if key != 'frame_cap' or self.app.get('fps_mode') == 'uncap']
+                        for key in keys if self._field_visible(key)]
         return []
 
     @Slot(str, result='QVariantList')
@@ -825,7 +833,7 @@ class LauncherBackend(QObject):
                 except (ValueError, TypeError):
                     value = self.ini.get(key, '0.50')
             self.ini[key] = str(value)
-            if key in ('upscaler', 'preset', 'output_res'):
+            if key in ('upscaler', 'preset', 'output_res', 'frame_gen'):
                 self._settings_revision += 1  # the preset's hint names the new scene size
         else:
             item = next((x for x in core.COOP_SETTINGS if 'bbsc_' + x['id'] == key), None)
@@ -842,6 +850,8 @@ class LauncherBackend(QObject):
             if key == 'coop_name':
                 self.app['player_name'] = value
         self._write()
+        if key in ('upscaler', 'frame_gen'):
+            self.presetApplied.emit()
 
     @Slot(str, result=bool)
     def checked(self, key):

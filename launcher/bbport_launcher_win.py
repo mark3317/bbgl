@@ -197,7 +197,7 @@ CHEATS = [
     ('cheat_one_hit_kill', ('Every hit kills', 'Убийство с одного удара'), False),
     ('cheat_stealth', ('Enemies do not see you (unless attacked)', 'Враги не видят вас (пока не атакованы)'), False),
     ('cheat_silent', ('Enemies do not hear you', 'Враги не слышат вас'), False),
-    ('cheat_rally_no_decay', ('Rally never fades', 'Rally не угасает'), False),
+    ('cheat_rally_no_decay', ('Rally never fades', 'Восстановление здоровья не угасает'), False),
     ('cheat_enemy_control', ('Control the targeted enemy (R3; L3 to go back; not with the free camera)',
                              'Управление выбранным врагом (R3; L3 — назад; не вместе со свободной камерой)'), False),
     ('cheat_no_stamina', ('No stamina use', 'Без расхода выносливости'), False),
@@ -205,7 +205,7 @@ CHEATS = [
                                      'Без расхода выносливости вне боя (8 с после атаки или удара)'), False),
 ]
 TWEAKS = [
-    ('tweak_no_rally', ('No Rally (hits do not give health back)', 'Без Rally (удары не возвращают здоровье)'), False),
+    ('tweak_no_rally', ('No Rally (hits do not give health back)', 'Без восстановления здоровья ударами'), False),
     ('tweak_camera_distance', ('Camera further from the character', 'Камера дальше от персонажа'), False),
     ('tweak_no_camera_rotation', ('No camera auto-rotation while moving', 'Без автоповорота камеры при движении'), False),
     ('tweak_easy_run', ('Run with less stick tilt (about 70%)', 'Бег при меньшем наклоне стика (около 70%)'), False),

@@ -26,26 +26,11 @@ Item {
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
             id: content; width: parent.width - 24; spacing: 12
-            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 32; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
             Rectangle { width: 64; height: 2; color: Theme.accent }
-            Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 14; wrapMode: Text.WordWrap }
-            Text { width: parent.width; text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " + launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display; color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 16; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " + launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display; color: Theme.text; font.family: Theme.serif; font.pixelSize: 19; wrapMode: Text.WordWrap }
             Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
-            Rectangle {
-                width: parent.width; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
-                Row {
-                    anchors.fill: parent; anchors.margins: 4
-                    Repeater {
-                        model: [{mode: "offline", label: launcher.tr("Single player")}, {mode: "coop", label: launcher.tr("Multiplayer")}]
-                        delegate: Rectangle {
-                            width: (content.width - 8) / 2; height: 48; radius: 6
-                            color: launcher.playMode === modelData.mode ? Theme.accent : "transparent"
-                            Text { anchors.centerIn: parent; text: modelData.label; color: Theme.text; font.pixelSize: 16 }
-                            MouseArea { anchors.fill: parent; enabled: !launcher.running && !launcher.coopBusy; cursorShape: Qt.PointingHandCursor; onClicked: launcher.setPlayMode(modelData.mode) }
-                        }
-                    }
-                }
-            }
             CoopConnection {
                 width: parent.width; compact: true; visible: launcher.playMode === "coop"
                 onAttentionRequested: (target) => {
@@ -65,18 +50,28 @@ Item {
     Item {
         x: Theme.railWidth + 44; width: home.panelWidth - 88
         anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 126
+            Rectangle {
+                id: modeSwitch; width: 286; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
+                Row {
+                    anchors.fill: parent; anchors.margins: 4
+                    Repeater {
+                        model: [{mode: "offline", label: launcher.tr("Single player")}, {mode: "coop", label: launcher.tr("Multiplayer")}]
+                        delegate: Rectangle {
+                            width: (modeSwitch.width - 8) / 2; height: 48; radius: 6
+                            color: launcher.playMode === modelData.mode ? "#6d5940" : "transparent"
+                            Text { anchors.centerIn: parent; text: modelData.label; color: Theme.text; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; enabled: !launcher.running && !launcher.coopBusy; cursorShape: Qt.PointingHandCursor; onClicked: launcher.setPlayMode(modelData.mode) }
+                        }
+                    }
+                }
+            }
         GlassButton {
             id: playButton
-            anchors.horizontalCenter: parent.horizontalCenter; y: 0
-            width: 230; height: 56; serif: true; highlighted: true
+            anchors.right: parent.right; y: 0
+            width: 216; height: 56; serif: true; highlighted: true
             text: launcher.tr("Play")
             enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
             onClicked: home.primaryRequested()
-        }
-        Row {
-            anchors.left: playButton.right; anchors.leftMargin: 14; y: 20; spacing: 6
-            Rectangle { width: 6; height: 6; radius: 3; color: home.onlineBlocked ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: launcher.playMode === "coop" ? launcher.tr("Multiplayer") : launcher.tr("Single player"); color: Theme.textDim; font.pixelSize: 12 }
         }
         Text {
             y: 68; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight

@@ -11,7 +11,8 @@ Item {
     property bool isFolder: field.kind === "folder"
     property real controlWidth: Math.min(330, width * 0.44)
     property real minimumHeight: 62
-    implicitHeight: isFolder ? 110 : Math.max(minimumHeight, labels.implicitHeight + 28)
+    property real folderInputY: labels.y + labels.implicitHeight + 10
+    implicitHeight: isFolder ? folderInputY + 48 + 16 : Math.max(minimumHeight, labels.implicitHeight + 28)
     height: implicitHeight
 
     Column {
@@ -53,7 +54,7 @@ Item {
         }
         visible: field.kind !== "toggle" && field.kind !== "choice"
         x: isFolder ? 2 : parent.width - width
-        y: isFolder ? 46 : (parent.height - height) / 2
+        y: isFolder ? folderInputY : (parent.height - height) / 2
         width: isFolder ? parent.width - 194 : fieldRow.controlWidth
         height: compact ? 40 : 48
         text: String(launcher.value(settingKey))
@@ -67,7 +68,7 @@ Item {
     GlassButton {
         visible: isFolder
         text: launcher.tr("Browse")
-        anchors.right: parent.right; y: 46; height: 48; width: 180
+        anchors.right: parent.right; y: folderInputY; height: 48; width: 180
         onClicked: launcher.browse(settingKey)
     }
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }

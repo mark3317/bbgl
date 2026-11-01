@@ -51,10 +51,14 @@ Item {
             }
             Note { text: launcher.presetDescription(launcher.graphicsPreset) }
             Repeater {
-                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Visuals", "Upscaling").concat(launcher.sectionFields("Visuals", "Frame generation"))
+                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Visuals", "Upscaling")
                 delegate: FieldRow { width: finishStep.width; field: modelData }
             }
             FsrAssets { width: parent.width }
+            Repeater {
+                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Visuals", "Frame generation")
+                delegate: FieldRow { width: finishStep.width; field: modelData }
+            }
             GlassButton { text: launcher.tr("Add desktop shortcut"); width: 180; onClicked: launcher.createShortcut() }
             Note { text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice }
         }

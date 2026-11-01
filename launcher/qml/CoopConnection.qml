@@ -14,7 +14,7 @@ Column {
     property bool hosting: launcher.coopRole === "host"
     Repeater {
         model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op")
-        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 62 : 104; compact: connection.compact; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: 62; compact: connection.compact; field: modelData }
     }
     ToggleRow {
         width: parent.width
@@ -26,7 +26,7 @@ Column {
     }
     Repeater {
         model: connection.hosting ? [] : launcher.sectionFields("Co-op", "Join a host")
-        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 62 : 104; compact: connection.compact; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: 62; compact: connection.compact; field: modelData }
     }
     Row {
         width: parent.width; spacing: 10

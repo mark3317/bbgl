@@ -20,9 +20,22 @@ volume cannot create an unbounded Qt event backlog ahead of game completion.
 Validation: full QML source harness with an actual child producing 100,000 lines
 passes in 0.66 seconds with seven UI updates; first and final lines remain in the
 disk log. Two bounded-buffer/marker tests and nine existing process/window/exit
-tests pass. Frozen verification and deployment are pending at this entry.
+tests pass. Frozen staging flood passes in 0.81 seconds / eight UI updates.
 User explicitly authorized stopping both verified hidden orphan launchers for
 deployment after capturing their stacks; both were stopped, without game processes.
+
+Rebuilt launcher/package from `8c4b7de`; unchanged native/mod artifacts from the
+preceding successful full build were reused. Package verifier PASS. Installed on
+both machines at 05:17–05:19 Moscow time; 5,263 files checked, five changed files
+backed up and replaced per machine, both bundle manifests PASS. Launcher SHA256
+`B3B97C51013E157FC43768B183F2EEB101DB806C85EE0BB81176503B53849120` matches both.
+Installed full-QML 100,000-line flood: PC 0.71 s / seven updates; Windows 10 laptop
+0.87 s / eight updates. Both exited with complete disk logs and no remaining
+Bloodborne.exe. Backups: `launcher-lifetime-20261101-051705` (PC),
+`launcher-lifetime-20261101-051719` (laptop), in each machine's existing
+`Games/Bloodborne/coop-dev/backups`. No saves/settings/game files were changed.
+Actual gameplay exit confirmation remains pending; the fake-child flood is a
+reproduction of the log pressure, not an actual game session.
 
 ## Earlier investigation and first deployment (historical)
 

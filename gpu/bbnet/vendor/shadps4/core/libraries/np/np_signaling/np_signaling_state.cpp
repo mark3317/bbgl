@@ -905,7 +905,8 @@ void StartHandshakeInitiator(OrbisNpSignalingConnectionId conn_id) {
         // The receive thread may have completed the handshake in the meantime.
         // Never demote ACTIVE to PENDING with established_fired still set: the
         // next CheckAck cannot repair that state and the game's join times out.
-        if (ci.state == ConnState::Established || ci.state == ConnState::Inactive || ci.dead_fired) {
+        // New incoming answerers begin Inactive; closed connections have dead_fired.
+        if (ci.state == ConnState::Established || ci.dead_fired) {
             return;
         }
         ci.is_initiator = true;

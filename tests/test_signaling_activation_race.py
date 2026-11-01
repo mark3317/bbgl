@@ -71,7 +71,11 @@ int main(){
  StartHandshakeInitiator(1);assert(g_connections.at(1).status==2&&offers==0&&timeouts==0);
  reset();ProcessPendingActivations();assert(offers==1&&timeouts==1&&steps==1);
  reset();resolve_mode=2;ProcessPendingActivations();assert(offers==0&&timeouts==0);
- StartHandshakeInitiator(1);assert(offers==0);
+ g_connections.at(1).dead_fired=true;StartHandshakeInitiator(1);assert(offers==0);
+ // HandleControlPacket allocates a NEW answerer in Inactive and calls the
+ // initiator directly. It is not a closed connection or queued activation.
+ reset();g_connections.at(1).state=ConnState::Inactive;StartHandshakeInitiator(1);
+ assert(offers==1&&timeouts==1&&g_connections.at(1).state==ConnState::SendingOffer);
  reset();g_connections.at(1).dead_fired=true;StartHandshakeInitiator(1);assert(offers==0);
  reset();EstablishConnection(1,false);g_connections.at(1).revalidating=true;
  ProcessPendingActivations();assert(offers==0&&g_connections.at(1).revalidating);

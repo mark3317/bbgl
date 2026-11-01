@@ -62,6 +62,7 @@ Item {
                     id: connectionFields; x: 16; y: 10; width: parent.width - 32; spacing: 6
             FieldRow {
                 width: parent.width; compact: true; minimumHeight: 54
+                showDivider: launcher.playMode === "coop"
                 field: launcher.settingsRevision < 0 ? ({}) : launcher.sectionFields("Co-op", "Seamless co-op").find(f => f.key === "coop_name")
             }
             CoopConnection {

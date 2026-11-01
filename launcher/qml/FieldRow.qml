@@ -7,6 +7,7 @@ Item {
     property var field: ({})
     property string settingKey: field.key || ""
     property bool compact: false
+    property bool showDivider: true
     property bool hasHint: !compact && (field.hint || "") !== ""
     property bool isFolder: field.kind === "folder"
     property real controlWidth: Math.min(330, width * 0.44)
@@ -71,5 +72,5 @@ Item {
         anchors.right: parent.right; y: folderInputY; height: 48; width: 180
         onClicked: launcher.browse(settingKey)
     }
-    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+    Rectangle { visible: fieldRow.showDivider; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
 }

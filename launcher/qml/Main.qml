@@ -83,6 +83,35 @@ ApplicationWindow {
         onNavigate: (target) => { if (target === "Settings") openSettings("", ""); else page = target }
     }
 
+    Connections {
+        target: launcher
+        function onCoopChanged() {
+            if (!launcher.coopBusy && launcher.coopFirewallError && !firewallDialog.visible)
+                firewallDialog.open()
+        }
+    }
+    Dialog {
+        id: firewallDialog
+        objectName: "firewallDialog"
+        anchors.centerIn: parent
+        width: Math.min(500, window.width - 80)
+        modal: true
+        title: launcher.tr("Configure firewall")
+        background: Rectangle { color: Theme.surface; radius: Theme.radius; border.color: Theme.lineStrong }
+        header: Label { text: firewallDialog.title; color: Theme.text; padding: 24; font.pixelSize: 20 }
+        contentItem: Label {
+            text: launcher.tr("Allow incoming game and co-op server connections on local and Tailscale networks. Windows will ask for administrator permission.")
+            color: Theme.textDim; wrapMode: Text.WordWrap; font.pixelSize: 14
+        }
+        footer: DialogButtonBox {
+            background: Item {}
+            GlassButton { text: launcher.tr("Confirm"); highlighted: true; DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole }
+            GlassButton { text: launcher.tr("Cancel"); DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
+            onAccepted: { firewallDialog.close(); launcher.coopConfigureFirewall() }
+            onRejected: firewallDialog.close()
+        }
+    }
+
     // What the last action did (Home shows it in its status line): a short-lived message at the
     // bottom of Settings, so a choice that needs something first says so.
     Rectangle {

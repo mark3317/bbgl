@@ -880,3 +880,10 @@ RU.update({'Reduced effects, 60 FPS.': 'Упрощённые эффекты, 60 
 RU.update({'Single-player': 'Одиночный', 'Cooperative': 'Совместный'})
 
 RU.update({'Resolution': 'Разрешение', 'Window mode': 'Режим окна', 'Generation': 'Генерация', 'Disabled': 'Выключено', 'Exclusive fullscreen': 'Эксклюзивный', 'Borderless fullscreen': 'Без рамки'})
+
+RU.update({
+    'Cancel launch': 'Отменить',
+    'Launch cancelled.': 'Запуск отменён.',
+    'Confirm': 'Подтвердить',
+    'Allow incoming game and co-op server connections on local and Tailscale networks. Windows will ask for administrator permission.': 'Будут разрешены входящие подключения для игры и серверов кооператива в локальной сети и Tailscale. Windows запросит права администратора.'
+})

@@ -251,7 +251,7 @@ Item {
                         GlassButton { text: launcher.tr("Import trophy keys"); width: 180; onClicked: launcher.importTrophyKeys() }
                     }
                     CoopConnection {
-                        width: parent.width; visible: is("Co-op", "Seamless co-op")
+                        width: parent.width; showFirewall: true; visible: is("Co-op", "Seamless co-op")
                         onAttentionRequested: (target) => { if (workspace.visible) detailScroll.contentY = Math.max(0, Math.min(target.mapToItem(detailColumn, 0, 0).y - 24, detailScroll.contentHeight - detailScroll.height)) }
                     }
                     Note { visible: is("Mods & Patches", "Cheats"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }

@@ -4,13 +4,14 @@ import QtQuick.Controls
 Column {
     id: connection
     property bool compact: false
+    property bool showFirewall: false
     property bool showPlayerName: true
     spacing: compact ? 6 : 16
     signal attentionRequested(var target)
-    onVisibleChanged: if (visible && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) })
+    onVisibleChanged: if (visible && showFirewall && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) })
     Connections {
         target: launcher
-        function onCoopChanged() { if (connection.visible && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) }) }
+        function onCoopChanged() { if (connection.visible && showFirewall && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) }) }
     }
     property bool hosting: launcher.coopRole === "host"
     Repeater {
@@ -40,6 +41,7 @@ Column {
         }
         GlassButton {
             id: firewallButton
+            visible: connection.showFirewall
             width: Math.min(180, (connection.width - 20) / 3)
             text: launcher.tr("Configure firewall")
             highlighted: launcher.coopFirewallError
@@ -54,7 +56,7 @@ Column {
             onClicked: launcher.coopCopyInvite()
         }
     }
-    Note { text: launcher.tr("Allows co-op server connections through Windows Firewall on local and Tailscale networks.") }
+    Note { visible: connection.showFirewall; text: launcher.tr("Allows co-op server connections through Windows Firewall on local and Tailscale networks.") }
     Note { visible: !connection.compact; text: launcher.coopStatus }
     Text {
         visible: launcher.coopStatus.indexOf("https://tailscale.com/download/windows") >= 0

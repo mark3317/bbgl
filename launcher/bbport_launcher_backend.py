@@ -360,6 +360,7 @@ class LauncherBackend(QObject):
         self._coop_busy = False
         self._coop_status = ''
         self._coop_firewall_error = False
+        self._launch_cancelled = False
         self._coop_invite = ''
         self._coop_launch_env = None
         self._coopDone.connect(self._coop_finished)
@@ -1485,7 +1486,7 @@ class LauncherBackend(QObject):
         self._coop_status = message
         self.coopChanged.emit()
         env, self._coop_launch_env = self._coop_launch_env, None
-        if env:
+        if env and not self._launch_cancelled:
             self.play(env)
 
     def _coop_progress(self, text):
@@ -1662,10 +1663,22 @@ class LauncherBackend(QObject):
         return ['Co-op', 'Seamless co-op']
 
     @Slot()
+    def cancelLaunch(self):
+        self._launch_cancelled = True
+        self._coop_launch_env = None
+        if self.process and not self._game_started:
+            if self.job:
+                self.job.terminate()
+            else:
+                self.process.terminate()
+        self._set_notice("Launch cancelled.")
+
+    @Slot()
     def playSelected(self):
         """PLAY: the selected mode."""
         if self._coop_busy:
             return
+        self._launch_cancelled = False
         if self.playMode == 'coop':
             self.coopPlay()
         else:

@@ -5,7 +5,7 @@ Column {
     id: connection
     property bool compact: false
     property bool showPlayerName: true
-    spacing: compact ? 8 : 16
+    spacing: compact ? 6 : 16
     signal attentionRequested(var target)
     onVisibleChanged: if (visible && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) })
     Connections {
@@ -15,7 +15,7 @@ Column {
     property bool hosting: launcher.coopRole === "host"
     Repeater {
         model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op").filter(f => connection.showPlayerName || f.key !== "coop_name")
-        delegate: FieldRow { width: connection.width; minimumHeight: 62; compact: connection.compact; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 54 : 62; compact: connection.compact; field: modelData }
     }
     ToggleRow {
         width: parent.width
@@ -27,7 +27,7 @@ Column {
     }
     Repeater {
         model: connection.hosting ? [] : launcher.sectionFields("Co-op", "Join a host")
-        delegate: FieldRow { width: connection.width; minimumHeight: 62; compact: connection.compact; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 54 : 62; compact: connection.compact; field: modelData }
     }
     Row {
         width: parent.width; spacing: 10

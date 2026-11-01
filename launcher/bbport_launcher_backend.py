@@ -531,11 +531,15 @@ class LauncherBackend(QObject):
     @Property('QVariantMap', notify=changed)
     def setupFacts(self):
         fps = str(self.app.get('fps_mode', '120'))
+        upscaler = str(self.ini.get('upscaler', 'off'))
+        generation = str(self.ini.get('frame_gen', 'off'))
+        display = ('Exclusive fullscreen' if self.app.get('fullscreen_mode') == 'exclusive' else 'Borderless fullscreen') if self.app.get('fullscreen') else 'Windowed'
         return {
             'resolution': self.ini.get('output_res', '1920x1080').replace('x', ' × '),
             'frameRate': T('Unlocked') if fps == 'uncap' else f'{fps} FPS',
-            'upscaler': str(self.ini.get('upscaler', 'dlss')).upper(),
-            'display': T('Fullscreen') if self.app.get('fullscreen') else T('Windowed'),
+            'upscaler': {'off': T('Disabled'), 'fsr3': 'FSR 3.1', 'fsr4': 'FSR 4', 'taa': 'TAA', 'dlss': 'DLSS'}.get(upscaler, upscaler.upper()),
+            'display': T(display),
+            'frameGeneration': {'off': T('Disabled'), 'fsr3': 'FSR 3.1', 'dlss': 'DLSS'}.get(generation, generation.upper()),
         }
 
     @Slot(result=bool)

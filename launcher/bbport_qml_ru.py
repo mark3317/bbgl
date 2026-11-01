@@ -878,3 +878,5 @@ RU.update({'Reduced effects, 60 FPS.': 'Упрощённые эффекты, 60 
 'Maximum detail and reflections, 120 FPS.': 'Максимум деталей и отражений, 120 FPS.'})
 
 RU.update({'Single-player': 'Одиночный', 'Cooperative': 'Совместный'})
+
+RU.update({'Resolution': 'Разрешение', 'Window mode': 'Режим окна', 'Generation': 'Генерация', 'Disabled': 'Выключено', 'Exclusive fullscreen': 'Эксклюзивный', 'Borderless fullscreen': 'Без рамки'})

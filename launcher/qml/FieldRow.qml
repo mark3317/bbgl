@@ -9,7 +9,7 @@ Item {
     property bool hasHint: (field.hint || "") !== ""
     property bool isFolder: field.kind === "folder"
     property real controlWidth: Math.min(330, width * 0.44)
-    implicitHeight: isFolder ? 92 : Math.max(62, labels.implicitHeight + 28)
+    implicitHeight: isFolder ? 110 : Math.max(62, labels.implicitHeight + 28)
     height: implicitHeight
 
     Column {
@@ -52,8 +52,8 @@ Item {
         visible: field.kind !== "toggle" && field.kind !== "choice"
         x: isFolder ? 2 : parent.width - width
         y: isFolder ? 46 : (parent.height - height) / 2
-        width: isFolder ? parent.width - 110 : fieldRow.controlWidth
-        height: 36
+        width: isFolder ? parent.width - 194 : fieldRow.controlWidth
+        height: 48
         text: String(launcher.value(settingKey))
         placeholderText: isFolder ? launcher.tr("Default location") : ""
         echoMode: field.kind === "password" ? TextInput.Password : TextInput.Normal
@@ -65,7 +65,7 @@ Item {
     GlassButton {
         visible: isFolder
         text: launcher.tr("Browse")
-        anchors.right: parent.right; y: 46; height: 42; width: 180
+        anchors.right: parent.right; y: 46; height: 48; width: 180
         onClicked: launcher.browse(settingKey)
     }
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }

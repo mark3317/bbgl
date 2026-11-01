@@ -8,7 +8,7 @@ Column {
         text: launcher.tr("Firewall setup is optional. If players cannot connect, use this button to allow incoming connections. Only this action asks for administrator rights; starting co-op does not.")
     }
     GlassButton {
-        text: launcher.tr("Configure firewall"); width: 180; height: 42
+        text: launcher.tr("Configure firewall"); width: 180; height: 48
         enabled: !launcher.coopBusy && !launcher.running
         onClicked: launcher.coopConfigureFirewall()
     }

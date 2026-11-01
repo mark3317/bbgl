@@ -20,11 +20,11 @@ Item {
         }
     }
     Flickable {
-        x: Theme.railWidth + 44; y: 42; width: home.panelWidth - 88; height: parent.height - 84
+        x: Theme.railWidth + 44; y: 64; width: home.panelWidth - 88; height: parent.height - 112
         clip: true; contentHeight: content.implicitHeight
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
-            id: content; width: parent.width; spacing: 14
+            id: content; width: parent.width; spacing: 22
             Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
             Rectangle { width: 64; height: 2; color: Theme.accent }
             Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 14; wrapMode: Text.WordWrap }
@@ -32,13 +32,13 @@ Item {
             Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
             ToggleRow {
                 width: parent.width; height: 48
-                label: launcher.tr("Play mode")
+                label: launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
                 checked: launcher.playMode === "coop"
                 onToggled: launcher.setPlayMode(checked ? "coop" : "offline")
             }
             GlassButton {
                 property bool playAction: true
-                width: Math.min(250, parent.width); height: 46; serif: true; highlighted: true
+                width: Math.min(250, parent.width); height: 56; serif: true; highlighted: true
                 text: launcher.running ? launcher.tr("Game running") : launcher.coopBusy ? launcher.tr("Getting co-op ready…") : launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
                 enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
                 onClicked: home.primaryRequested()

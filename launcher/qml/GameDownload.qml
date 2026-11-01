@@ -7,14 +7,14 @@ Column {
         spacing: 12
         GlassButton {
             text: launcher.tr("Download game")
-            width: 180; height: 42
+            width: 180; height: 48
             enabled: !launcher.setupRunning && !launcher.running
             onClicked: launcher.downloadGame()
         }
         GlassButton {
             visible: launcher.setupRunning && launcher.gameDownloadStatus !== ""
             text: launcher.tr("Cancel download")
-            width: 180; height: 42
+            width: 180; height: 48
             onClicked: launcher.cancelGameDownload()
         }
     }

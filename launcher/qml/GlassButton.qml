@@ -10,6 +10,8 @@ Button {
     font.family: serif ? Theme.serif : Theme.sans
     font.pixelSize: serif ? 20 : 13
     font.letterSpacing: serif ? 0.5 : 0.2
+    implicitWidth: 180
+    implicitHeight: 48
     hoverEnabled: true
     contentItem: Text {
         text: button.text

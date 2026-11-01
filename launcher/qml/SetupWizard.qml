@@ -20,7 +20,7 @@ Item {
     }
     Flickable {
         id: scroll
-        y: 138; width: parent.width; height: parent.height - y - 74
+        y: 138; width: parent.width; height: parent.height - y - 90
         clip: true; boundsBehavior: Flickable.StopAtBounds
         contentHeight: (wizard.step === 0 ? files.implicitHeight : wizard.step === 1 ? coopStep.implicitHeight : finishStep.implicitHeight) + 20
         ScrollBar.vertical: ScrollBar {}
@@ -31,7 +31,7 @@ Item {
             GameDownload { width: parent.width }
             Repeater {
                 model: [wizard.checks[0], wizard.checks[2]]
-                delegate: Note { text: modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.textDim }
+                delegate: Note { text: (modelData.level === "error" ? "●  " : "✓  ") + modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.good }
             }
             GlassButton { text: launcher.tr("Check again"); onClicked: launcher.refreshReadiness() }
         }
@@ -46,7 +46,7 @@ Item {
             Flow {
                 width: parent.width; spacing: 8
                 Repeater { model: ["low", "balanced", "high", "ultra"]; delegate: GlassButton {
-                    width: 180; text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? " ★" : "")
+                    width: (finishStep.width - 24) / 4; height: 48; text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? " ★" : "")
                     highlighted: launcher.graphicsPreset === modelData; onClicked: launcher.applyGraphicsPreset(modelData)
                 } }
             }
@@ -56,15 +56,16 @@ Item {
             Note { text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice }
         }
     }
-    Rectangle { y: parent.height - 60; width: parent.width; height: 1; color: Theme.line }
-    Flow {
-        y: parent.height - 46; width: parent.width; spacing: 10
-        GlassButton { visible: wizard.step > 0; text: launcher.tr("Back"); onClicked: { wizard.step--; scroll.contentY = 0 } }
+    Rectangle { y: parent.height - 76; width: parent.width; height: 1; color: Theme.line }
+    Item {
+        y: parent.height - 60; width: parent.width; height: 48
+        GlassButton { anchors.left: parent.left; visible: wizard.step > 0; text: launcher.tr("Back"); onClicked: { wizard.step--; scroll.contentY = 0 } }
+        GlassButton { anchors.left: parent.left; visible: wizard.step === 0; text: launcher.tr("Skip for now"); enabled: !launcher.setupRunning; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
         GlassButton {
-            text: wizard.step === 2 ? launcher.tr("Finish") : launcher.tr("Continue"); highlighted: true; width: 180
+            anchors.right: parent.right
+            text: wizard.step === 2 ? launcher.tr("Finish") : launcher.tr("Continue"); highlighted: true
             enabled: !launcher.setupRunning && (wizard.step === 1 || (wizard.gameValid && wizard.savesValid))
             onClicked: { if (wizard.step === 2) wizard.finish(); else wizard.step++; scroll.contentY = 0 }
         }
-        GlassButton { visible: wizard.step === 0; text: launcher.tr("Skip for now"); width: 180; enabled: !launcher.setupRunning; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
     }
 }

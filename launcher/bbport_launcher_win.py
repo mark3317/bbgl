@@ -278,7 +278,7 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR / 'game'), 'user_dir
                 'check_updates': True, 'online': False, 'online_server': 'srv.shadps4.net:31313',
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
-                'play_mode': 'offline', 'coop_role': 'client',
+                'play_mode': 'offline', 'coop_role': 'client', 'graphics_preset': 'balanced',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
                 # finished or skipped.
                 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,
@@ -395,13 +395,9 @@ VRAM_BUDGETS = [('', ('Automatic (recommended)', 'Автоматически (р
                 ('2560', ('2.5 GB',)), ('3072', ('3 GB',)), ('4096', ('4 GB',)),
                 ('5120', ('5 GB',)), ('6144', ('6 GB',)), ('8192', ('8 GB',))]
 
-# Graphics presets, after Lantern Launcher's idea (Low to Ultra, recommended from the GPU) but
-# with this port's own settings: only the ones that cost GPU time. The upscaler (DLSS needs an
-# RTX card, FSR 4 its assets), the output resolution (the display's) and the look-only effects
-# (chromatic aberration, depth of field, motion blur, the game's AA) stay as the player set them.
-# Balanced is the shipped defaults. Any other combination shows as Custom; nothing changes
-# until a preset is chosen. All of it applies when the game next starts (the upscaling preset
-# live as well when live resolution is on).
+# Graphics quality presets. Applying a preset starts with upscaling off, while later
+# upscaling and frame-generation changes remain independent of the preset identity.
+# The chosen identity is retained for presets with otherwise identical quality values.
 GRAPHICS_PRESETS = {
     'low': {'upscaler': 'off', 'preset': '3', 'model_lod': '1', 'effect_ssao': '0', 'effect_dynamic_shadows': '0',
             'effect_ssr': '0', 'fps_mode': '60'},
@@ -427,9 +423,13 @@ GRAPHICS_PRESET_INFO = {
 
 
 def graphics_preset_of(ini, app):
-    """The preset the current settings match, or 'custom'."""
-    for name, values in GRAPHICS_PRESETS.items():
-        if all(str((app if key in APP_DEFAULTS else ini).get(key, '')) == value for key, value in values.items()):
+    """Quality preset identity ignores independent upscaling/frame-generation choices."""
+    preferred = app.get('graphics_preset', 'balanced')
+    names = ([preferred] if preferred in GRAPHICS_PRESETS else []) + [name for name in GRAPHICS_PRESETS if name != preferred]
+    for name in names:
+        values = GRAPHICS_PRESETS[name]
+        if all(str((app if key in APP_DEFAULTS else ini).get(key, '')) == value
+               for key, value in values.items() if key not in ('upscaler', 'preset', 'frame_gen', 'frame_gen_multiplier', 'frame_gen_fit_display')):
             return name
     return 'custom'
 
@@ -437,6 +437,7 @@ def graphics_preset_of(ini, app):
 def apply_graphics_preset(name, ini, app):
     for key, value in GRAPHICS_PRESETS[name].items():
         (app if key in APP_DEFAULTS else ini)[key] = value
+    app['graphics_preset'] = name
 
 
 def recommended_graphics_preset(gpu):

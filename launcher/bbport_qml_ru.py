@@ -869,3 +869,10 @@ RU.update({'Sets the button icons shown in game menus. Keyboard also applies mat
 'Checks for new launcher versions at startup.': 'Проверяет новые версии лаунчера при запуске.'})
 
 RU['Mods & Patches'] = 'Моды и читы'
+
+RU.update({'Open saves folder': 'Папка сохранений', 'Open mods folder': 'Папка модов', 'Open launcher folder': 'Папка лаунчера', 'Open port folder': 'Папка лаунчера'})
+
+RU.update({'Reduced effects, 60 FPS.': 'Упрощённые эффекты, 60 FPS.',
+'Standard effects, 120 FPS.': 'Обычные эффекты, 120 FPS.',
+'High quality, 120 FPS.': 'Высокое качество, 120 FPS.',
+'Maximum detail and reflections, 120 FPS.': 'Максимум деталей и отражений, 120 FPS.'})

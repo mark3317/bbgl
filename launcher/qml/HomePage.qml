@@ -31,8 +31,12 @@ Item {
             Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 16; wrapMode: Text.WordWrap }
             Text { width: parent.width; text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " + launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display; color: Theme.text; font.family: Theme.serif; font.pixelSize: 19; wrapMode: Text.WordWrap }
             Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
+            FieldRow {
+                width: parent.width; compact: true
+                field: launcher.settingsRevision < 0 ? ({}) : launcher.sectionFields("Co-op", "Seamless co-op").find(f => f.key === "coop_name")
+            }
             CoopConnection {
-                width: parent.width; compact: true; visible: launcher.playMode === "coop"
+                width: parent.width; compact: true; showPlayerName: false; visible: launcher.playMode === "coop"
                 onAttentionRequested: (target) => {
                     if (!home.visible) return
                     homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))

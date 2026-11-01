@@ -599,7 +599,7 @@ class LauncherBackend(QObject):
 
     @Slot(str, result=str)
     def presetDescription(self, name):
-        return T({'low': 'Reduced effects, 60 FPS.', 'balanced': 'Standard effects, 120 FPS.', 'high': 'High quality, 120 FPS.', 'ultra': 'Native resolution, maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
+        return T({'low': 'Reduced effects, 60 FPS.', 'balanced': 'Standard effects, 120 FPS.', 'high': 'High quality, 120 FPS.', 'ultra': 'Maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
 
     @Property(int, notify=presetApplied)
     def settingsRevision(self):

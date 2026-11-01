@@ -38,6 +38,17 @@ class GraphicsPresetTests(unittest.TestCase):
                          ('off', '3840x2160', '0', '0'))
         self.assertEqual(app['fps_mode'], '60')
 
+    def test_upscaling_and_frame_generation_do_not_change_preset_identity(self):
+        for name in core.GRAPHICS_PRESETS:
+            ini, app = self.defaults()
+            core.apply_graphics_preset(name, ini, app)
+            ini.update(upscaler='fsr3', preset='4', frame_gen='fsr3', frame_gen_multiplier='3', frame_gen_fit_display='1')
+            self.assertEqual(core.graphics_preset_of(ini, app), name)
+            ini.update(upscaler='off', preset='0', frame_gen='off')
+            self.assertEqual(core.graphics_preset_of(ini, app), name)
+            ini['model_lod'] = 'unmatched'
+            self.assertEqual(core.graphics_preset_of(ini, app), 'custom')
+
     def test_new_installs_run_120_and_saved_settings_keep_their_frame_rate(self):
         self.assertEqual(core.app_settings({})['fps_mode'], '120')
         # Saved before 120 was the default, without a frame rate of their own: they ran unlocked.

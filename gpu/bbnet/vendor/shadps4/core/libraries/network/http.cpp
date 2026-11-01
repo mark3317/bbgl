@@ -32,6 +32,7 @@
 #include "core/libraries/kernel/process.h"
 #include "core/libraries/libs.h"
 #include "core/libraries/network/bbsc_fast_sign.h"
+#include "core/libraries/network/bbsc_connect_retry.h"
 #include "core/libraries/network/http.h"
 #include "http_error.h"
 
@@ -919,7 +920,12 @@ static s32 RunRealHttpRequest(const SendRequestPlan& plan_in, HttpResponse& out_
             plan.body.empty() ? "" : reinterpret_cast<const char*>(plan.body.data());
         const size_t body_size = plan.body.size();
 
-        auto result = [&]() {
+        const bool retry_claim = BbscClaimRetryEnabled(plan.method == ORBIS_HTTP_METHOD_POST,
+            plan.path, std::any_of(plan.headers.begin(), plan.headers.end(), [](const auto& header) {
+                return HeaderNameMatches(header.first, "X-ShadPS4-Bloodborne-Seamless") &&
+                       header.second == "1";
+            }));
+        auto send_request = [&]() {
             switch (plan.method) {
             case ORBIS_HTTP_METHOD_GET:
                 return cli.Get(plan.path, headers);
@@ -947,7 +953,14 @@ static s32 RunRealHttpRequest(const SendRequestPlan& plan_in, HttpResponse& out_
                 LOG_ERROR(Lib_Http, "Unsupported method {}; using GET", plan.method);
                 return cli.Get(plan.path, headers);
             }
-        }();
+        };
+        auto result = SendBbscClaim(retry_claim, send_request,
+            [](const auto& reply) {
+                return !reply && reply.error() == httplib::Error::ConnectionTimeout;
+            },
+            [&](unsigned retry) {
+                LOG_WARNING(Lib_Http, "BBSC summon claim: TCP connect timed out before send; retry {}/2", retry);
+            });
 
         if (!result) {
             const int err_val = static_cast<int>(result.error());

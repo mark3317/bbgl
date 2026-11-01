@@ -65,24 +65,6 @@ cp -r launcher/qml "$dest/launcher/"
 mkdir -p "$dest/launcher/assets"
 cp launcher/assets/hunter-icon.ico launcher/assets/hunter-icon.png "$dest/launcher/assets/"
 cp -r launcher/assets/ui "$dest/launcher/assets/"
-# ShadPs4Plus PKG Extractor 1.1 handles the user's own base and update PKGs from the
-# launcher's Game page. Pin the upstream binary so release builds stay reproducible.
-pkg_archive=out/vendor/ShadPs4Plus-PkgExtractor-1.1-windows.zip
-pkg_url=https://github.com/AzaharPlus/shadPS4Plus/releases/download/PKG_EXTRACTOR_1_1/ShadPs4Plus-PkgExtractor-1.1-windows.zip
-mkdir -p out/vendor
-if [[ ! -f $pkg_archive ]]; then curl -fL --retry 3 "$pkg_url" -o "$pkg_archive"; fi
-printf '%s  %s\n' 'a6a6dee84c1283949245c868e580ff8d0049d0e73df9de3096460ee26c6f04d7' "$pkg_archive" | sha256sum -c -
-"$venv/Scripts/python.exe" - "$pkg_archive" "$dest/tools/pkg-extractor" <<'PY'
-from pathlib import Path
-import sys, zipfile
-
-archive, destination = Path(sys.argv[1]), Path(sys.argv[2])
-destination.mkdir(parents=True, exist_ok=True)
-prefix = 'ShadPs4Plus-PkgExtractor-1.1-windows/'
-with zipfile.ZipFile(archive) as source:
-    for name in ('pkg_extractor.exe', 'libc++.dll', 'zlib1.dll'):
-        (destination / name).write_bytes(source.read(prefix + name))
-PY
 # The executables without debug information (out/ keeps the symbols for crash reports).
 for exe in bb-probe.exe bb-gpu-capabilities.exe; do
     llvm-strip --strip-debug -o "$dest/bin/$exe" "out/$exe"

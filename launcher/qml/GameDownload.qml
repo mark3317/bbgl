@@ -20,7 +20,7 @@ Column {
     }
     Text {
         width: parent.width; wrapMode: Text.WordWrap
-        text: launcher.tr("Downloads into the game folder beside the launcher. Verified ZIP parts are reused when you retry.")
+        text: launcher.tr("Downloads into the game folder selected above.")
         color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
     }
     ProgressBar {

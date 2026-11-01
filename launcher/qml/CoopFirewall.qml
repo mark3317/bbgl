@@ -12,9 +12,4 @@ Column {
         enabled: !launcher.coopBusy && !launcher.running
         onClicked: launcher.coopConfigureFirewall()
     }
-    Text {
-        width: parent.width; wrapMode: Text.WordWrap
-        text: launcher.coopStatus
-        color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
-    }
 }

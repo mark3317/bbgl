@@ -267,7 +267,7 @@ INI_DEFAULTS = {'upscaler': 'dlss', 'preset': '2', 'sharpen': '1', 'sharpness': 
                 **{key: '1' if on else '0' for key, _t, on in EFFECTS + EXTRAS + CHEATS + TWEAKS + ENHANCEMENTS}}
 from bbport_coop_settings import SETTINGS as COOP_SETTINGS
 
-APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'), 'user_dir': '', 'dlc_dir': '',
+APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'game'), 'user_dir': '', 'dlc_dir': '',
                 'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': 'auto',
                 'voice_language': 'auto',
                 'player_name': '', 'fullscreen': True, 'fullscreen_mode': 'borderless', 'display': '',
@@ -278,7 +278,7 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'
                 'check_updates': True, 'online': False, 'online_server': 'srv.shadps4.net:31313',
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
-                'play_mode': 'offline',
+                'play_mode': 'offline', 'coop_role': 'client',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
                 # finished or skipped.
                 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,

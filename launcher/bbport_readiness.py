@@ -36,7 +36,7 @@ def check_readiness(game_dir, user_dir, game_info):
 
     info = game_info(str(game)) if game and (game / 'eboot.bin').is_file() else None
     if not info:
-        result.append(_item('Game files', 'error', 'Choose the extracted CUSA03173 folder containing eboot.bin.'))
+        result.append(_item('Game files', 'error', 'Choose your game folder or download the game.'))
     else:
         missing = [name for name in ('dvdroot_ps4', 'sce_module', 'sce_sys') if not (game / name).is_dir()]
         if missing:
@@ -123,12 +123,12 @@ def check_readiness(game_dir, user_dir, game_info):
                 except OSError:
                     pass
             if found_save:
-                result.append(_item('Saves', 'ready', f'Save folder is writable; {save_id} save data found.'))
+                result.append(_item('Saves', 'ready', 'Save data found.'))
             elif shadps4_save:
                 result.append(_item('Saves', 'warning',
                                     f'This looks like shadPS4\'s savedata folder: its {save_id} save is not '
                                     f'where this port reads saves, so the game would start a new one. Choose '
                                     f'another Saves folder and copy {save_id} into its savedata\\1 folder.'))
             else:
-                result.append(_item('Saves', 'warning', f'Save folder is writable; no {save_id} save yet.'))
+                result.append(_item('Saves', 'warning', 'A new save will be created when you play.'))
     return result

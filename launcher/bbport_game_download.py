@@ -61,14 +61,15 @@ def request(url):
     return urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'BBGL'}), timeout=45)
 
 
-def install(root, progress, cancel, manifest_url=MANIFEST_URL):
-    root = Path(root)
+def install(root, progress, cancel, manifest_url=MANIFEST_URL, target=None):
+    root = Path(target).resolve().parent if target is not None else Path(root)
+    root.mkdir(parents=True, exist_ok=True)
     with installation_lock(root / '.game-install.lock'):
-        return _install(root, progress, cancel, manifest_url)
+        return _install(root, progress, cancel, manifest_url, target)
 
 
-def _install(root, progress, cancel, manifest_url):
-    target = root / 'game'
+def _install(root, progress, cancel, manifest_url, target=None):
+    target = Path(target).resolve() if target is not None else root / 'game'
     if target.exists():
         raise ValueError('The game folder already exists. Choose it using the folder button.')
     with request(manifest_url) as response:

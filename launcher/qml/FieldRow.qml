@@ -19,12 +19,12 @@ Item {
         width: isFolder ? parent.width - 4 : parent.width - fieldRow.controlWidth - 28
         spacing: 3
         Text {
-            width: parent.width; text: field.label || ""; color: Theme.text; elide: Text.ElideRight
+            width: parent.width; text: field.label || ""; color: Theme.text; wrapMode: Text.WordWrap
             font.family: Theme.sans; font.pixelSize: 14
         }
         Text {
             visible: hasHint; width: parent.width; text: field.hint || ""; color: Theme.textDim
-            font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
+            font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap
         }
     }
     GlassSwitch {
@@ -44,6 +44,11 @@ Item {
         onActivated: launcher.setValue(settingKey, currentValue)
     }
     GlassTextField {
+        id: editor
+        Connections {
+            target: launcher
+            function onChanged() { if (!editor.activeFocus) editor.text = String(launcher.value(fieldRow.settingKey)) }
+        }
         visible: field.kind !== "toggle" && field.kind !== "choice"
         x: isFolder ? 2 : parent.width - width
         y: isFolder ? 46 : (parent.height - height) / 2

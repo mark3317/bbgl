@@ -26,7 +26,6 @@ import bbport_qml_ru
 import bbport_launcher_win as core
 import bbport_startup
 import bbport_game_download
-from bbport_pkg_setup import PackageSetupError, install_game
 from bbport_readiness import check_readiness, valid_trophy_key
 
 
@@ -136,9 +135,9 @@ FIELDS = {
         row('hdr', 'HDR output', 'toggle'),
     ],
     'Game': [
-        row('game_dir', 'Game folder (contains eboot.bin)', 'folder'),
+        row('game_dir', 'Game folder', 'folder'),
         row('user_dir', 'Saves folder', 'folder'),
-        row('dlc_dir', 'DLC folder (base-game dumps only, e.g. SPEXPANSIONDLC03)', 'folder'),
+        row('dlc_dir', 'DLC folder', 'folder'),
         row('language', 'Game language', 'choice', core.LANGUAGES),
         row('voice_language', 'Voice language', 'choice', core.VOICE_LANGUAGES,
             'As in the game uses the original voice setting; other choices use available tracks.'),
@@ -164,12 +163,11 @@ FIELDS = {
         *[row('bbsc_' + item['id'], item['name'],
               'toggle' if item['type'] == 'bool' else 'text', hint=item['description'])
           for item in core.COOP_SETTINGS],
-        row('coop_name', 'Co-op name', hint='Your name in co-op, 3-16 letters, numbers, - or _.'),
+        row('coop_name', 'Player name', hint='3–16 Latin letters, numbers, - or _. Also used in game.'),
         row('coop_password', 'Co-op password', 'password',
             hint="For your co-op account on the host's server. Use one you use nowhere else."),
         row('coop_invite', 'Host invite code',
-            hint='Paste the BBCOOP- code your host sent you. Leave empty when you host, or to use '
-                 "this launcher's own co-op server (coop-server.json)."),
+            hint='Paste the code from your host. Empty uses the default server.'),
     ],
     'Mods': [
         row('mods_enabled', 'Enable mods', 'toggle'),
@@ -199,28 +197,25 @@ FIELDS = {
 SETTINGS_SECTIONS = {
     'Visuals': [
         ('Display & frame rate', ['output_res', 'hud_position', 'fullscreen', 'fullscreen_mode', 'display', 'hdr', 'fps_mode', 'frame_cap',
-                                  'frames_ahead', 'present_mode']),
-        ('Upscaling', ['upscaler', 'preset', 'live_resolution', 'sharpen', 'sharpness',
-                       'object_motion']),
+                                  'show_fps']),
+        ('Upscaling', ['upscaler', 'preset', 'sharpen', 'sharpness']),
         ('Frame generation', ['frame_gen', 'frame_gen_multiplier', 'frame_gen_fit_display']),
         ('Image effects', ['model_lod'] + [key for key, _, _ in core.EFFECTS]),
-        ('Video memory', ['vram_budget_mb']),
-        ('Overlay', ['show_fps']),
+        ('Advanced', ['vram_budget_mb', 'frames_ahead', 'present_mode', 'live_resolution', 'object_motion']),
     ],
     'Controls': [
         ('Button prompts', []),
-        ('Mouse', ['mouse_camera', 'mouse_menu', 'mouse_sensitivity', 'mouse_invert_y', 'mouse_hide_cursor']),
-        ('Keyboard', ['move_smoothing']),
+        ('Mouse & keyboard', ['mouse_camera', 'mouse_menu', 'mouse_sensitivity', 'mouse_invert_y', 'move_smoothing']),
+        ('Advanced', ['mouse_hide_cursor']),
     ],
     'Game & Saves': [
-        ('Game files', ['game_dir', 'dlc_dir']),
-        ('Your data', ['user_dir']),
-        ('In-game preferences', ['language', 'voice_language', 'player_name'] + [key for key, _, _ in core.EXTRAS[:1]]),
+        ('Game files', ['game_dir', 'user_dir']),
+        ('Advanced', ['dlc_dir']),
+        ('In-game preferences', ['language', 'voice_language'] + [key for key, _, _ in core.EXTRAS[:1]]),
     ],
     'Co-op': [
         ('Seamless co-op', ['coop_name', 'coop_password']),
         ('Co-op gameplay', ['bbsc_' + item['id'] for item in core.COOP_SETTINGS]),
-        ('Host a session', []),
         ('Join a host', ['coop_invite']),
     ],
     'Mods & Patches': [
@@ -251,9 +246,9 @@ SEARCH_TERMS = {
 SEARCH_ACTIONS = [
     ('Controls', 'Button prompts', 'Xbox and PlayStation prompts', 'button controller'),
     ('Visuals', 'Upscaling', 'Download FSR 4 assets', 'fsr shader'),
-    ('Game & Saves', 'Game files', 'Install from ZIP / PKG', 'game files setup'),
-    ('Game & Saves', 'Your data', 'Import trophy keys', 'keys.json trophies'),
-    ('Game & Saves', 'Your data', 'Open saves folder', 'save path'),
+    ('Game & Saves', 'Game files', 'Download game', 'game files setup'),
+    ('Game & Saves', 'Game files', 'Import trophy keys', 'keys.json trophies'),
+    ('Game & Saves', 'Game files', 'Open saves folder', 'save path'),
     ('Mods & Patches', 'Installed mods', 'Refresh mods', 'load order'),
     ('System', 'Launch', 'Desktop shortcut', 'start menu'),
     ('System', 'Launch', 'Add to Steam', 'integration'),
@@ -425,6 +420,7 @@ class LauncherBackend(QObject):
         if self._setup_running or self.running:
             return
         self._setup_running = True
+        download_target = str(self.app.get('game_dir') or core.PORT_DIR.parent / 'game')
         self._game_download_cancel.clear()
         self._show_game_download_progress(0.0, T('Preparing download…'))
         self.setupRunningChanged.emit()
@@ -432,7 +428,7 @@ class LauncherBackend(QObject):
         def work():
             try:
                 folder = bbport_game_download.install(core.PORT_DIR, self._gameDownloadProgress.emit,
-                                                      self._game_download_cancel)
+                                                      self._game_download_cancel, target=download_target)
                 self.setupCompleted.emit(str(folder))
             except Exception as error:
                 self._gameDownloadProgress.emit(self._game_download_progress, str(error))
@@ -524,6 +520,12 @@ class LauncherBackend(QObject):
                        for index in range(4))
         except (AttributeError, OSError):
             return False
+
+    @Property(str, notify=changed)
+    def profileSummary(self):
+        name = str(self.value('coop_name')).strip()
+        folder = Path(self.app.get('user_dir') or core.DATA_DIR / 'user').name
+        return (name + '  ·  ' if name else '') + T('Save profile') + ': ' + folder
 
     @Property(str, notify=changed)
     def gameFolder(self):
@@ -751,6 +753,10 @@ class LauncherBackend(QObject):
 
     @Slot(str, result='QVariant')
     def value(self, key):
+        if key == 'user_dir':
+            return str(self.app.get(key) or core.DATA_DIR / 'user')
+        if key == 'coop_name':
+            return self.app.get(key) or self.app.get('player_name', '')
         return self.ini.get(key, '') if key in core.INI_DEFAULTS else self.app.get(key, '')
 
     def _remember_written(self):
@@ -783,52 +789,6 @@ class LauncherBackend(QObject):
         self._remember_written()
         self.changed.emit()
 
-    @Slot()
-    def installFromArchive(self):
-        if self._setup_running or self.running:
-            self._set_notice('Close the game or wait for the current setup to finish.')
-            return
-        source, _ = QFileDialog.getOpenFileName(
-            None, 'Step 1: choose the game ZIP or the BASE game PKG (CUSA03173.pkg, not the update)', str(Path.home() / 'Downloads'),
-            'Game archive or base PKG (*.zip *.pkg)')
-        if not source:
-            return
-        update = None
-        if Path(source).suffix.casefold() == '.pkg':
-            update, _ = QFileDialog.getOpenFileName(
-                None, 'Step 2: choose the plain 1.09 UPDATE PKG (not 720p or 1080p)', str(Path(source).parent), 'Update PKG (*.pkg)')
-            # Game of the Year PKGs may already hold 1.09: no separate update then (#43).
-            if not update and QMessageBox.question(
-                    None, 'No update PKG',
-                    f'Is {Path(source).name} already updated to 1.09 (a PKG with the update merged in)?\n\n'
-                    'Yes installs it without an update PKG; the installer checks the version.') != QMessageBox.Yes:
-                return
-        parent = QFileDialog.getExistingDirectory(
-            None, 'Last step: choose where to create the CUSA03173 game folder', str(Path.home()))
-        if not parent:
-            return
-        target = Path(parent) / 'CUSA03173'
-        if target.exists():
-            QMessageBox.warning(None, 'Game folder already exists',
-                                f'{target} already exists. Choose another location so no game files are replaced.')
-            return
-        extractor = core.PORT_DIR / 'tools' / 'pkg-extractor' / 'pkg_extractor.exe'
-        if not extractor.is_file() and not core.FROZEN:
-            extractor = core.PORT_DIR / 'out' / 'vendor' / 'pkg-extractor' / 'pkg_extractor.exe'
-        self._setup_running = True
-        self.setupRunningChanged.emit()
-        self._set_notice('Preparing your game files. Keep the launcher open…')
-
-        def work():
-            try:
-                installed = install_game(source, parent, extractor, update, self.workerNotice.emit)
-                self.setupCompleted.emit(str(installed))
-            except PackageSetupError as error:
-                self.setupFailed.emit(str(error))
-            except Exception as error:
-                self.setupFailed.emit(f'Unexpected installer error: {error}')
-        threading.Thread(target=work, daemon=True).start()
-
     @Slot(str)
     def _complete_game_setup(self, folder):
         self.app['game_dir'] = folder
@@ -852,6 +812,11 @@ class LauncherBackend(QObject):
     def setValue(self, key, value):
         if key in ('upscaler', 'frame_gen') and str(value) == 'dlss' and not self._dlss_supported:
             return
+        if key == 'coop_role':
+            if self.running or self._coop_busy:
+                return
+            if value == 'client' and self._coop_host.running:
+                self.coopStopHosting()
         if key not in core.APP_DEFAULTS and key not in core.INI_DEFAULTS:
             return
         if key in core.INI_DEFAULTS:
@@ -874,6 +839,8 @@ class LauncherBackend(QObject):
                     self._set_notice('Enter a whole number within the setting range.')
                     return
             self.app[key] = value
+            if key == 'coop_name':
+                self.app['player_name'] = value
         self._write()
 
     @Slot(str, result=bool)
@@ -1381,20 +1348,20 @@ class LauncherBackend(QObject):
 
     # --- Seamless co-op (experimental): BBSC, hosted on one player's PC over Tailscale -------------
 
-    @Property(str, notify=coopChanged)
+    @Property(str, notify=playModeChanged)
     @translated
     def coopStatus(self):
         if self._coop_status:
             return self._coop_status
         if not coop.installed('client'):
             return 'Bundled BBSC-GL files are missing. Re-extract the launcher release.'
-        version = coop.installed_version('client') or '?'
         if self._coop_host.running:
-            return f'BBSC-GL {version}. Hosting on {self._coop_host.address}. Send your friend the invite code.'
-        if not self.app.get('coop_invite', '').strip() and coop.default_invite():
-            server = coop.default_server_name() or 'the co-op server of this launcher'
-            return f'BBSC-GL {version}. Ready: Play co-op joins {server}.'
-        return f"BBSC-GL {version}. Ready. Host a session, or paste a host's invite code and play."
+            return T('Server is running. Send the invite code to friends.')
+        return T('Start hosting to invite friends.') if self.coopRole == 'host' else T('Enter your details and play co-op.')
+
+    @Property(str, notify=changed)
+    def coopRole(self):
+        return self.app.get('coop_role', 'client')
 
     @Property(str, notify=coopChanged)
     def coopInvite(self):
@@ -1458,7 +1425,7 @@ class LauncherBackend(QObject):
         raise coop.CoopError('bb-probe.exe is missing from this install.')
 
     def _coop_account(self):
-        return self.app.get('coop_name', '').strip(), self.app.get('coop_password', '')
+        return str(self.value('coop_name')).strip(), self.app.get('coop_password', '')
 
     @Slot()
     def openCoopHelp(self):
@@ -1486,10 +1453,17 @@ class LauncherBackend(QObject):
             self._coop_ensure_packages(('client', 'server'))
             address, network = coop.host_address()
             if not address:
-                raise coop.CoopError('No network found. Connect Tailscale, then try again.')
+                raise coop.CoopError(T('No network found. Install or connect Tailscale: ') + 'https://tailscale.com/download/windows')
             key = coop.registration_key()
-            self._coop_host.start(address)
-            how = coop.create_account(address, key, name, password)
+            try:
+                self._coop_host.start(address)
+                how = coop.create_account(address, key, name, password)
+            except (coop.CoopError, OSError, ValueError) as error:
+                self._coop_host.stop()
+                if not coop.tailscale_exe():
+                    raise coop.CoopError(str(error) + '\n' + T('Tailscale is not installed. Download: ') +
+                                         'https://tailscale.com/download/windows') from error
+                raise
             self._coop_invite = coop.make_invite(address, key)
             return (f'Hosting on {network} ({address}); your account is {how}. Copy the invite code '
                     'for your friend, then press Play co-op. The servers stay active until you exit the game.')
@@ -1514,6 +1488,10 @@ class LauncherBackend(QObject):
         if self.process or self._coop_busy:
             return
         name, password = self._coop_account()
+        if self.coopRole == 'host' and not self._coop_host.running:
+            self._coop_status = T('Start hosting before playing co-op.')
+            self.coopChanged.emit()
+            return
         if not name or not password:
             self._coop_status = 'Fill in your co-op name and password first.'
             self.coopChanged.emit()
@@ -1562,7 +1540,9 @@ class LauncherBackend(QObject):
 
     def _coop_ready(self):
         name, password = self._coop_account()
-        return bool(name and password and (self._coop_host.running or self.app.get('coop_invite', '').strip()))
+        if self.coopRole == 'host':
+            return bool(name and password and self._coop_host.running)
+        return bool(name and password and (self._coop_host.running or self.app.get('coop_invite', '').strip() or coop.default_invite()))
 
     @Property(bool, notify=playModeChanged)
     def playModeBlocked(self):

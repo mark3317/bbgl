@@ -77,8 +77,6 @@ RU = {
     'Sign in to play online': 'Войдите, чтобы играть онлайн',
     'Ready to hunt': 'Готов к охоте',
     'Ready to hunt.': 'Готов к охоте.',
-    'Choose your Bloodborne folder, or install it from your own ZIP or PKG dump.':
-        'Выберите папку Bloodborne или установите игру из своего дампа ZIP или PKG.',
     'The saves folder cannot be written. Choose another one.':
         'В папку сохранений нельзя записывать. Выберите другую.',
     'LAUNCHER': 'ЛАУНЧЕР',
@@ -170,7 +168,6 @@ RU = {
         "(плитка рядом с первым рядом) или щёлкните по ней.",
     'Upscaling': 'Масштабирование',
     'Download FSR 4 assets': 'Скачать ресурсы FSR 4',
-    'Install from ZIP / PKG': 'Установить из ZIP / PKG',
     'Check again': 'Проверить снова',
     'Setup wizard': 'Мастер настройки',
     'Import trophy keys': 'Импорт ключей трофеев',
@@ -254,18 +251,10 @@ RU = {
     'straight away.':
         'Файлы игры и ключ трофеев не входят в эту загрузку. Можно пропустить настройку и сразу пользоваться '
         'лаунчером.',
-    'Have cusa-03173.zip? The next step can unpack it and apply update 1.09. Already have a CUSA03173 folder? '
-    'Point the launcher to the folder that contains eboot.bin.':
-        'Есть cusa-03173.zip? Следующий шаг распакует его и установит обновление 1.09. Уже есть папка CUSA03173? '
-        'Укажите лаунчеру папку, в которой лежит eboot.bin.',
     'Choose how to add Bloodborne 1.09. The installer creates a new game folder and never replaces an existing one.':
         'Выберите, как добавить Bloodborne 1.09. Установщик создаёт новую папку игры и никогда не заменяет '
         'существующую.',
     'Choose a game folder': 'Выбрать папку игры',
-    'For cusa-03173.zip, choose the ZIP and then where the game should go, such as C:\\Games\\Bloodborne. For an '
-    'extracted game, choose the folder with eboot.bin directly inside it.':
-        'Для cusa-03173.zip выберите ZIP, затем место для игры, например C:\\Games\\Bloodborne. Для '
-        'распакованной игры выберите папку, где прямо внутри лежит eboot.bin.',
     "A writable saves folder is required to play. Trophy keys are optional and add trophy names. Saves stay in the "
     "launcher's own user folder unless you choose another.":
         'Для игры нужна папка сохранений, доступная для записи. Ключи трофеев необязательны и добавляют названия '
@@ -544,7 +533,6 @@ RU = {
     'First time: say Yes to the Windows prompt (firewall and C++ runtime)…':
         'В первый раз: ответьте «Да» на запрос Windows (брандмауэр и библиотеки C++)…',
     'First time: say Yes to the Windows prompt (firewall)…': 'В первый раз: ответьте «Да» на запрос Windows (брандмауэр)…',
-    'Game archive or base PKG (*.zip *.pkg)': 'Архив игры или базовый PKG (*.zip *.pkg)',
     'Game folder already exists': 'Папка игры уже существует',
     'Game installation could not finish': 'Не удалось завершить установку игры',
     'Game installed and version 1.09 verified. Press PLAY.': 'Игра установлена, версия 1.09 подтверждена. Нажмите «Играть».',
@@ -567,7 +555,6 @@ RU = {
     'Maps ready.': 'Карты готовы.',
     'Mod change saved. Restart the game to apply it.': 'Изменение модов сохранено. Перезапустите игру, чтобы применить.',
     'No network found. Connect Tailscale, then try again.': 'Сеть не найдена. Подключите Tailscale и попробуйте снова.',
-    'No update PKG': 'Нет PKG обновления',
     'Not set up yet: Set up / update BBSC downloads the newest BBSC from its GitHub releases (about 100 MB), or '
     'Play co-op does it for you.':
         'Ещё не настроено: «Установить / обновить BBSC» скачает новейший BBSC из его релизов на GitHub (около '
@@ -596,17 +583,12 @@ RU = {
     'Steam did not close. Close it yourself and try again.': 'Steam не закрылся. Закройте его сами и попробуйте снова.',
     'Steam must close while the game is added. Close Steam now?': 'Пока игра добавляется, Steam нужно закрыть. Закрыть Steam сейчас?',
     'Steam was not found on this PC or no account has signed in.': 'Steam не найден на этом ПК, или в нём не выполнен вход.',
-    'Step 1: choose the game ZIP or the BASE game PKG (CUSA03173.pkg, not the update)':
-        'Шаг 1: выберите ZIP игры или PKG БАЗОВОЙ игры (CUSA03173.pkg, не обновление)',
-    'Step 2: choose the plain 1.09 UPDATE PKG (not 720p or 1080p)':
-        'Шаг 2: выберите обычный PKG ОБНОВЛЕНИЯ 1.09 (не 720p и не 1080p)',
     'Stopped hosting.': 'Сервер остановлен.',
     'The game is running.': 'Игра запущена.',
     'This folder already contains keys.json. Replace it?': 'В этой папке уже есть keys.json. Заменить его?',
     'Trophy keys are already installed.': 'Ключи трофеев уже установлены.',
     'Trophy keys copied to the new saves folder.': 'Ключи трофеев скопированы в новую папку сохранений.',
     'Trophy keys installed successfully.': 'Ключи трофеев установлены.',
-    'Update PKG (*.pkg)': 'PKG обновления (*.pkg)',
     'Vulkan graphics card not detected': 'Видеокарта с Vulkan не обнаружена',
     'Wait for the game files to finish installing.': 'Дождитесь окончания установки файлов игры.',
     'Game files not found': 'Файлы игры не найдены',
@@ -628,23 +610,14 @@ RU = {
     # pkg setup (bbport_pkg_setup.py)
     'Applying the update to the game folder…': 'Установка обновления в папку игры…',
     'Checking the base game and 1.09 update…': 'Проверка базовой игры и обновления 1.09…',
-    'Checking the game PKG…': 'Проверка PKG игры…',
     'Choose an existing destination folder.': 'Выберите существующую папку назначения.',
-    'Choose an existing game ZIP or base PKG.': 'Выберите существующий ZIP игры или базовый PKG.',
-    'Choose cusa-03173.zip or CUSA03173.pkg.': 'Выберите cusa-03173.zip или CUSA03173.pkg.',
-    'Choose the plain 1.09 update PKG too.': 'Выберите также обычный PKG обновления 1.09.',
     'Extracting the 1.09 update…': 'Распаковка обновления 1.09…',
     'Extracting the base game. This can take a while…': 'Распаковка базовой игры. Это может занять время…',
     'Game files installed. Ready to play.': 'Файлы игры установлены. Можно играть.',
-    'The PKG extractor is missing from the launcher package.': 'В пакете лаунчера нет распаковщика PKG.',
-    'The ZIP must contain CUSA03173.pkg and the plain 1.09 update PKG (not the 720p or 1080p 60fps one).':
-        'ZIP должен содержать CUSA03173.pkg и обычный PKG обновления 1.09 (не версию 720p или 1080p 60fps).',
     'The completed game folder is missing eboot.bin.': 'В готовой папке игры нет eboot.bin.',
     'Unpacking the 1.09 update from the ZIP…': 'Распаковка обновления 1.09 из ZIP…',
-    'Unpacking the base PKG from the ZIP…': 'Распаковка базового PKG из ZIP…',
     # readiness (bbport_readiness.py)
     'Bloodborne 1.09 and required folders found.': 'Bloodborne 1.09 и нужные папки найдены.',
-    'Choose the extracted CUSA03173 folder containing eboot.bin.': 'Выберите распакованную папку CUSA03173 с eboot.bin.',
     'Missing: ': 'Не хватает: ',
     'No trophy pack found; achievements can show IDs only.': 'Пакет трофеев не найден; достижения будут показаны только номерами.',
     'Pack and key format found; launch the game to verify decryption.':
@@ -746,7 +719,6 @@ PATTERNS = [
     ('Could not load Qt Quick launcher: {}', 'Не удалось загрузить лаунчер Qt Quick: {0}'),
     ('Could not extract {}. {}', 'Не удалось распаковать {0}. {1}'),
     ('Could not inspect {}: {}', 'Не удалось проверить {0}: {1}'),
-    ('Could not start the PKG extractor: {}', 'Не удалось запустить распаковщик PKG: {0}'),
     ('Game installation failed: {}', 'Установка игры не удалась: {0}'),
     ('Not enough free space here. Allow about {} GB for setup.', 'Здесь мало места. Для установки нужно около {0} ГБ.'),
     ('The ZIP has more than one {}.', 'В ZIP больше одного {0}.'),
@@ -754,14 +726,6 @@ PATTERNS = [
     ('{} already exists. Choose another destination so your game files stay safe.',
      '{0} уже существует. Выберите другое место, чтобы файлы игры не пострадали.'),
     ('{} appeared during setup. No files were replaced.', '{0} появилась во время установки. Файлы не заменены.'),
-    ('{} holds game version {}, not 1.09. Choose the plain 1.09 update PKG as well.',
-     'В {0} версия игры {1}, а не 1.09. Выберите также обычный PKG обновления 1.09.'),
-    ('{} is the 1.09 update. Choose the base game PKG (the large CUSA03173.pkg) first, then this update.',
-     '{0} — это обновление 1.09. Сначала выберите PKG базовой игры (большой CUSA03173.pkg), затем это обновление.'),
-    ('{} looks like the 720p or 1080p 60fps update. Choose the plain 1.09 update PKG instead.',
-     '{0} похож на обновление 720p или 1080p 60fps. Выберите вместо него обычный PKG обновления 1.09.'),
-    ('{} is not a valid {} PKG. Check that you selected the right file.',
-     '{0} — неправильный PKG ({1}). Проверьте, что выбран нужный файл.'),
     (' {} local unlocks recorded.', ' Записано разблокировок: {0}.'),
     ('Save folder is writable; no {} save yet.', 'Папка сохранений доступна для записи; сохранения {0} пока нет.'),
     ('Save folder is writable; {} save data found.', 'Папка сохранений доступна для записи; найдены сохранения {0}.'),
@@ -793,3 +757,82 @@ def tr(text):
         if match:
             return russian.format(*(tr(value) for value in match.groups()))
     return text
+
+# Player-focused launcher wording.
+RU.update({
+    'Player name': 'Имя игрока',
+    '3–16 Latin letters, numbers, - or _. Also used in game.': '3–16 латинских букв, цифр, - или _. Также используется в игре.',
+    'Save profile': 'Профиль сохранений',
+    'Game folder': 'Папка игры',
+    'DLC folder': 'Папка дополнения',
+    'Advanced': 'Дополнительно',
+    'Advanced settings': 'Расширенные настройки',
+    'Mouse & keyboard': 'Мышь и клавиатура',
+    'Display & frame rate': 'Экран',
+    'In-game preferences': 'Язык игры',
+    'Seamless co-op': 'Подключение',
+    'Co-op gameplay': 'Правила игры',
+    'Finish setup': 'Завершение настройки',
+    'Finish': 'Завершить',
+    'Game files & saves': 'Игра и сохранения',
+    'Choose your game folder or download the game.': 'Укажите папку игры или скачайте игру.',
+    'Choose your game folder or download the game. You can change both paths below.': 'Укажите папку игры или скачайте игру. Пути к игре и сохранениям можно изменить ниже.',
+    'Optional. You can set up co-op later in Settings.': 'Необязательно. Кооператив можно настроить позже.',
+    'Choose a graphics preset. You can change it later.': 'Выберите качество графики. Его можно изменить позже.',
+    'Add desktop shortcut': 'Добавить ярлык на рабочий стол',
+    'The shortcut will be named Bloodborne.': 'Название ярлыка — Bloodborne.',
+    'Host on this PC': 'Создать сервер на этом ПК',
+    'Send your invite code to friends.': 'Запустите сервер и отправьте код друзьям.',
+    "Join a friend's server using their code.": 'Для подключения вставьте код друга.',
+    'Paste the code from your host. Empty uses the default server.': 'Код друга. Без кода используется общий сервер.',
+    'Download Tailscale': 'Скачать Tailscale',
+    'No network found. Install or connect Tailscale: ': 'Сеть не найдена. Установите или подключите Tailscale: ',
+    'Tailscale is not installed. Download: ': 'Tailscale не установлен. Скачать: ',
+    'Downloads into the game folder beside the launcher.': 'Скачивание в папку игры рядом с лаунчером.',
+    'Save data found.': 'Найдены сохранения.',
+    'A new save will be created when you play.': 'При запуске игры будет создано новое сохранение.',
+    'Graphics, display & frame rate': 'Качество и экран',
+    'Prompts, mouse & keyboard': 'Кнопки, мышь и клавиатура',
+    'Game files, saves & language': 'Папки и язык игры',
+    'Seamless co-op: host or join': 'Играть с друзьями',
+    'Mods, enhancements & tweaks': 'Дополнения и изменения',
+    'Startup, updates & diagnostics': 'Лаунчер и обновления',
+    'Changes save as you make them. Some take effect the next time the game starts.': 'Изменения сохраняются автоматически.',
+    'Hunter name': 'Имя игрока',
+    'Frame generation multiplier': 'Множитель кадров',
+    'Fit frame generation to the display': 'По частоте монитора',
+    'Video memory pressure target': 'Использование видеопамяти',
+    'Fullscreen type': 'Режим полного экрана',
+    'Mouse camera (click the game window to use it)': 'Камера мышью',
+    "Mouse pointer in the game's menus (hover, click, right-click back)": 'Мышь в меню',
+    'Keyboard movement smoothing (WASD direction changes)': 'Плавность движения',
+    'HUD position (ultrawide)': 'Положение интерфейса',
+    'Your name in co-op, 3-16 letters, numbers, - or _.': '3–16 латинских букв, цифр, - или _.',
+    'Renders below the output size and rebuilds a sharp image. DLSS needs an NVIDIA RTX card; FSR 3.1 works on any.': 'Повышает FPS. DLSS — для RTX, FSR — для любых видеокарт.',
+    'How far below the output the game renders: higher factors are faster and softer.': 'Баланс чёткости и производительности.',
+    "Makes frames between two of the game's: 60 FPS on screen becomes 120. Needs a display that fast; adds a little input latency. DLSS needs a GeForce RTX 40/50 and its frame generation files.": 'Добавляет промежуточные кадры. DLSS требует RTX 40/50.',
+    'Starts clearing old textures and buffers before the chosen amount. This is not a hard VRAM cap; lower values may cause stutter. Restart the game to apply.': 'Раньше освобождает видеопамять. Низкое значение может вызвать рывки.',
+    '21:9 and 32:9 outputs: health, items and Blood Echoes at the screen edges, or in the centred 16:9 area as on a 16:9 screen. Applies at the next start.': 'Расположение HUD на широком экране.',
+})
+
+RU.update({
+    'Start hosting before playing co-op.': 'Сначала запустите сервер.',
+    'Connection help': 'Помощь с подключением',
+    'Advanced settings': 'Тонкие настройки',
+    'Co-op password': 'Пароль',
+    "For your co-op account on the host's server. Use one you use nowhere else.": 'Отдельный пароль для кооператива.',
+    'Exclusive switches the display to its own mode: notifications and other windows do not show over the game.': 'Эксклюзивный режим скрывает уведомления и другие окна.',
+    'The monitor the game window and fullscreen go to, in the order the game log lists them.': 'На каком экране запускать игру.',
+    'Firewall setup is optional. If players cannot connect, use this button to allow incoming connections. Only this action asks for administrator rights; starting co-op does not.': 'Если друзья не могут подключиться, разрешите подключения в брандмауэре Windows.',
+})
+
+RU['Downloads into the game folder selected above.'] = 'Скачивание в указанную выше папку игры.'
+
+RU.update({
+    'Server is running. Send the invite code to friends.': 'Сервер запущен. Отправьте код друзьям.',
+    'Start hosting to invite friends.': 'Запустите сервер, чтобы пригласить друзей.',
+    'Enter your details and play co-op.': 'Укажите имя, пароль и код друга, затем нажмите «Играть вместе».',
+    'Bundled BBSC-GL files are missing. Re-extract the launcher release.': 'Файлы кооператива не найдены. Переустановите лаунчер.',
+    'Copy invite code': 'Копировать код',
+    'Co-op name': 'Имя игрока',
+})

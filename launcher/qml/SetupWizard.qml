@@ -1,264 +1,70 @@
 import QtQuick
 import QtQuick.Controls
 
-// First-time setup, five steps on the launcher's panel: welcome, game files, your data, co-op, finish.
 Item {
     id: wizard
     objectName: "setupWizard"
     property int step: 0
     property int startStep: 0
     property var checks: launcher.readiness
-    // A game folder with an older version is usable (amber); only a failed check blocks.
     property bool gameValid: checks[0].level !== "error"
     property bool savesValid: checks[2].level !== "error" && launcher.savesWritable
     signal exitRequested(string page)
-    onVisibleChanged: if (visible) step = startStep
-
-    function levelColor(level) {
-        return level === "ready" ? Theme.good : level === "error" ? Theme.accent : Theme.warn
-    }
-    // Your data: red if a check failed, green only when every item is verified, amber otherwise.
-    function dataLevel() {
-        var levels = checks.slice(1).map(function(c) { return c.level })
-        return levels.indexOf("error") >= 0 ? "error" : levels.every(function(l) { return l === "ready" }) ? "ready" : "warning"
-    }
-    function stepValid(index) { return index === 1 ? gameValid : index === 2 ? savesValid : true }
-    function canReach(index) {
-        for (var i = 0; i < index; i++)
-            if (!stepValid(i)) return false
-        return true
-    }
-    function skip() {
-        if (!launcher.confirm(launcher.tr("Skip setup?"),
-                launcher.tr("Any missing game files or unwritable saves will still block Play. You can finish setup later in Game & Saves.\n\nSkip setup anyway?")))
-            return
-        launcher.skipSetup()
-        wizard.exitRequested("Home")
-    }
-    function finish(play) {
-        if (!gameValid || !savesValid) {
-            launcher.skipSetup()
-            wizard.exitRequested("Home")
-            return
-        }
-        launcher.completeSetup()
-        wizard.exitRequested("Home")
-        if (play) launcher.playSelected()
-    }
-
-    // A status line: dot, label, detail.
-    component Check: Row {
-        property string level: "ready"
-        property string label: ""
-        property string detail: ""
-        property string tag: ""
-        width: parent ? parent.width : 400; spacing: 12
-        Rectangle { width: 8; height: 8; radius: 4; y: 7; color: wizard.levelColor(level) }
-        Column {
-            width: parent.width - 20; spacing: 3
-            Row {
-                spacing: 10
-                Text { text: label; color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; font.weight: Font.DemiBold }
-                Text { visible: tag !== ""; text: tag; color: Theme.textFaint; font.family: Theme.sans; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-            }
-            Text { width: parent.width; text: detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap }
-        }
-    }
-    component Body: Text {
-        width: parent ? parent.width : 400; wrapMode: Text.WordWrap; lineHeight: 1.35
-        color: Theme.text; font.family: Theme.sans; font.pixelSize: 15
-    }
-
-    // Breadcrumb and step count.
-    Item {
-        width: parent.width; height: 40
-        Row {
-            anchors.verticalCenter: parent.verticalCenter; spacing: 14
-            Text { text: launcher.tr("BLOODBORNE"); color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; font.letterSpacing: 2.4 }
-            Text { text: "/"; color: Theme.textFaint; font.pixelSize: 15 }
-            Text { text: launcher.tr("FIRST-TIME SETUP"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13; font.letterSpacing: 2 }
-        }
-        Text {
-            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-            text: launcher.tr("Step ") + (wizard.step + 1) + launcher.tr(" of 5"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
-        }
-    }
-    Rectangle { y: 40; width: parent.width; height: 1; color: Theme.line }
-    Text {
-        y: 70; width: parent.width
-        text: [launcher.tr("Welcome to Yharnam"), launcher.tr("Add your game files"), launcher.tr("Your data"), launcher.tr("Co-op"), launcher.tr("Ready to hunt")][wizard.step]
-        color: Theme.text; font.family: Theme.serif; font.pixelSize: 44
-    }
-
-    // The steps: a bar each, crimson up to the current one, its name below.
+    onVisibleChanged: if (visible) step = 0
+    function finish() { launcher.completeSetup(); wizard.exitRequested("Home") }
+    Text { text: launcher.tr("FIRST-TIME SETUP"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13 }
+    Text { y: 36; width: parent.width; text: [launcher.tr("Game files & saves"), launcher.tr("Co-op"), launcher.tr("Finish setup")][wizard.step]; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
     Row {
-        y: 142; width: parent.width; spacing: 10
-        Repeater {
-            model: ["Welcome", "Game files", "Your data", "Co-op", "Finish"]
-            delegate: Item {
-                id: tab
-                property bool current: index === wizard.step
-                property bool reachable: index < wizard.step || wizard.canReach(index)
-                property string level: index === 1 ? checks[0].level : index === 2 ? wizard.dataLevel() : ""
-                width: (wizard.width - 40) / 5; height: 40
-                opacity: reachable || current ? 1 : 0.45
-                Rectangle { width: parent.width; height: 3; radius: 1.5; color: index <= wizard.step ? Theme.accent : Theme.lineStrong }
-                Row {
-                    y: 14; width: parent.width; spacing: 8
-                    Rectangle { visible: tab.level !== ""; width: 7; height: 7; radius: 3.5; anchors.verticalCenter: parent.verticalCenter; color: wizard.levelColor(tab.level) }
-                    Text {
-                        width: tab.width - (tab.level !== "" ? 15 : 0); elide: Text.ElideRight
-                        text: launcher.tr(modelData); color: tab.current ? Theme.text : tabMouse.containsMouse && tab.reachable ? "#d6d1c9" : Theme.textDim
-                        font.family: Theme.sans; font.pixelSize: 13
-                    }
-                }
-                MouseArea {
-                    id: tabMouse
-                    anchors.fill: parent; hoverEnabled: true
-                    enabled: tab.reachable && !tab.current
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: wizard.step = index
-                }
-            }
-        }
+        y: 110; width: parent.width; spacing: 8
+        Repeater { model: 3; delegate: Rectangle { width: (wizard.width - 16) / 3; height: 3; color: index <= wizard.step ? Theme.accent : Theme.lineStrong } }
     }
-
     Flickable {
-        y: 206; width: parent.width; height: parent.height - y - 84
+        id: scroll
+        y: 138; width: parent.width; height: parent.height - y - 74
         clip: true; boundsBehavior: Flickable.StopAtBounds
-        contentHeight: Math.max(step0.implicitHeight, step1.implicitHeight, step2.implicitHeight, step3.implicitHeight, step4.implicitHeight)
-
+        contentHeight: (wizard.step === 0 ? files.implicitHeight : wizard.step === 1 ? coopStep.implicitHeight : finishStep.implicitHeight) + 20
+        ScrollBar.vertical: ScrollBar {}
         Column {
-            id: step0; width: parent.width; spacing: 18; visible: wizard.step === 0
-            Body { text: launcher.tr("This guide sets up your own copy of Bloodborne, checks the trophy pack and keeps your saves in the right place. It takes about two minutes.") }
-            Body { color: Theme.textDim; font.pixelSize: 14; text: launcher.tr("The game files and trophy key are not included in this download. You can skip setup and use the launcher straight away.") }
-            Rectangle {
-                width: parent.width; height: hintText.implicitHeight + 32; radius: Theme.radius
-                color: Theme.surface; border.color: Theme.line
-                Text {
-                    id: hintText; x: 18; y: 16; width: parent.width - 36; wrapMode: Text.WordWrap; lineHeight: 1.35
-                    text: launcher.tr("Have cusa-03173.zip? The next step can unpack it and apply update 1.09. Already have a CUSA03173 folder? Point the launcher to the folder that contains eboot.bin.")
-                    color: Theme.text; font.family: Theme.sans; font.pixelSize: 13
-                }
-            }
-        }
-
-        Column {
-            id: step1; width: parent.width; spacing: 18; visible: wizard.step === 1
+            id: files; width: parent.width - 12; spacing: 14; visible: wizard.step === 0
+            Note { text: launcher.tr("Choose your game folder or download the game. You can change both paths below.") }
+            Repeater { model: launcher.sectionFields("Game & Saves", "Game files"); delegate: FieldRow { width: files.width; field: modelData } }
             GameDownload { width: parent.width }
-            Body { text: launcher.tr("Choose how to add Bloodborne 1.09. The installer creates a new game folder and never replaces an existing one.") }
-            Row {
-                spacing: 12
-                GlassButton {
-                    text: launcher.setupRunning ? launcher.tr("Installing…") : launcher.tr("Install from ZIP / PKG")
-                    width: 220; height: 42; highlighted: true
-                    enabled: !launcher.setupRunning && !launcher.running
-                    onClicked: launcher.installFromArchive()
-                }
-                GlassButton {
-                    text: launcher.tr("Choose a game folder"); width: Math.max(190, implicitWidth); height: 42
-                    enabled: !launcher.setupRunning
-                    onClicked: launcher.browse("game_dir")
-                }
-            }
-            Body { color: Theme.textDim; font.pixelSize: 13; text: launcher.tr("For cusa-03173.zip, choose the ZIP and then where the game should go, such as C:\\Games\\Bloodborne. For an extracted game, choose the folder with eboot.bin directly inside it.") }
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
-            Check { level: checks[0].level; label: launcher.tr("Game files"); detail: checks[0].detail }
-            GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 36; onClicked: launcher.refreshReadiness() }
-        }
-
-        Column {
-            id: step2; width: parent.width; spacing: 16; visible: wizard.step === 2
-            Body { text: launcher.tr("A writable saves folder is required to play. Trophy keys are optional and add trophy names. Saves stay in the launcher's own user folder unless you choose another.") }
-            Row {
-                spacing: 12
-                GlassButton { text: launcher.tr("Import trophy keys"); width: Math.max(180, implicitWidth); height: 40; onClicked: launcher.importTrophyKeys() }
-                GlassButton { text: launcher.tr("Choose a saves folder"); width: Math.max(190, implicitWidth); height: 40; onClicked: launcher.browse("user_dir") }
-            }
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
             Repeater {
-                model: checks.slice(1)
-                delegate: Check {
-                    level: modelData.level; label: modelData.label; detail: modelData.detail
-                    tag: modelData.label === launcher.tr("Trophies") ? launcher.tr("Optional") : launcher.tr("Required")
-                }
+                model: [wizard.checks[0], wizard.checks[2]]
+                delegate: Note { text: modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.textDim }
             }
-            GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 36; onClicked: launcher.refreshReadiness() }
+            GlassButton { text: launcher.tr("Check again"); onClicked: launcher.refreshReadiness() }
         }
-
         Column {
-            id: step3; width: parent.width; spacing: 16; visible: wizard.step === 3
-            Body { text: launcher.tr("Enter your co-op name, password and server invite code. You can skip this step for offline play and return to Settings → Co-op later.") }
-            Repeater {
-                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op").concat(launcher.sectionFields("Co-op", "Join a host"))
-                delegate: FieldRow { width: step3.width; field: modelData }
-            }
-            CoopFirewall { width: parent.width }
+            id: coopStep; width: parent.width - 12; spacing: 12; visible: wizard.step === 1
+            Note { text: launcher.tr("Optional. You can set up co-op later in Settings.") }
+            CoopConnection { width: parent.width }
         }
-
         Column {
-            id: step4; width: parent.width; spacing: 16; visible: wizard.step === 4
-            Body {
-                text: gameValid && savesValid ? launcher.tr("Your game files and saves are ready. Choose a graphics preset, then start playing or open the launcher.") :
-                       launcher.tr("A required check needs attention. Go back to Game files or Your data to fix it.")
+            id: finishStep; width: parent.width - 12; spacing: 20; visible: wizard.step === 2
+            Note { text: launcher.tr("Choose a graphics preset. You can change it later.") }
+            Flow {
+                width: parent.width; spacing: 8
+                Repeater { model: ["low", "balanced", "high", "ultra"]; delegate: GlassButton {
+                    width: 112; text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? " ★" : "")
+                    highlighted: launcher.graphicsPreset === modelData; onClicked: launcher.applyGraphicsPreset(modelData)
+                } }
             }
-            Repeater {
-                model: checks
-                delegate: Check { level: modelData.level; label: modelData.label; detail: modelData.detail }
-            }
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
-            // Graphics preset; the suggestion (★) comes from the detected card's video memory.
-            Row {
-                spacing: 8
-                Text { text: launcher.tr("Graphics"); color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; width: 82; anchors.verticalCenter: parent.verticalCenter }
-                Repeater {
-                    model: ["low", "balanced", "high", "ultra"]
-                    delegate: GlassButton {
-                        width: 96; height: 36
-                        text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? "  ★" : "")
-                        highlighted: launcher.graphicsPreset === modelData
-                        onClicked: launcher.applyGraphicsPreset(modelData)
-                    }
-                }
-            }
-            Text {
-                width: parent.width; wrapMode: Text.WordWrap; lineHeight: 1.3; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-                text: launcher.presetDescription(launcher.graphicsPreset) +
-                      (launcher.recommendedPreset !== "" ? launcher.tr("  ★ Suggested for your graphics card.") : "")
-            }
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
-            Text {
-                width: parent.width; wrapMode: Text.WordWrap; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-                text: launcher.tr("In the game, Insert or L3+R3 opens the guide. Setup can be run again from Game & Saves.")
-            }
+            Note { text: launcher.presetDescription(launcher.graphicsPreset) }
+            GlassButton { text: launcher.tr("Add desktop shortcut"); width: Math.max(230, implicitWidth); onClicked: launcher.createShortcut() }
+            Note { text: launcher.tr("The shortcut will be named Bloodborne.") }
+            Note { text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice }
         }
     }
-
-    Rectangle { y: parent.height - 70; width: parent.width; height: 1; color: Theme.line }
-    Row {
-        y: parent.height - 50; spacing: 10
-        GlassButton { visible: wizard.step === 0; text: launcher.tr("Start setup"); width: Math.max(156, implicitWidth); height: 42; highlighted: true; onClicked: wizard.step = 1 }
-        GlassButton { visible: wizard.step === 0; text: launcher.tr("Skip for now"); width: Math.max(132, implicitWidth); height: 42; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
-        GlassButton { visible: wizard.step > 0; text: launcher.tr("Back"); width: Math.max(96, implicitWidth); height: 42; onClicked: wizard.step-- }
+    Rectangle { y: parent.height - 60; width: parent.width; height: 1; color: Theme.line }
+    Flow {
+        y: parent.height - 46; width: parent.width; spacing: 10
+        GlassButton { visible: wizard.step > 0; text: launcher.tr("Back"); onClicked: { wizard.step--; scroll.contentY = 0 } }
         GlassButton {
-            visible: wizard.step >= 1 && wizard.step <= 3
-            text: launcher.tr("Continue"); width: Math.max(150, implicitWidth); height: 42; highlighted: true
-            enabled: wizard.stepValid(wizard.step)
-            onClicked: wizard.step++
+            text: wizard.step === 2 ? launcher.tr("Finish") : launcher.tr("Continue"); highlighted: true; width: 150
+            enabled: !launcher.setupRunning && (wizard.step === 1 || (wizard.gameValid && wizard.savesValid))
+            onClicked: { if (wizard.step === 2) wizard.finish(); else wizard.step++; scroll.contentY = 0 }
         }
-        GlassButton {
-            visible: wizard.step === 4; text: launcher.tr("Play"); serif: true; width: Math.max(160, implicitWidth); height: 42; highlighted: true
-            enabled: gameValid && savesValid && !launcher.running && !launcher.setupRunning
-            onClicked: wizard.finish(true)
-        }
-        GlassButton { visible: wizard.step === 4; text: launcher.tr("Open launcher"); width: Math.max(140, implicitWidth); height: 42; onClicked: wizard.finish(false) }
-    }
-    Row {
-        anchors.right: parent.right; y: parent.height - 50; height: 42; spacing: 14
-        Text {
-            visible: wizard.step === 1 && !gameValid; anchors.verticalCenter: parent.verticalCenter
-            text: launcher.tr("Add valid game files to continue."); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-        }
-        GlassButton { visible: wizard.step === 1 || wizard.step === 2; text: launcher.tr("Skip setup"); width: Math.max(116, implicitWidth); height: 42; onClicked: wizard.skip() }
+        GlassButton { visible: wizard.step === 0; text: launcher.tr("Skip for now"); width: Math.max(140, implicitWidth); enabled: !launcher.setupRunning; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
     }
 }

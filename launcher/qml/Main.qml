@@ -6,7 +6,7 @@ ApplicationWindow {
     visible: true
     width: 1290; height: 830
     minimumWidth: 1050; minimumHeight: 650
-    title: "Bloodborne Game Launcher (BBGL) · " + launcher.version
+    title: "Bloodborne Game Launcher"
     color: Theme.base
     property string page: "Home"
     property int wizardStep: 0
@@ -23,8 +23,8 @@ ApplicationWindow {
     function openWizard(step) { wizardStep = step; page = "Setup" }
     function openSettings(category, section) { page = "Settings"; settings.openAt(category || "", section || "") }
     function primaryAction() {
-        if (gameBlocked) openWizard(1)
-        else if (savesBlocked) openWizard(2)
+        if (gameBlocked) openWizard(0)
+        else if (savesBlocked) openWizard(0)
         else if (onlineBlocked) openSettings(launcher.playModeSettings[0], launcher.playModeSettings[1])
         else if (!launcher.running && !launcher.setupRunning) launcher.playSelected()
     }
@@ -50,8 +50,8 @@ ApplicationWindow {
         anchors.fill: parent; visible: page === "Setup"; clip: true
         Rectangle { anchors.fill: parent; color: Theme.base }
         Image {
-            x: Theme.railWidth + parent.width * 0.42; width: parent.width - x; height: parent.height
-            source: Qt.resolvedUrl("../assets/ui/setup-workshop.png")
+            anchors.fill: parent
+            source: Qt.resolvedUrl("../assets/ui/settings-background.png")
             fillMode: Image.PreserveAspectCrop; horizontalAlignment: Image.AlignRight; smooth: true; asynchronous: true
         }
         Rectangle {
@@ -64,7 +64,7 @@ ApplicationWindow {
         }
         SetupWizard {
             x: Theme.railWidth + 44; y: 34
-            width: Math.min(640, parent.width * 0.55 - Theme.railWidth); height: parent.height - 68
+            width: Math.min(640, parent.width * 0.62 - Theme.railWidth); height: parent.height - 68
             startStep: wizardStep
             onExitRequested: (target) => { page = "Home" }
         }

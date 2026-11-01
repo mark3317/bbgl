@@ -12,6 +12,10 @@ Item {
     property string section: ""
     property string targetKey: ""
     property string query: ""
+    property bool advanced: false
+    function sections() {
+        return launcher.categorySections(category).filter(s => s !== "Join a host" && (advanced || ["Advanced", "Engine", "Developer", "Maintenance", "Logs", "Co-op gameplay"].indexOf(s) < 0))
+    }
     property var categories: [
         {name: "Visuals", icon: "visuals", tile: "tile-visuals", detail: launcher.tr("Graphics, display & frame rate")},
         {name: "Controls", icon: "controls", tile: "tile-controls", detail: launcher.tr("Prompts, mouse & keyboard")},
@@ -25,7 +29,8 @@ Item {
 
     function openAt(nextCategory, nextSection, nextKey) {
         category = nextCategory || category || "Visuals"
-        section = nextSection || launcher.categorySections(category)[0]
+        section = nextSection === "Your data" ? "Game files" : nextSection === "Host a session" || nextSection === "Join a host" ? "Seamless co-op" : nextSection || launcher.categorySections(category)[0]
+        if (["Advanced", "Engine", "Developer", "Maintenance", "Logs", "Co-op gameplay"].indexOf(section) >= 0) advanced = true
         targetKey = nextKey || ""
         search.text = ""
         detailScroll.contentY = 0
@@ -46,31 +51,31 @@ Item {
 
     // --- The category's art, behind the right side's header -----------------------------------
     Item {
-        x: Theme.railWidth + listWidth; width: parent.width - x; height: 230; clip: true
+        anchors.fill: parent; clip: true
         Image {
             anchors.fill: parent
-            source: Qt.resolvedUrl("../assets/ui/" + workspace.current.tile + ".png")
+            source: Qt.resolvedUrl("../assets/ui/settings-background.png")
             fillMode: Image.PreserveAspectCrop; horizontalAlignment: Image.AlignRight; verticalAlignment: Image.AlignVCenter
-            smooth: true; asynchronous: true; opacity: 0.85
+            smooth: true; asynchronous: true; opacity: 1
         }
         Rectangle {
             anchors.fill: parent
             gradient: Gradient { orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: "#f80b0d10" }
-                GradientStop { position: 0.45; color: "#b00b0d10" }
-                GradientStop { position: 1; color: "#300b0d10" }
+                GradientStop { position: 0; color: "#e80b0d10" }
+                GradientStop { position: 0.45; color: "#d00b0d10" }
+                GradientStop { position: 1; color: "#900b0d10" }
             }
         }
         Rectangle {
             anchors.fill: parent
-            gradient: Gradient { GradientStop { position: 0.35; color: "#000b0d10" } GradientStop { position: 1; color: Theme.base } }
+            gradient: Gradient { GradientStop { position: 0.35; color: "#000b0d10" } GradientStop { position: 1; color: "#a00b0d10" } }
         }
     }
 
     // --- Categories ---------------------------------------------------------------------------
     Rectangle {
         x: Theme.railWidth; width: listWidth; height: parent.height
-        color: "#0e1115"
+        color: "#c00e1115"
         Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.line }
         Column {
             x: 28; y: 34; width: parent.width - 56; spacing: 0
@@ -78,8 +83,8 @@ Item {
                 width: parent.width; height: 40
                 Row {
                     anchors.verticalCenter: parent.verticalCenter; spacing: 12
-                    Text { text: launcher.tr("BLOODBORNE"); color: Theme.text; font.family: Theme.serif; font.pixelSize: 15; font.letterSpacing: 2.2 }
-                    Text { text: "/"; color: Theme.textFaint; font.pixelSize: 14 }
+
+
                     Text { text: launcher.tr("SETTINGS"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; font.letterSpacing: 2 }
                 }
             }
@@ -97,7 +102,7 @@ Item {
                 Repeater {
                     model: workspace.categories
                     delegate: Rectangle {
-                        width: parent.width; height: 62; radius: Theme.radius
+                        width: parent.width; height: 58; radius: Theme.radius
                         property bool active: workspace.query === "" && workspace.category === modelData.name
                         color: active || hit.containsMouse ? "#16191d" : "transparent"
                         border.color: active ? Theme.accent : hit.containsMouse ? Theme.line : "transparent"
@@ -105,13 +110,19 @@ Item {
                         NavIcon { x: 16; anchors.verticalCenter: parent.verticalCenter; width: 22; height: 22; kind: modelData.icon; strokeColor: active ? Theme.text : "#bdb8b0" }
                         Column {
                             x: 54; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 70; spacing: 2
-                            Text { text: launcher.tr(modelData.name); color: Theme.text; font.family: Theme.serif; font.pixelSize: 17 }
+                            Text { width: parent.width; text: launcher.tr(modelData.name); color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; wrapMode: Text.WordWrap }
                             Text { width: parent.width; text: modelData.detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; elide: Text.ElideRight }
                         }
                         MouseArea { id: hit; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: workspace.openAt(modelData.name, "", "") }
                     }
                 }
             }
+        }
+        GlassSwitch {
+            x: 28; anchors.bottom: parent.bottom; anchors.bottomMargin: 82
+            text: launcher.tr("Advanced settings")
+            checked: workspace.advanced
+            onToggled: { workspace.advanced = checked; if (workspace.sections().indexOf(workspace.section) < 0) workspace.openAt(workspace.category, "", "") }
         }
         Text {
             x: 28; width: parent.width - 56; anchors.bottom: parent.bottom; anchors.bottomMargin: 22
@@ -151,13 +162,13 @@ Item {
             visible: workspace.query === ""
             y: 44; width: parent.width; spacing: 6
             Text { text: launcher.tr(workspace.category); color: Theme.text; font.family: Theme.serif; font.pixelSize: 42 }
-            Text { text: workspace.current.detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 14 }
+            Text { width: parent.width; wrapMode: Text.WordWrap; text: workspace.current.detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 14 }
             Item { width: 1; height: 22 }
             // Sections as tabs: the selected one is underlined in crimson.
-            Row {
-                spacing: 28
+            Flow {
+                width: parent.width; spacing: 16
                 Repeater {
-                    model: launcher.categorySections(workspace.category)
+                    model: { let enabled = workspace.advanced; return workspace.sections() }
                     delegate: Item {
                         width: tabText.implicitWidth; height: 34
                         property bool active: workspace.section === modelData
@@ -192,9 +203,9 @@ Item {
                     width: parent.width; height: visible ? presetBox.height + 26 : 0
                     Column {
                         id: presetBox; y: 18; width: parent.width; spacing: 10
-                        Row {
-                            spacing: 8
-                            Text { text: launcher.tr("Preset"); color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; width: 92; anchors.verticalCenter: parent.verticalCenter }
+                        Flow {
+                            width: parent.width; spacing: 8
+                            Text { text: launcher.tr("Preset"); color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; width: 92; height: 36; verticalAlignment: Text.AlignVCenter }
                             Repeater {
                                 model: ["low", "balanced", "high", "ultra"]
                                 delegate: GlassButton {
@@ -206,11 +217,11 @@ Item {
                             }
                             Text {
                                 visible: launcher.graphicsPreset === "custom"; text: launcher.tr("Custom"); leftPadding: 6
-                                color: Theme.accentHover; font.family: Theme.sans; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter
+                                color: Theme.accentHover; font.family: Theme.sans; font.pixelSize: 13
                             }
                         }
                         Text {
-                            x: 100; width: parent.width - 100; wrapMode: Text.WordWrap; lineHeight: 1.3
+                            width: parent.width; wrapMode: Text.WordWrap; lineHeight: 1.3
                             color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
                             text: launcher.presetDescription(launcher.graphicsPreset) +
                                   (launcher.recommendedPreset !== "" ? launcher.tr("  ★ Suggested for ") + launcher.gpuStatus + "." : "")
@@ -222,58 +233,38 @@ Item {
                 Repeater {
                     id: fieldRepeater
                     // settingsRevision: rebuilt after a preset rewrites several rows.
-                    model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields(workspace.category, workspace.section)
+                    model: launcher.settingsRevision < 0 || is("Co-op", "Seamless co-op") ? [] : launcher.sectionFields(workspace.category, workspace.section)
                     delegate: FieldRow { width: detailColumn.width; field: modelData }
                 }
 
                 // Actions beside the task that calls for them.
                 Column {
                     width: parent.width; spacing: 12; topPadding: 20
-                    Row { visible: is("Controls", "Button prompts"); spacing: 10
+                    Flow { width: parent.width; visible: is("Controls", "Button prompts"); spacing: 10
                         Repeater {
                             model: ["PlayStation", "Xbox", "Keyboard"]
                             delegate: GlassButton { text: launcher.tr(modelData); width: 124; height: 38; highlighted: launcher.promptChoice === modelData; onClicked: launcher.setPrompt(modelData) }
                         }
                     }
                     Note { visible: is("Controls", "Button prompts"); text: launcher.tr("Which buttons the game shows, from the next start. Xbox (by Dommo) and Keyboard (PCBButtons by JinkiJinn) are bundled. Select your game folder, then choose the buttons; no separate download is needed. Keyboard also binds the keys its images show: E interact, Left Shift dodge, R blood vial, Q item, F transform, mouse buttons to attack.") }
-                    Row { visible: is("Visuals", "Upscaling"); spacing: 12
+                    Flow { width: parent.width; visible: is("Visuals", "Upscaling"); spacing: 12
                         GlassButton { text: launcher.tr("Download FSR 4 assets"); width: Math.max(190, implicitWidth); height: 38; onClicked: launcher.downloadFsr4() }
-                        Note { text: launcher.fsrStatus; anchors.verticalCenter: parent.verticalCenter; width: 380 }
+                        Note { text: launcher.fsrStatus; width: parent.width }
                     }
                     Repeater {
-                        model: is("Game & Saves", "Game files") ? launcher.readiness.slice(0, 1) :
-                               is("Game & Saves", "Your data") ? launcher.readiness.slice(1) : []
-                        delegate: Row {
-                            spacing: 10
-                            Rectangle { width: 8; height: 8; radius: 4; y: 5; color: modelData.level === "error" ? Theme.accent : modelData.level === "warning" ? Theme.warn : Theme.good }
-                            Text { width: detailColumn.width - 20; text: modelData.label + ":  " + modelData.detail; color: Theme.text; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap }
-                        }
+                        model: is("Game & Saves", "Game files") ? [launcher.readiness[0], launcher.readiness[2]] : []
+                        delegate: Note { text: modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.textDim }
                     }
                     GameDownload { width: parent.width; visible: is("Game & Saves", "Game files") }
-                    Row { visible: is("Game & Saves", "Game files"); spacing: 10
-                        GlassButton { text: launcher.setupRunning ? launcher.tr("Installing…") : launcher.tr("Install from ZIP / PKG"); width: Math.max(196, implicitWidth); height: 38; enabled: !launcher.setupRunning && !launcher.running; onClicked: launcher.installFromArchive() }
-                        GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 38; onClicked: launcher.refreshReadiness() }
-                        GlassButton { text: launcher.tr("Setup wizard"); width: Math.max(128, implicitWidth); height: 38; onClicked: workspace.openSetup(0) }
+                    Flow { visible: is("Game & Saves", "Game files"); width: parent.width; spacing: 10
+                        GlassButton { text: launcher.tr("Open saves folder"); width: Math.max(160, implicitWidth); onClicked: launcher.action("openSaves") }
+                        GlassButton { text: launcher.tr("Check again"); onClicked: launcher.refreshReadiness() }
+                        GlassButton { text: launcher.tr("Setup wizard"); width: Math.max(140, implicitWidth); onClicked: workspace.openSetup(0) }
                     }
-                    Row { visible: is("Game & Saves", "Your data"); spacing: 10
-                        GlassButton { text: launcher.tr("Import trophy keys"); width: Math.max(168, implicitWidth); height: 38; onClicked: launcher.importTrophyKeys() }
-                        GlassButton { text: launcher.tr("Open saves folder"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("openSaves") }
-                        GlassButton { text: launcher.tr("Check again"); width: Math.max(120, implicitWidth); height: 38; onClicked: launcher.refreshReadiness() }
+                    Flow { visible: is("Game & Saves", "Advanced"); width: parent.width; spacing: 10
+                        GlassButton { text: launcher.tr("Import trophy keys"); width: Math.max(180, implicitWidth); onClicked: launcher.importTrophyKeys() }
                     }
-                    CoopFirewall { width: parent.width; visible: is("Co-op", "Seamless co-op") }
-                    Note { visible: is("Co-op", "Seamless co-op"); text: launcher.tr("Experimental. This launcher includes the BBSC-GL fork: one session through deaths, lamps, areas and bosses, each hunter keeping their own character. Play on a co-op server (an invite code, or the one this launcher comes with), or host one on your PC for friends on Tailscale or your home network. BBSC-GL client and hosting files are included and ready to use. Your saves are backed up before every session. Normal play and online are unchanged.") }
-                    Note { visible: is("Co-op", "Seamless co-op") || is("Co-op", "Host a session") || is("Co-op", "Join a host"); text: launcher.coopStatus }
-                    Row { visible: is("Co-op", "Seamless co-op"); spacing: 10
-                        GlassButton { text: launcher.tr("Play co-op"); width: Math.max(140, implicitWidth); height: 38; enabled: !launcher.coopBusy && !launcher.running; onClicked: launcher.coopPlay() }
-                        GlassButton { text: launcher.tr("About BBSC"); width: Math.max(130, implicitWidth); height: 38; onClicked: launcher.openCoopHelp() }
-                    }
-                    Note { visible: is("Co-op", "Host a session"); text: launcher.tr("Starts BBSC's two servers on this PC. If connections are blocked, use Configure firewall in Seamless co-op. After Play, the launcher window closes; the servers stay active until you exit the game.") }
-                    Row { visible: is("Co-op", "Host a session"); spacing: 10
-                        GlassButton { text: launcher.coopHosting ? launcher.tr("Restart hosting") : launcher.tr("Start hosting"); width: Math.max(160, implicitWidth); height: 38; enabled: !launcher.coopBusy; onClicked: launcher.coopStartHosting() }
-                        GlassButton { text: launcher.tr("Copy invite code"); width: Math.max(160, implicitWidth); height: 38; enabled: launcher.coopInvite !== ""; onClicked: launcher.coopCopyInvite() }
-                        GlassButton { text: launcher.tr("Stop hosting"); width: Math.max(140, implicitWidth); height: 38; enabled: launcher.coopHosting; onClicked: launcher.coopStopHosting() }
-                    }
-                    Note { visible: is("Co-op", "Join a host"); text: launcher.tr("Paste the invite code from your host, then Play co-op. The host rings the Hunt Bell; you ring the Kin Bell.") }
+                    CoopConnection { width: parent.width; visible: is("Co-op", "Seamless co-op") }
                     Note { visible: is("Mods & Patches", "Gameplay patches"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
                     Repeater {
                         model: is("Mods & Patches", "Installed mods") ? launcher.contentMods : []
@@ -288,7 +279,7 @@ Item {
                         }
                     }
                     Note { visible: is("Mods & Patches", "Installed mods") && launcher.contentMods.length === 0; text: launcher.tr("No mods in the mods folder yet. Put each mod in its own folder there, then refresh.") }
-                    Row { visible: is("Mods & Patches", "Installed mods"); spacing: 10
+                    Flow { width: parent.width; visible: is("Mods & Patches", "Installed mods"); spacing: 10
                         GlassButton { text: launcher.tr("Refresh"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.refresh_addons() }
                         GlassButton { text: launcher.tr("Open mods folder"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("openMods") }
                     }
@@ -296,26 +287,26 @@ Item {
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
                     Column { visible: is("System", "Launch"); width: parent.width; spacing: 14
-                        Row { spacing: 10
+                        Flow { width: parent.width; spacing: 10
                             GlassButton { text: launcher.tr("Desktop shortcut"); width: Math.max(156, implicitWidth); height: 38; onClicked: launcher.createShortcut() }
                             GlassButton { text: launcher.tr("Add to Steam"); width: Math.max(132, implicitWidth); height: 38; onClicked: launcher.addToSteam() }
                         }
                     }
                     Column { visible: is("System", "Updates"); width: parent.width; spacing: 14
                         ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks when the launcher opens and shows available updates here and on Home."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
-                        Row { spacing: 10
+                        Flow { width: parent.width; spacing: 10
                             GlassButton { visible: launcher.hasUpdate; highlighted: true; text: launcher.tr("Install the new version"); width: Math.max(210, implicitWidth); height: 38; onClicked: launcher.installUpdate() }
                             GlassButton { text: launcher.tr("Check now"); width: Math.max(116, implicitWidth); height: 38; onClicked: launcher.checkForUpdates(true) }
                             GlassButton { text: launcher.tr("Releases ↗"); width: Math.max(116, implicitWidth); height: 38; onClicked: launcher.action("releases") }
                         }
                     }
-                    Row { visible: is("System", "Maintenance"); spacing: 10
+                    Flow { width: parent.width; visible: is("System", "Maintenance"); spacing: 10
                         GlassButton { text: launcher.tr("Open port folder"); width: Math.max(150, implicitWidth); height: 38; onClicked: launcher.action("openPort") }
                         GlassButton { text: launcher.tr("Open bbport.ini"); width: Math.max(140, implicitWidth); height: 38; onClicked: launcher.action("openConfig") }
                         GlassButton { text: launcher.tr("Clear shader cache"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("clearCache") }
                         GlassButton { text: launcher.tr("Setup wizard"); width: Math.max(128, implicitWidth); height: 38; onClicked: workspace.openSetup(0) }
                     }
-                    Row { visible: is("System", "Logs"); spacing: 10
+                    Flow { width: parent.width; visible: is("System", "Logs"); spacing: 10
                         GlassButton { text: launcher.tr("Copy log"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.action("copyLog") }
                         GlassButton { text: launcher.tr("Clear log"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.action("clearLog") }
                     }

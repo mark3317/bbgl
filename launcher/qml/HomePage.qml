@@ -1,213 +1,53 @@
 import QtQuick
 import QtQuick.Controls
 
-// Play: what state the game is in, one primary action, and the four things a player changes
-// most, each showing its current value. Everything else lives in Settings.
 Item {
     id: home
     signal primaryRequested()
     signal openSettings(string category, string section)
-
     property bool gameBlocked: false
     property bool savesBlocked: false
     property bool onlineBlocked: false
-    property bool blocked: gameBlocked || savesBlocked || onlineBlocked || launcher.setupRunning
-    property string statusTitle: launcher.running ? launcher.tr("The hunt is underway") :
-                                 launcher.setupRunning ? launcher.tr("Preparing game files") :
-                                 gameBlocked ? launcher.tr("Game files needed") :
-                                 savesBlocked ? launcher.tr("Saves need attention") :
-                                 onlineBlocked ? (launcher.playMode === "coop" ? launcher.tr("Co-op needs setting up") : launcher.tr("Sign in to play online")) : launcher.tr("Ready to hunt")
-    property string statusDetail: gameBlocked ? launcher.tr("Choose your Bloodborne folder, or install it from your own ZIP or PKG dump.") :
-                                  savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") :
-                                  onlineBlocked ? launcher.playModeSummary : ""
-    property int enabledMods: {
-        let n = 0
-        for (const m of launcher.contentMods) if (m.enabled) n++
-        return n
-    }
-    property real panelWidth: Math.max(500, Math.min(620, (width - Theme.railWidth) * 0.46))
-
-    Rectangle { anchors.fill: parent; color: Theme.base }
-    Image {
-        x: Theme.railWidth + panelWidth * 0.55; y: 0
-        width: parent.width - x; height: parent.height
-        source: Qt.resolvedUrl("../assets/ui/launcher-bridge.png")
-        fillMode: Image.PreserveAspectCrop; horizontalAlignment: Image.AlignLeft
-        smooth: true; asynchronous: true
-    }
-    // The panel melts into the art instead of ending at a hard edge.
+    property real panelWidth: Math.min(610, width - Theme.railWidth - 32)
+    Image { anchors.fill: parent; source: Qt.resolvedUrl("../assets/ui/home-background.png"); fillMode: Image.PreserveAspectCrop; smooth: true }
+    Rectangle { anchors.fill: parent; color: "#180b0d10" }
     Rectangle {
-        x: Theme.railWidth; width: panelWidth + 220; height: parent.height
+        x: Theme.railWidth; width: home.panelWidth + 120; height: parent.height
         gradient: Gradient { orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: "#f20b0d10" }
-            GradientStop { position: panelWidth / (panelWidth + 220); color: "#f00b0d10" }
+            GradientStop { position: 0; color: "#b00b0d10" }
+            GradientStop { position: 0.75; color: "#600b0d10" }
             GradientStop { position: 1; color: "#000b0d10" }
         }
     }
-    Rectangle {
-        anchors.bottom: parent.bottom; width: parent.width; height: 160
-        gradient: Gradient { GradientStop { position: 0; color: "#000b0d10" } GradientStop { position: 1; color: "#a00b0d10" } }
-    }
-
-    Flickable {
-        id: flick
-        x: Theme.railWidth; width: panelWidth; height: parent.height
-        clip: true; boundsBehavior: Flickable.StopAtBounds
-        contentHeight: Math.max(height, column.implicitHeight + 120)
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-        Column {
-            id: column
-            x: 44; y: 34; width: parent.width - 88
-            spacing: 0
-
-            // Breadcrumb and status.
-            Item {
-                width: parent.width; height: 40
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter; spacing: 14
-                    Text { text: launcher.tr("BLOODBORNE"); color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; font.letterSpacing: 2.4 }
-                    Text { text: "/"; color: Theme.textFaint; font.family: Theme.sans; font.pixelSize: 15 }
-                    Text { text: launcher.tr("LAUNCHER"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13; font.letterSpacing: 2 }
-                }
-                Row {
-                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 8
-                    Rectangle {
-                        width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter
-                        color: launcher.running ? Theme.accent : home.blocked ? Theme.warn : Theme.good
-                    }
-                    Text {
-                        text: launcher.running ? launcher.tr("Running") : home.blocked ? launcher.tr("Needs attention") : launcher.tr("Ready")
-                        color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
-                    }
-                }
-            }
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
-            Item { width: 1; height: 30 }
-            Text {
-                width: parent.width; text: home.statusTitle; color: Theme.text; wrapMode: Text.WordWrap
-                font.family: Theme.serif; font.pixelSize: 46
-            }
-            Item { width: 1; height: 18 }
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
-            Item { width: 1; height: 18 }
-            Text {
-                width: parent.width; elide: Text.ElideRight; color: Theme.text
-                font.family: Theme.serif; font.pixelSize: 18
-                text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " +
-                      launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display
-            }
-            Item { width: 1; height: 6 }
-            Text {
-                width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
-                text: home.statusDetail !== "" ? home.statusDetail : launcher.gameStatus
-                color: home.blocked ? Theme.warn : Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
-            }
-            Item { width: 1; height: 26 }
-
-            Row {
-                width: parent.width; spacing: 12
-                GlassButton {
-                    width: launcher.running ? parent.width - 132 : parent.width; height: 58
-                    highlighted: true; serif: true
-                    text: launcher.running ? launcher.tr("Game running") : launcher.setupRunning ? launcher.tr("Installing…") :
-                          launcher.coopBusy ? launcher.tr("Getting co-op ready…") :
-                          home.gameBlocked ? launcher.tr("Set up game files") : home.savesBlocked ? launcher.tr("Choose a saves folder") :
-                          home.onlineBlocked ? launcher.tr("Set up co-op") :
-                          launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
-                    enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy
-                    onClicked: home.primaryRequested()
-                }
-                GlassButton {
-                    visible: launcher.running; width: Math.max(120, implicitWidth); height: 58; text: launcher.tr("Stop")
-                    onClicked: launcher.stop()
-                }
-            }
-            Item { width: 1; height: 12 }
-
-            // How PLAY starts the game: offline or seamless co-op.
-            Row {
-                id: modes
-                width: parent.width; spacing: 8
-                Repeater {
-                    model: [{mode: "offline", label: launcher.tr("Offline")},
-                            {mode: "coop", label: launcher.tr("Online · Seamless co-op")}]
-                    delegate: Rectangle {
-                        readonly property bool chosen: launcher.playMode === modelData.mode
-                        width: (modes.width - modes.spacing) / 2; height: 40; radius: Theme.radius
-                        color: chosen ? Theme.surfaceHover : modeArea.containsMouse ? Theme.surfaceHover : "transparent"
-                        border.width: 1; border.color: chosen ? Theme.accent : modeArea.containsMouse ? Theme.lineStrong : Theme.line
-                        Text {
-                            anchors.fill: parent; anchors.margins: 6
-                            text: modelData.label; elide: Text.ElideRight
-                            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                            color: parent.chosen ? Theme.text : Theme.textDim
-                            font.family: Theme.sans; font.pixelSize: 13
-                        }
-                        MouseArea {
-                            id: modeArea; anchors.fill: parent; hoverEnabled: true
-                            enabled: !launcher.running
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: launcher.setPlayMode(modelData.mode)
-                        }
-                    }
-                }
-            }
-            Item { width: 1; height: 8 }
-            Text {
-                width: parent.width; wrapMode: Text.WordWrap
-                text: launcher.playModeSummary
-                color: home.onlineBlocked ? Theme.warn : Theme.textDim
-                font.family: Theme.sans; font.pixelSize: 13
-            }
-            Item { width: 1; height: 22 }
-
-            MenuRow {
-                visible: launcher.hasUpdate
-                width: parent.width; icon: "update"; selected: true
-                label: launcher.tr("A new version is ready"); value: launcher.tr("Install"); valueColor: Theme.text
-                onClicked: launcher.installUpdate()
-            }
-            Item { visible: launcher.hasUpdate; width: 1; height: 12 }
-
-            Column {
-                width: parent.width; spacing: 12
-                MenuRow {
-                    width: parent.width; icon: "visuals"; label: launcher.tr("Graphics")
-                    value: launcher.graphicsPreset === "custom" ? launcher.tr("Custom") : launcher.presetLabel(launcher.graphicsPreset) + launcher.tr(" preset")
-                    onClicked: home.openSettings("Visuals", "")
-                }
-                MenuRow {
-                    width: parent.width; icon: "controls"; label: launcher.tr("Controls")
-                    value: launcher.tr(launcher.promptChoice) + launcher.tr(" prompts")
-                    onClicked: home.openSettings("Controls", "Button prompts")
-                }
-                MenuRow {
-                    width: parent.width; icon: "folder"; label: launcher.tr("Game files & saves")
-                    value: home.gameBlocked || home.savesBlocked ? launcher.tr("Needs attention") : launcher.tr("Ready")
-                    valueColor: home.gameBlocked || home.savesBlocked ? Theme.warn : Theme.textDim
-                    onClicked: home.openSettings("Game & Saves", home.savesBlocked && !home.gameBlocked ? "Your data" : "Game files")
-                }
-                MenuRow {
-                    width: parent.width; icon: "puzzle"; label: launcher.tr("Mods & patches")
-                    value: home.enabledMods === 0 ? launcher.tr("None enabled") : home.enabledMods + (home.enabledMods === 1 ? launcher.tr(" mod enabled") : launcher.tr(" mods enabled"))
-                    onClicked: home.openSettings("Mods & Patches", "Installed mods")
-                }
+    Column {
+        x: Theme.railWidth + 44; y: Math.max(64, parent.height * 0.16)
+        width: home.panelWidth - 88; spacing: 22
+        Text { width: parent.width; text: "Bloodborne\nGame Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 46; wrapMode: Text.WordWrap }
+        Rectangle { width: 64; height: 2; color: Theme.accent }
+        Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.family: Theme.sans; font.pixelSize: 15; wrapMode: Text.WrapAnywhere }
+        Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap }
+        Item { width: 1; height: 10 }
+        Repeater {
+            model: [{mode: "offline", label: launcher.tr("Play offline")}, {mode: "coop", label: launcher.tr("Play co-op")}]
+            delegate: GlassButton {
+                width: parent.width; height: 56; serif: true
+                text: launcher.coopBusy ? launcher.tr("Getting co-op ready…") : modelData.label
+                highlighted: modelData.mode === "offline"
+                enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy
+                onClicked: { launcher.setPlayMode(modelData.mode); home.primaryRequested() }
             }
         }
-
-        // Hints sit at the foot of the panel, as the guide's key help does.
-        Column {
-            x: 44; width: parent.width - 88
-            y: Math.max(column.y + column.implicitHeight + 28, flick.contentHeight - implicitHeight - 26)
-            spacing: 10
-            Rectangle { width: parent.width; height: 1; color: Theme.line }
-            Text {
-                width: parent.width; wrapMode: Text.WordWrap; color: Theme.textDim
-                font.family: Theme.sans; font.pixelSize: 12; lineHeight: 1.35
-                text: launcher.notice !== launcher.tr("Ready to hunt.") && launcher.notice !== "" ? launcher.notice :
-                      launcher.tr("Insert or L3+R3 opens the guide in game")
-            }
+        GlassButton { visible: launcher.running; width: parent.width; text: launcher.tr("Stop"); onClicked: launcher.stop() }
+        Text {
+            width: parent.width; visible: home.gameBlocked || home.savesBlocked || launcher.setupRunning
+            text: home.gameBlocked ? launcher.tr("Choose your game folder or download the game.") : home.savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") : launcher.gameDownloadStatus
+            color: Theme.warn; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap
+        }
+        GlassButton { visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
+        Text {
+            width: parent.width; visible: text !== ""
+            text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice
+            color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap
         }
     }
 }

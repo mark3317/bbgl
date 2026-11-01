@@ -25,4 +25,18 @@ frozen launcher fake-child exits worked before the change; the exact trigger of
 the user's reported Bloodborne.exe instance was not captured, so it is not proven
 which of the two failure paths affected that run.
 
-Build/deployment and a user gameplay exit check are recorded separately in HANDOFF.
+Three existing in-game settings/exit synchronization tests also pass. The built
+frozen EXE passes all three process/job/pipe cases. Full QML lifecycle smoke with
+an actual helper child also passes locally and in the installed Windows 10 laptop
+build: window closes on the startup marker, final output is retained, the launcher
+exits, and no Bloodborne.exe remains. This does not launch Bloodborne itself.
+
+Full package build and its release verifier pass. Deployed on 1 November at 04:55–
+04:57 Moscow time to both current installations. Each checked 5,263 payload files,
+replaced 13 changed files with backups, and passed client/server bundle checksums.
+Launcher SHA256: `6C300224CC0D26C1492A4DEEFAE6152E6BF441A7D64C9C6C8BFCB0B4D2C8880A`.
+Bundled DLL SHA256: `F382B8E9B0925BF40EF9109C4CFF24A84BE11B7511DA09679BDB4657E259F033`.
+Backups: PC `D:/Games/Bloodborne/coop-dev/backups/launcher-lifetime-20261101-045455`,
+laptop `C:/Games/Bloodborne/coop-dev/backups/launcher-lifetime-20261101-045510`.
+Saves, game files and user settings were not changed. User gameplay exit and
+Apply and restart confirmation remain pending.

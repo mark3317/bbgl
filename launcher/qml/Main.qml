@@ -94,21 +94,44 @@ ApplicationWindow {
         id: firewallDialog
         objectName: "firewallDialog"
         anchors.centerIn: parent
-        width: Math.min(500, window.width - 80)
+        width: Math.min(520, window.width - 80)
         modal: true
+        padding: 28
+        topPadding: 8
+        bottomPadding: 24
         title: launcher.tr("Configure firewall")
-        background: Rectangle { color: Theme.surface; radius: Theme.radius; border.color: Theme.lineStrong }
-        header: Label { text: firewallDialog.title; color: Theme.text; padding: 24; font.pixelSize: 20 }
+        background: Rectangle {
+            color: Theme.surface; radius: 10; border.color: Theme.lineStrong
+        }
+        header: Item {
+            implicitHeight: 88
+            Rectangle { x: 28; y: 25; width: 28; height: 3; radius: 1.5; color: Theme.accentHover }
+            Label {
+                x: 28; y: 42; width: parent.width - 56
+                text: firewallDialog.title; color: Theme.text
+                font.family: Theme.sans; font.pixelSize: 21; font.weight: Font.DemiBold
+            }
+        }
         contentItem: Label {
             text: launcher.tr("Allow incoming game and co-op server connections on local and Tailscale networks. Windows will ask for administrator permission.")
-            color: Theme.textDim; wrapMode: Text.WordWrap; font.pixelSize: 14
+            color: Theme.textDim; wrapMode: Text.WordWrap
+            font.family: Theme.sans; font.pixelSize: 14; lineHeight: 1.25
         }
-        footer: DialogButtonBox {
-            background: Item {}
-            GlassButton { text: launcher.tr("Confirm"); highlighted: true; DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole }
-            GlassButton { text: launcher.tr("Cancel"); DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
-            onAccepted: { firewallDialog.close(); launcher.coopConfigureFirewall() }
-            onRejected: firewallDialog.close()
+        footer: Item {
+            implicitHeight: 92
+            Rectangle { x: 28; width: parent.width - 56; height: 1; color: Theme.line }
+            Row {
+                anchors { right: parent.right; rightMargin: 28; top: parent.top; topMargin: 20 }
+                spacing: 12
+                GlassButton {
+                    text: launcher.tr("Cancel"); width: 140; height: 44
+                    onClicked: firewallDialog.close()
+                }
+                GlassButton {
+                    text: launcher.tr("Confirm"); width: 168; height: 44; primary: true
+                    onClicked: { firewallDialog.close(); launcher.coopConfigureFirewall() }
+                }
+            }
         }
     }
 

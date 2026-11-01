@@ -12,41 +12,54 @@ Item {
     Image { anchors.fill: parent; source: Qt.resolvedUrl("../assets/ui/home-background.png"); fillMode: Image.PreserveAspectCrop; smooth: true }
     Rectangle { anchors.fill: parent; color: "#180b0d10" }
     Rectangle {
-        x: Theme.railWidth; width: home.panelWidth + 120; height: parent.height
+        x: Theme.railWidth; width: home.panelWidth + 180; height: parent.height
         gradient: Gradient { orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: "#b00b0d10" }
-            GradientStop { position: 0.75; color: "#600b0d10" }
+            GradientStop { position: 0; color: "#ed0b0d10" }
+            GradientStop { position: 0.75; color: "#b00b0d10" }
             GradientStop { position: 1; color: "#000b0d10" }
         }
     }
     Flickable {
         id: homeScroll
-        x: Theme.railWidth + 44; y: 36; width: home.panelWidth - 64; height: parent.height - 220
+        x: Theme.railWidth + 44; y: 32; width: home.panelWidth - 64; height: parent.height - 240
         clip: true; contentHeight: content.implicitHeight
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
-            id: content; width: parent.width - 24; spacing: 12
-            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
-            Rectangle { width: 64; height: 2; color: Theme.accent }
-            Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 16; wrapMode: Text.WordWrap }
-            Column {
-                width: parent.width; spacing: 5
-                Repeater {
-                    model: [
-                        {label: launcher.tr("Resolution"), value: launcher.setupFacts.resolution},
-                        {label: launcher.tr("Window mode"), value: launcher.setupFacts.display},
-                        {label: launcher.tr("Frame rate"), value: launcher.setupFacts.frameRate},
-                        {label: launcher.tr("Upscaling"), value: launcher.setupFacts.upscaler},
-                        {label: launcher.tr("Generation"), value: launcher.setupFacts.frameGeneration}
-                    ]
-                    delegate: Item {
-                        width: parent.width; height: Math.max(22, factLabel.implicitHeight, factValue.implicitHeight)
-                        Text { id: factLabel; width: parent.width * 0.48; text: modelData.label; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 15; wrapMode: Text.WordWrap }
-                        Text { id: factValue; anchors.right: parent.right; width: parent.width * 0.50; text: modelData.value; color: Theme.text; font.family: Theme.sans; font.pixelSize: 15; horizontalAlignment: Text.AlignRight; wrapMode: Text.WordWrap }
+            id: content; width: parent.width - 24; spacing: 18
+            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 32; wrapMode: Text.WordWrap }
+            Rectangle { width: 36; height: 3; radius: 1.5; color: Theme.accentHover }
+            Rectangle {
+                width: parent.width; height: summary.implicitHeight + 36
+                radius: 10; color: "#b314181d"; border.color: Theme.line
+                Column {
+                    id: summary; x: 20; y: 18; width: parent.width - 40; spacing: 12
+                    Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; font.weight: Font.DemiBold; wrapMode: Text.WordWrap }
+                    Rectangle { width: parent.width; height: 1; color: Theme.line }
+                    Column {
+                        width: parent.width; spacing: 7
+                        Repeater {
+                            model: [
+                                {label: launcher.tr("Resolution"), value: launcher.setupFacts.resolution},
+                                {label: launcher.tr("Window mode"), value: launcher.setupFacts.display},
+                                {label: launcher.tr("Frame rate"), value: launcher.setupFacts.frameRate},
+                                {label: launcher.tr("Upscaling"), value: launcher.setupFacts.upscaler},
+                                {label: launcher.tr("Generation"), value: launcher.setupFacts.frameGeneration}
+                            ]
+                            delegate: Item {
+                                width: parent.width; height: Math.max(18, factLabel.implicitHeight, factValue.implicitHeight)
+                                Text { id: factLabel; width: parent.width * 0.46; text: modelData.label; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap }
+                                Text { id: factValue; anchors.right: parent.right; width: parent.width * 0.52; text: modelData.value; color: Theme.text; font.family: Theme.sans; font.pixelSize: 13; horizontalAlignment: Text.AlignRight; wrapMode: Text.WordWrap }
+                            }
+                        }
                     }
+                    Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap }
                 }
             }
-            Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
+            Rectangle {
+                width: parent.width; height: connectionFields.implicitHeight + 24
+                radius: 10; color: "#9914181d"; border.color: Theme.line
+                Column {
+                    id: connectionFields; x: 16; y: 10; width: parent.width - 32; spacing: 6
             FieldRow {
                 width: parent.width; compact: true; minimumHeight: 54
                 field: launcher.settingsRevision < 0 ? ({}) : launcher.sectionFields("Co-op", "Seamless co-op").find(f => f.key === "coop_name")
@@ -58,7 +71,8 @@ Item {
                     homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))
                 }
             }
-            GlassButton { visible: launcher.running; text: launcher.tr("Stop"); onClicked: launcher.stop() }
+                }
+            }
             Text {
                 width: parent.width; visible: home.gameBlocked || home.savesBlocked || launcher.setupRunning
                 text: home.gameBlocked ? launcher.tr("Choose your game folder or download the game.") : home.savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") : launcher.gameDownloadStatus
@@ -69,11 +83,12 @@ Item {
     }
     Item {
         x: Theme.railWidth + 44; width: home.panelWidth - 88
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 160
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 20; height: 174
+        Rectangle { anchors.fill: parent; radius: 10; color: "#dc14181d"; border.color: Theme.line }
         Item {
             id: modeSwitch
-            anchors.horizontalCenter: parent.horizontalCenter; width: 296; height: 44
-            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+            anchors.horizontalCenter: parent.horizontalCenter; width: parent.width - 32; height: 40; y: 12
+            Rectangle { anchors.fill: parent; radius: 6; color: "#0d1014" }
             Row {
                 anchors.fill: parent
                 Repeater {
@@ -86,12 +101,14 @@ Item {
                         hoverEnabled: true
                         contentItem: Text {
                             text: modelData.label; color: modeButton.selected ? Theme.text : Theme.textDim
-                            font.family: Theme.serif; font.pixelSize: 18
+                            font.family: Theme.sans; font.pixelSize: 14
                             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
-                            color: modeButton.hovered ? "#181c21" : "transparent"
-                            Rectangle { visible: modeButton.selected; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; width: parent.width - 28; height: 2; color: Theme.accentHover }
+                            radius: 6
+                            color: modeButton.selected ? Theme.surfaceHover : modeButton.hovered ? "#181c21" : "transparent"
+                            border.color: modeButton.selected ? Theme.lineStrong : "transparent"
+
                         }
                         onClicked: launcher.setPlayMode(modelData.mode)
                     }
@@ -100,14 +117,14 @@ Item {
         }
         GlassButton {
             id: playButton
-            anchors.horizontalCenter: parent.horizontalCenter; y: 54
-            width: 296; height: 56; serif: true; highlighted: !launcher.running && !launcher.coopBusy
+            anchors.horizontalCenter: parent.horizontalCenter; y: 64
+            width: parent.width - 32; height: 54; serif: true; highlighted: !launcher.running && !launcher.coopBusy
             text: launcher.running || launcher.coopBusy ? launcher.tr("Cancel launch") : launcher.tr("Play")
             enabled: launcher.running || launcher.coopBusy || (!launcher.setupRunning && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked)
             onClicked: launcher.running || launcher.coopBusy ? launcher.cancelLaunch() : home.primaryRequested()
         }
         Text {
-            y: 122; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+            x: 16; y: 130; width: parent.width - 32; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
             text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
             color: Theme.textDim; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
         }

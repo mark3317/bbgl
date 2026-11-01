@@ -19,35 +19,38 @@ Item {
             GradientStop { position: 1; color: "#000b0d10" }
         }
     }
-    Column {
-        x: Theme.railWidth + 44; y: Math.max(64, parent.height * 0.16)
-        width: home.panelWidth - 88; spacing: 22
-        Text { width: parent.width; text: "Bloodborne\nGame Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 46; wrapMode: Text.WordWrap }
-        Rectangle { width: 64; height: 2; color: Theme.accent }
-        Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.family: Theme.sans; font.pixelSize: 15; wrapMode: Text.WrapAnywhere }
-        Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap }
-        Item { width: 1; height: 10 }
-        Repeater {
-            model: [{mode: "offline", label: launcher.tr("Play offline")}, {mode: "coop", label: launcher.tr("Play co-op")}]
-            delegate: GlassButton {
-                width: parent.width; height: 56; serif: true
-                text: launcher.coopBusy ? launcher.tr("Getting co-op ready…") : modelData.label
-                highlighted: modelData.mode === "offline"
-                enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy
-                onClicked: { launcher.setPlayMode(modelData.mode); home.primaryRequested() }
+    Flickable {
+        x: Theme.railWidth + 44; y: 42; width: home.panelWidth - 88; height: parent.height - 84
+        clip: true; contentHeight: content.implicitHeight
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        Column {
+            id: content; width: parent.width; spacing: 14
+            Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 36; wrapMode: Text.WordWrap }
+            Rectangle { width: 64; height: 2; color: Theme.accent }
+            Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 14; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " + launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display; color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
+            ToggleRow {
+                width: parent.width; height: 48
+                label: launcher.tr("Play mode")
+                checked: launcher.playMode === "coop"
+                onToggled: launcher.setPlayMode(checked ? "coop" : "offline")
             }
-        }
-        GlassButton { visible: launcher.running; width: parent.width; text: launcher.tr("Stop"); onClicked: launcher.stop() }
-        Text {
-            width: parent.width; visible: home.gameBlocked || home.savesBlocked || launcher.setupRunning
-            text: home.gameBlocked ? launcher.tr("Choose your game folder or download the game.") : home.savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") : launcher.gameDownloadStatus
-            color: Theme.warn; font.family: Theme.sans; font.pixelSize: 13; wrapMode: Text.WordWrap
-        }
-        GlassButton { visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
-        Text {
-            width: parent.width; visible: text !== ""
-            text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice
-            color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap
+            GlassButton {
+                property bool playAction: true
+                width: Math.min(250, parent.width); height: 46; serif: true; highlighted: true
+                text: launcher.running ? launcher.tr("Game running") : launcher.coopBusy ? launcher.tr("Getting co-op ready…") : launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
+                enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
+                onClicked: home.primaryRequested()
+            }
+            GlassButton { visible: launcher.running; text: launcher.tr("Stop"); onClicked: launcher.stop() }
+            Text {
+                width: parent.width; visible: home.gameBlocked || home.savesBlocked || launcher.setupRunning
+                text: home.gameBlocked ? launcher.tr("Choose your game folder or download the game.") : home.savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") : launcher.gameDownloadStatus
+                color: Theme.warn; font.pixelSize: 13; wrapMode: Text.WordWrap
+            }
+            GlassButton { visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
+            Text { width: parent.width; visible: text !== ""; text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
         }
     }
 }

@@ -65,7 +65,7 @@ Item {
     GlassButton {
         visible: isFolder
         text: launcher.tr("Browse")
-        anchors.right: parent.right; y: 46; height: 36; width: 96
+        anchors.right: parent.right; y: 46; height: 42; width: 180
         onClicked: launcher.browse(settingKey)
     }
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }

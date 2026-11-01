@@ -12,10 +12,7 @@ Item {
     property string section: ""
     property string targetKey: ""
     property string query: ""
-    property bool advanced: false
-    function sections() {
-        return launcher.categorySections(category).filter(s => s !== "Join a host" && (advanced || ["Advanced", "Engine", "Developer", "Maintenance", "Logs", "Co-op gameplay"].indexOf(s) < 0))
-    }
+    function sections() { return launcher.categorySections(category).filter(s => s !== "Join a host") }
     property var categories: [
         {name: "Visuals", icon: "visuals", tile: "tile-visuals", detail: launcher.tr("Graphics, display & frame rate")},
         {name: "Controls", icon: "controls", tile: "tile-controls", detail: launcher.tr("Prompts, mouse & keyboard")},
@@ -30,7 +27,6 @@ Item {
     function openAt(nextCategory, nextSection, nextKey) {
         category = nextCategory || category || "Visuals"
         section = nextSection === "Your data" ? "Game files" : nextSection === "Host a session" || nextSection === "Join a host" ? "Seamless co-op" : nextSection || launcher.categorySections(category)[0]
-        if (["Advanced", "Engine", "Developer", "Maintenance", "Logs", "Co-op gameplay"].indexOf(section) >= 0) advanced = true
         targetKey = nextKey || ""
         search.text = ""
         detailScroll.contentY = 0
@@ -118,12 +114,6 @@ Item {
                 }
             }
         }
-        GlassSwitch {
-            x: 28; anchors.bottom: parent.bottom; anchors.bottomMargin: 82
-            text: launcher.tr("Advanced settings")
-            checked: workspace.advanced
-            onToggled: { workspace.advanced = checked; if (workspace.sections().indexOf(workspace.section) < 0) workspace.openAt(workspace.category, "", "") }
-        }
         Text {
             x: 28; width: parent.width - 56; anchors.bottom: parent.bottom; anchors.bottomMargin: 22
             text: launcher.tr("Changes save as you make them. Some take effect the next time the game starts.")
@@ -168,7 +158,7 @@ Item {
             Flow {
                 width: parent.width; spacing: 16
                 Repeater {
-                    model: { let enabled = workspace.advanced; return workspace.sections() }
+                    model: workspace.sections()
                     delegate: Item {
                         width: tabText.implicitWidth; height: 34
                         property bool active: workspace.section === modelData
@@ -209,7 +199,7 @@ Item {
                             Repeater {
                                 model: ["low", "balanced", "high", "ultra"]
                                 delegate: GlassButton {
-                                    width: 104; height: 36
+                                    width: 180; height: 42
                                     text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? "  ★" : "")
                                     highlighted: launcher.graphicsPreset === modelData
                                     onClicked: launcher.applyGraphicsPreset(modelData)
@@ -243,12 +233,12 @@ Item {
                     Flow { width: parent.width; visible: is("Controls", "Button prompts"); spacing: 10
                         Repeater {
                             model: ["PlayStation", "Xbox", "Keyboard"]
-                            delegate: GlassButton { text: launcher.tr(modelData); width: 124; height: 38; highlighted: launcher.promptChoice === modelData; onClicked: launcher.setPrompt(modelData) }
+                            delegate: GlassButton { text: launcher.tr(modelData); width: 180; height: 42; highlighted: launcher.promptChoice === modelData; onClicked: launcher.setPrompt(modelData) }
                         }
                     }
                     Note { visible: is("Controls", "Button prompts"); text: launcher.tr("Which buttons the game shows, from the next start. Xbox (by Dommo) and Keyboard (PCBButtons by JinkiJinn) are bundled. Select your game folder, then choose the buttons; no separate download is needed. Keyboard also binds the keys its images show: E interact, Left Shift dodge, R blood vial, Q item, F transform, mouse buttons to attack.") }
                     Flow { width: parent.width; visible: is("Visuals", "Upscaling"); spacing: 12
-                        GlassButton { text: launcher.tr("Download FSR 4 assets"); width: Math.max(190, implicitWidth); height: 38; onClicked: launcher.downloadFsr4() }
+                        GlassButton { text: launcher.tr("Download FSR 4 assets"); width: 180; height: 42; onClicked: launcher.downloadFsr4() }
                         Note { text: launcher.fsrStatus; width: parent.width }
                     }
                     Repeater {
@@ -257,12 +247,12 @@ Item {
                     }
                     GameDownload { width: parent.width; visible: is("Game & Saves", "Game files") }
                     Flow { visible: is("Game & Saves", "Game files"); width: parent.width; spacing: 10
-                        GlassButton { text: launcher.tr("Open saves folder"); width: Math.max(160, implicitWidth); onClicked: launcher.action("openSaves") }
+                        GlassButton { text: launcher.tr("Open saves folder"); width: 180; onClicked: launcher.action("openSaves") }
                         GlassButton { text: launcher.tr("Check again"); onClicked: launcher.refreshReadiness() }
-                        GlassButton { text: launcher.tr("Setup wizard"); width: Math.max(140, implicitWidth); onClicked: workspace.openSetup(0) }
+                        GlassButton { text: launcher.tr("Setup wizard"); width: 180; onClicked: workspace.openSetup(0) }
                     }
                     Flow { visible: is("Game & Saves", "Advanced"); width: parent.width; spacing: 10
-                        GlassButton { text: launcher.tr("Import trophy keys"); width: Math.max(180, implicitWidth); onClicked: launcher.importTrophyKeys() }
+                        GlassButton { text: launcher.tr("Import trophy keys"); width: 180; onClicked: launcher.importTrophyKeys() }
                     }
                     CoopConnection { width: parent.width; visible: is("Co-op", "Seamless co-op") }
                     Note { visible: is("Mods & Patches", "Gameplay patches"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
@@ -272,43 +262,43 @@ Item {
                             width: detailColumn.width; height: 52
                             GlassSwitch { anchors.verticalCenter: parent.verticalCenter; text: modelData.name; checked: modelData.enabled; onToggled: launcher.setMod(modelData.name, checked) }
                             Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 6
-                                GlassButton { text: "↑"; width: 36; height: 32; onClicked: launcher.moveMod(modelData.name, -1) }
-                                GlassButton { text: "↓"; width: 36; height: 32; onClicked: launcher.moveMod(modelData.name, 1) }
+                                GlassButton { text: "↑"; width: 180; height: 42; onClicked: launcher.moveMod(modelData.name, -1) }
+                                GlassButton { text: "↓"; width: 180; height: 42; onClicked: launcher.moveMod(modelData.name, 1) }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
                         }
                     }
                     Note { visible: is("Mods & Patches", "Installed mods") && launcher.contentMods.length === 0; text: launcher.tr("No mods in the mods folder yet. Put each mod in its own folder there, then refresh.") }
                     Flow { width: parent.width; visible: is("Mods & Patches", "Installed mods"); spacing: 10
-                        GlassButton { text: launcher.tr("Refresh"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.refresh_addons() }
-                        GlassButton { text: launcher.tr("Open mods folder"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("openMods") }
+                        GlassButton { text: launcher.tr("Refresh"); width: 180; height: 42; onClicked: launcher.refresh_addons() }
+                        GlassButton { text: launcher.tr("Open mods folder"); width: 180; height: 42; onClicked: launcher.action("openMods") }
                     }
                     Repeater { model: is("Mods & Patches", "External patches") ? launcher.patches : []
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
-                    Column { visible: is("System", "Launch"); width: parent.width; spacing: 14
+                    Column { visible: is("System", "Advanced system"); width: parent.width; spacing: 14
                         Flow { width: parent.width; spacing: 10
-                            GlassButton { text: launcher.tr("Desktop shortcut"); width: Math.max(156, implicitWidth); height: 38; onClicked: launcher.createShortcut() }
-                            GlassButton { text: launcher.tr("Add to Steam"); width: Math.max(132, implicitWidth); height: 38; onClicked: launcher.addToSteam() }
+                            GlassButton { text: launcher.tr("Desktop shortcut"); width: 180; height: 42; onClicked: launcher.createShortcut() }
+                            GlassButton { text: launcher.tr("Add to Steam"); width: 180; height: 42; onClicked: launcher.addToSteam() }
                         }
                     }
                     Column { visible: is("System", "Updates"); width: parent.width; spacing: 14
                         ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks when the launcher opens and shows available updates here and on Home."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
                         Flow { width: parent.width; spacing: 10
-                            GlassButton { visible: launcher.hasUpdate; highlighted: true; text: launcher.tr("Install the new version"); width: Math.max(210, implicitWidth); height: 38; onClicked: launcher.installUpdate() }
-                            GlassButton { text: launcher.tr("Check now"); width: Math.max(116, implicitWidth); height: 38; onClicked: launcher.checkForUpdates(true) }
-                            GlassButton { text: launcher.tr("Releases ↗"); width: Math.max(116, implicitWidth); height: 38; onClicked: launcher.action("releases") }
+                            GlassButton { visible: launcher.hasUpdate; highlighted: true; text: launcher.tr("Install the new version"); width: 180; height: 42; onClicked: launcher.installUpdate() }
+                            GlassButton { text: launcher.tr("Check now"); width: 180; height: 42; onClicked: launcher.checkForUpdates(true) }
+                            GlassButton { text: launcher.tr("Releases ↗"); width: 180; height: 42; onClicked: launcher.action("releases") }
                         }
                     }
                     Flow { width: parent.width; visible: is("System", "Maintenance"); spacing: 10
-                        GlassButton { text: launcher.tr("Open port folder"); width: Math.max(150, implicitWidth); height: 38; onClicked: launcher.action("openPort") }
-                        GlassButton { text: launcher.tr("Open bbport.ini"); width: Math.max(140, implicitWidth); height: 38; onClicked: launcher.action("openConfig") }
-                        GlassButton { text: launcher.tr("Clear shader cache"); width: Math.max(160, implicitWidth); height: 38; onClicked: launcher.action("clearCache") }
-                        GlassButton { text: launcher.tr("Setup wizard"); width: Math.max(128, implicitWidth); height: 38; onClicked: workspace.openSetup(0) }
+                        GlassButton { text: launcher.tr("Open port folder"); width: 180; height: 42; onClicked: launcher.action("openPort") }
+                        GlassButton { text: launcher.tr("Open bbport.ini"); width: 180; height: 42; onClicked: launcher.action("openConfig") }
+                        GlassButton { text: launcher.tr("Clear shader cache"); width: 180; height: 42; onClicked: launcher.action("clearCache") }
+                        GlassButton { text: launcher.tr("Setup wizard"); width: 180; height: 42; onClicked: workspace.openSetup(0) }
                     }
                     Flow { width: parent.width; visible: is("System", "Logs"); spacing: 10
-                        GlassButton { text: launcher.tr("Copy log"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.action("copyLog") }
-                        GlassButton { text: launcher.tr("Clear log"); width: Math.max(110, implicitWidth); height: 38; onClicked: launcher.action("clearLog") }
+                        GlassButton { text: launcher.tr("Copy log"); width: 180; height: 42; onClicked: launcher.action("copyLog") }
+                        GlassButton { text: launcher.tr("Clear log"); width: 180; height: 42; onClicked: launcher.action("clearLog") }
                     }
                     TextArea {
                         visible: is("System", "Logs")

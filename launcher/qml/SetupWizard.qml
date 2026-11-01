@@ -46,12 +46,12 @@ Item {
             Flow {
                 width: parent.width; spacing: 8
                 Repeater { model: ["low", "balanced", "high", "ultra"]; delegate: GlassButton {
-                    width: 112; text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? " ★" : "")
+                    width: 180; text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? " ★" : "")
                     highlighted: launcher.graphicsPreset === modelData; onClicked: launcher.applyGraphicsPreset(modelData)
                 } }
             }
             Note { text: launcher.presetDescription(launcher.graphicsPreset) }
-            GlassButton { text: launcher.tr("Add desktop shortcut"); width: Math.max(230, implicitWidth); onClicked: launcher.createShortcut() }
+            GlassButton { text: launcher.tr("Add desktop shortcut"); width: 180; onClicked: launcher.createShortcut() }
             Note { text: launcher.tr("The shortcut will be named Bloodborne.") }
             Note { text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice }
         }
@@ -61,10 +61,10 @@ Item {
         y: parent.height - 46; width: parent.width; spacing: 10
         GlassButton { visible: wizard.step > 0; text: launcher.tr("Back"); onClicked: { wizard.step--; scroll.contentY = 0 } }
         GlassButton {
-            text: wizard.step === 2 ? launcher.tr("Finish") : launcher.tr("Continue"); highlighted: true; width: 150
+            text: wizard.step === 2 ? launcher.tr("Finish") : launcher.tr("Continue"); highlighted: true; width: 180
             enabled: !launcher.setupRunning && (wizard.step === 1 || (wizard.gameValid && wizard.savesValid))
             onClicked: { if (wizard.step === 2) wizard.finish(); else wizard.step++; scroll.contentY = 0 }
         }
-        GlassButton { visible: wizard.step === 0; text: launcher.tr("Skip for now"); width: Math.max(140, implicitWidth); enabled: !launcher.setupRunning; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
+        GlassButton { visible: wizard.step === 0; text: launcher.tr("Skip for now"); width: 180; enabled: !launcher.setupRunning; onClicked: { launcher.skipSetup(); wizard.exitRequested("Home") } }
     }
 }

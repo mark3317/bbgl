@@ -23,9 +23,9 @@ Column {
     }
     Flow {
         visible: connection.hosting; width: parent.width; spacing: 10
-        GlassButton { text: launcher.coopHosting ? launcher.tr("Restart hosting") : launcher.tr("Start hosting"); width: Math.max(160, implicitWidth); enabled: !launcher.coopBusy && !launcher.running; onClicked: launcher.coopStartHosting() }
-        GlassButton { text: launcher.tr("Copy invite code"); width: Math.max(160, implicitWidth); enabled: launcher.coopInvite !== ""; onClicked: launcher.coopCopyInvite() }
-        GlassButton { text: launcher.tr("Stop hosting"); width: Math.max(140, implicitWidth); enabled: launcher.coopHosting && !launcher.running; onClicked: launcher.coopStopHosting() }
+        GlassButton { text: launcher.coopHosting ? launcher.tr("Restart hosting") : launcher.tr("Start hosting"); width: 180; enabled: !launcher.coopBusy && !launcher.running; onClicked: launcher.coopStartHosting() }
+        GlassButton { text: launcher.tr("Copy invite code"); width: 180; enabled: launcher.coopInvite !== ""; onClicked: launcher.coopCopyInvite() }
+        GlassButton { text: launcher.tr("Stop hosting"); width: 180; enabled: launcher.coopHosting && !launcher.running; onClicked: launcher.coopStopHosting() }
     }
     Note { text: launcher.coopStatus }
     Text {

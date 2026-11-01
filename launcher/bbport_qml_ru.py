@@ -836,3 +836,5 @@ RU.update({
     'Copy invite code': 'Копировать код',
     'Co-op name': 'Имя игрока',
 })
+
+RU.update({'Play mode': 'Режим игры', 'Advanced system': 'Расширенные настройки системы'})

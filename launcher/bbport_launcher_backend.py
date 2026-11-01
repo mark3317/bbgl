@@ -225,10 +225,8 @@ SETTINGS_SECTIONS = {
         ('Gameplay patches', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS]),
     ],
     'System': [
-        ('Launch', ['ui_language']),
+        ('Advanced system', ['ui_language', 'draw_pipe', 'readbacks', 'extra_env', 'debug_camera', 'debug_menu', 'frame_stats', 'gpu_profile', 'vk_validation']),
         ('Updates', []),
-        ('Engine', ['draw_pipe', 'readbacks', 'extra_env']),
-        ('Developer', ['debug_camera', 'debug_menu', 'frame_stats', 'gpu_profile', 'vk_validation']),
         ('Maintenance', []),
         ('Logs', []),
     ],
@@ -250,8 +248,8 @@ SEARCH_ACTIONS = [
     ('Game & Saves', 'Game files', 'Import trophy keys', 'keys.json trophies'),
     ('Game & Saves', 'Game files', 'Open saves folder', 'save path'),
     ('Mods & Patches', 'Installed mods', 'Refresh mods', 'load order'),
-    ('System', 'Launch', 'Desktop shortcut', 'start menu'),
-    ('System', 'Launch', 'Add to Steam', 'integration'),
+    ('System', 'Advanced system', 'Desktop shortcut', 'start menu'),
+    ('System', 'Advanced system', 'Add to Steam', 'integration'),
     ('System', 'Logs', 'Copy log', 'activity diagnostics'),
     ('System', 'Maintenance', 'Clear shader cache', 'shaders'),
 ]

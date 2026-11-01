@@ -205,8 +205,7 @@ SETTINGS_SECTIONS = {
     ],
     'Controls': [
         ('Button prompts', []),
-        ('Mouse & keyboard', ['mouse_camera', 'mouse_menu', 'mouse_sensitivity', 'mouse_invert_y', 'move_smoothing']),
-        ('Advanced', ['mouse_hide_cursor']),
+        ('Mouse & keyboard', ['mouse_camera', 'mouse_menu', 'mouse_sensitivity', 'mouse_invert_y', 'move_smoothing', 'mouse_hide_cursor']),
     ],
     'Game & Saves': [
         ('Game files', ['game_dir', 'user_dir']),
@@ -589,7 +588,7 @@ class LauncherBackend(QObject):
 
     @Slot(str, result=str)
     def presetDescription(self, name):
-        return T(core.GRAPHICS_PRESET_INFO.get(name, ('', ''))[1])
+        return T({'low': 'Performance upscaling, reduced effects, 60 FPS.', 'balanced': 'Balanced upscaling, standard effects, 120 FPS.', 'high': 'Quality upscaling, standard effects, 120 FPS.', 'ultra': 'Native resolution, maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
 
     @Property(int, notify=presetApplied)
     def settingsRevision(self):
@@ -604,9 +603,6 @@ class LauncherBackend(QObject):
         self._write()
         self._settings_revision += 1
         self.presetApplied.emit()
-        label = core.GRAPHICS_PRESET_INFO[name][0]
-        self._set_notice(f'{label} preset chosen. Restart the game to apply it.' if self.running else
-                         f'{label} preset chosen. It applies the next time the game starts.')
 
     def _detect_gpu(self):
         exe = core.PORT_DIR / 'bin' / 'bb-gpu-capabilities.exe'
@@ -717,7 +713,7 @@ class LauncherBackend(QObject):
             if name == section:
                 # The revision makes the rows differ after a preset, so the page builds them anew.
                 return [{**self.live_field(SETTING_FIELDS[key]), 'revision': self._settings_revision}
-                        for key in keys]
+                        for key in keys if key != 'frame_cap' or self.app.get('fps_mode') == 'uncap']
         return []
 
     @Slot(str, result='QVariantList')
@@ -772,6 +768,9 @@ class LauncherBackend(QObject):
             for key, value in core.app_settings(saved).items():
                 if self.app.get(key) == self._written_app.get(key) and value != self._written_app.get(key):
                     self.app[key] = value
+            if key == 'fps_mode':
+                self._settings_revision += 1
+                self.presetApplied.emit()
         disk, lines = core.load_ini()
         for key, value in disk.items():
             if self.ini.get(key) == self._written_ini.get(key) and value != self._written_ini.get(key):
@@ -837,6 +836,9 @@ class LauncherBackend(QObject):
                     self._set_notice('Enter a whole number within the setting range.')
                     return
             self.app[key] = value
+            if key == 'fps_mode':
+                self._settings_revision += 1
+                self.presetApplied.emit()
             if key == 'coop_name':
                 self.app['player_name'] = value
         self._write()
@@ -1108,7 +1110,7 @@ class LauncherBackend(QObject):
         profile.update({'order': names, 'disabled': sorted(disabled)})
         profile_file.write_text(json.dumps(profile, indent=2), encoding='utf-8')
         self.refresh_addons()
-        self._set_notice('Mod change saved. Restart the game to apply it.')
+
 
     @Slot(str, int)
     def moveMod(self, name, step):
@@ -1174,9 +1176,6 @@ class LauncherBackend(QObject):
             core.save_ini(core.KEYBOARD_PROMPT_LAYOUT, self.ini_lines)
             self.ini, self.ini_lines = core.load_ini()
         self.refresh_addons()
-        self._set_notice(f'{choice} button prompts selected. Restart the game to apply them.'
-                         + (' Keys now match the prompt images (E interact, Left Shift dodge, Q item, F transform).'
-                            if choice == 'Keyboard' else ''))
 
     @Slot()
     def downloadFsr4(self):

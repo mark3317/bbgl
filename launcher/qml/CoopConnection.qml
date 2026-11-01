@@ -34,9 +34,5 @@ Column {
         linkColor: Theme.accentHover; font.pixelSize: 14
         onLinkActivated: (link) => Qt.openUrlExternally(link)
     }
-    GlassButton {
-        property bool expanded: false
-        text: launcher.tr("Connection help"); onClicked: { expanded = !expanded; help.visible = expanded }
-    }
-    CoopFirewall { id: help; width: parent.width; visible: false }
+    CoopFirewall { width: parent.width }
 }

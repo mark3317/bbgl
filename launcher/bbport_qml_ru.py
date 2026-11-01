@@ -838,3 +838,13 @@ RU.update({
 })
 
 RU.update({'Play mode': 'Режим игры', 'Advanced system': 'Расширенные настройки системы'})
+
+RU.update({'Single player': 'Одиночная', 'Multiplayer': 'Совместная', 'Desktop shortcut': 'Создать ярлык', 'Add desktop shortcut': 'Создать ярлык'})
+
+RU.update({
+'Performance upscaling, reduced effects, 60 FPS.': 'Приоритет FPS, упрощённые эффекты, 60 FPS.',
+'Balanced upscaling, standard effects, 120 FPS.': 'Баланс чёткости и скорости, обычные эффекты, 120 FPS.',
+'Quality upscaling, standard effects, 120 FPS.': 'Приоритет чёткости, обычные эффекты, 120 FPS.',
+'Native resolution, maximum detail and reflections, 120 FPS.': 'Полное разрешение, максимум деталей и отражений, 120 FPS.',
+'Custom graphics settings.': 'Собственные настройки графики.'
+})

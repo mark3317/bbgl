@@ -20,7 +20,7 @@ Item {
         }
     }
     Flickable {
-        x: Theme.railWidth + 44; y: 64; width: home.panelWidth - 88; height: parent.height - 112
+        x: Theme.railWidth + 44; y: 64; width: home.panelWidth - 88; height: parent.height - 172
         clip: true; contentHeight: content.implicitHeight
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
@@ -30,19 +30,22 @@ Item {
             Text { width: parent.width; text: launcher.profileSummary; color: Theme.text; font.pixelSize: 14; wrapMode: Text.WordWrap }
             Text { width: parent.width; text: launcher.setupFacts.resolution + "  ·  " + launcher.setupFacts.frameRate + "  ·  " + launcher.setupFacts.upscaler + "  ·  " + launcher.setupFacts.display; color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; wrapMode: Text.WordWrap }
             Text { width: parent.width; text: launcher.saveStatus; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
-            ToggleRow {
-                width: parent.width; height: 48
-                label: launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
-                checked: launcher.playMode === "coop"
-                onToggled: launcher.setPlayMode(checked ? "coop" : "offline")
+            Rectangle {
+                width: parent.width; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
+                Row {
+                    anchors.fill: parent; anchors.margins: 4
+                    Repeater {
+                        model: [{mode: "offline", label: launcher.tr("Single player")}, {mode: "coop", label: launcher.tr("Multiplayer")}]
+                        delegate: Rectangle {
+                            width: (content.width - 8) / 2; height: 48; radius: 6
+                            color: launcher.playMode === modelData.mode ? Theme.accent : "transparent"
+                            Text { anchors.centerIn: parent; text: modelData.label; color: Theme.text; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; enabled: !launcher.running && !launcher.coopBusy; cursorShape: Qt.PointingHandCursor; onClicked: launcher.setPlayMode(modelData.mode) }
+                        }
+                    }
+                }
             }
-            GlassButton {
-                property bool playAction: true
-                width: Math.min(250, parent.width); height: 56; serif: true; highlighted: true
-                text: launcher.running ? launcher.tr("Game running") : launcher.coopBusy ? launcher.tr("Getting co-op ready…") : launcher.playMode === "coop" ? launcher.tr("Play co-op") : launcher.tr("Play offline")
-                enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
-                onClicked: home.primaryRequested()
-            }
+            CoopConnection { width: parent.width; visible: launcher.playMode === "coop" }
             GlassButton { visible: launcher.running; text: launcher.tr("Stop"); onClicked: launcher.stop() }
             Text {
                 width: parent.width; visible: home.gameBlocked || home.savesBlocked || launcher.setupRunning
@@ -53,4 +56,13 @@ Item {
             Text { width: parent.width; visible: text !== ""; text: launcher.notice === launcher.tr("Ready to hunt.") ? "" : launcher.notice; color: Theme.textDim; font.pixelSize: 12; wrapMode: Text.WordWrap }
         }
     }
+    GlassButton {
+        x: Theme.railWidth + (home.panelWidth - width) / 2
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 24
+        width: 250; height: 56; serif: true; highlighted: true
+        text: launcher.tr("Play")
+        enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
+        onClicked: home.primaryRequested()
+    }
+
 }

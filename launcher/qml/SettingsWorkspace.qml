@@ -213,8 +213,7 @@ Item {
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap; lineHeight: 1.3
                             color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-                            text: launcher.presetDescription(launcher.graphicsPreset) +
-                                  (launcher.recommendedPreset !== "" ? launcher.tr("  ★ Suggested for ") + launcher.gpuStatus + "." : "")
+                            text: launcher.presetDescription(launcher.graphicsPreset)
                         }
                     }
                     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }

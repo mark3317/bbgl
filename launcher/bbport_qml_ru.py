@@ -860,3 +860,10 @@ RU.update({'Remove FSR 4 assets': 'Удалить ресурсы FSR 4', 'FSR 4 
 'Reduced effects, 60 FPS.': 'Упрощённые эффекты, 60 FPS. Апскейлер выключен.',
 'Standard effects, 120 FPS.': 'Обычные эффекты, 120 FPS. Апскейлер выключен.',
 'High quality, 120 FPS.': 'Высокое качество, 120 FPS. Апскейлер выключен.'})
+
+from bbport_setting_hints import HINTS as _SETTING_HINTS
+RU.update({en: ru for en, ru in _SETTING_HINTS.values()})
+RU.update({'Image effects': 'Графика', 'Seamless co-op: host or join': 'Игра с друзьями'})
+
+RU.update({'Sets the button icons shown in game menus. Keyboard also applies matching key bindings.': 'Вид значков кнопок в меню игры. Для клавиатуры также назначаются соответствующие клавиши.',
+'Checks for new launcher versions at startup.': 'Проверяет новые версии лаунчера при запуске.'})

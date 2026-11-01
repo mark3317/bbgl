@@ -21,6 +21,7 @@ from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QFileDialog as _QFileDialog, QMessageBox as _QMessageBox
 
+from bbport_setting_hints import HINTS
 import bbport_coop as coop
 import bbport_qml_ru
 import bbport_launcher_win as core
@@ -77,7 +78,7 @@ def choice_rows(options):
 
 
 def row(key, label, kind='text', options=None, hint=''):
-    return {'key': key, 'label': label, 'kind': kind, 'options': choice_rows(options or []), 'hint': hint}
+    return {'key': key, 'label': label, 'kind': kind, 'options': choice_rows(options or []), 'hint': HINTS.get(key, (hint, ''))[0]}
 
 
 # What the graphics rows do, and which ones cost GPU time (the presets change those).
@@ -685,8 +686,6 @@ class LauncherBackend(QObject):
             field = {**field, 'options': [o for o in field['options'] if o['value'] != 'fsr4' or self.fsrReady]}
         if field['key'] in ('upscaler', 'frame_gen') and not self._dlss_supported:
             field = {**field, 'options': [o for o in field['options'] if o['value'] != 'dlss']}
-        if field['key'] == 'preset':
-            field = {**field, 'hint': f"{T(field['hint'])} {T(self.scene_size_text())}".strip()}
         if not RUSSIAN:
             return field
         return {**field, 'label': T(field['label']), 'hint': T(field['hint']),

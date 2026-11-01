@@ -51,11 +51,11 @@ Item {
         x: Theme.railWidth + 44; width: home.panelWidth - 88
         anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 126
             Rectangle {
-                id: modeSwitch; width: 286; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
+                id: modeSwitch; width: 206; height: 56; radius: 8; color: Theme.surface; border.color: Theme.line
                 Row {
                     anchors.fill: parent; anchors.margins: 4
                     Repeater {
-                        model: [{mode: "offline", label: launcher.tr("Single player")}, {mode: "coop", label: launcher.tr("Multiplayer")}]
+                        model: [{mode: "offline", label: "Solo"}, {mode: "coop", label: "Coop"}]
                         delegate: Rectangle {
                             width: (modeSwitch.width - 8) / 2; height: 48; radius: 6
                             color: launcher.playMode === modelData.mode ? "#6d5940" : "transparent"
@@ -68,7 +68,7 @@ Item {
         GlassButton {
             id: playButton
             anchors.right: parent.right; y: 0
-            width: 216; height: 56; serif: true; highlighted: true
+            width: 296; height: 56; serif: true; highlighted: true
             text: launcher.tr("Play")
             enabled: !launcher.running && !launcher.setupRunning && !launcher.coopBusy && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked
             onClicked: home.primaryRequested()

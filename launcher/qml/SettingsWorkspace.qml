@@ -235,7 +235,7 @@ Item {
                             delegate: GlassButton { text: launcher.tr(modelData); width: 180; height: 48; highlighted: launcher.promptChoice === modelData; onClicked: launcher.setPrompt(modelData) }
                         }
                     }
-                    Note { visible: is("Controls", "Button prompts"); text: launcher.tr("Which buttons the game shows, from the next start. Xbox (by Dommo) and Keyboard (PCBButtons by JinkiJinn) are bundled. Select your game folder, then choose the buttons; no separate download is needed. Keyboard also binds the keys its images show: E interact, Left Shift dodge, R blood vial, Q item, F transform, mouse buttons to attack.") }
+                    Note { visible: is("Controls", "Button prompts"); text: launcher.tr("Sets the button icons shown in game menus. Keyboard also applies matching key bindings.") }
                     FsrAssets { width: parent.width; visible: is("Visuals", "Upscaling") }
                     Repeater {
                         model: is("Game & Saves", "Game files") ? [launcher.readiness[0], launcher.readiness[2]] : []
@@ -282,7 +282,7 @@ Item {
                         }
                     }
                     Column { visible: is("System", "System"); width: parent.width; spacing: 14
-                        ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks when the launcher opens and shows available updates here and on Home."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
+                        ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks for new launcher versions at startup."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
                         Flow { width: parent.width; spacing: 10
                             GlassButton { visible: launcher.hasUpdate; highlighted: true; text: launcher.tr("Install the new version"); width: 180; height: 48; onClicked: launcher.installUpdate() }
                             GlassButton { text: launcher.tr("Check now"); width: 180; height: 48; onClicked: launcher.checkForUpdates(true) }

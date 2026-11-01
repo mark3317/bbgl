@@ -51,7 +51,7 @@ Item {
             }
             Note { text: launcher.presetDescription(launcher.graphicsPreset) }
             Repeater {
-                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Visuals", "Upscaling")
+                model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Visuals", "Upscaling").concat(launcher.sectionFields("Visuals", "Frame generation"))
                 delegate: FieldRow { width: finishStep.width; field: modelData }
             }
             FsrAssets { width: parent.width }

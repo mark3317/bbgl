@@ -12,6 +12,7 @@
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_pipeline_cache.h"
 #include "video_core/renderer_vulkan/vk_shader_prebuild.h"
+#include "common/scope_exit.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
 #include "common/hash.h"
 
@@ -500,7 +501,7 @@ void PipelineCache::WarmUp(const std::function<void(u32, u32)>& report) {
     Storage::DataBase::Instance().ForEachBlob(
         Storage::BlobType::PipelineKey, [&](std::vector<u8>&& data) {
             ++num_total_pipelines;
-            const auto completed = std::shared_ptr<void>(nullptr, [&](void*) { progress(); });
+            SCOPE_EXIT { progress(); };
 
             Serialization::Archive ar{std::move(data)};
             Serialization::Reader pldata{ar};
@@ -544,7 +545,7 @@ void PipelineCache::WarmUp(const std::function<void(u32, u32)>& report) {
     u32 variants = 0;
     Storage::DataBase::Instance().ForEachBlob(
         Storage::BlobType::ShaderMeta, [&](std::vector<u8>&& data) {
-            const auto completed = std::shared_ptr<void>(nullptr, [&](void*) { progress(); });
+            SCOPE_EXIT { progress(); };
             Serialization::Archive ar{std::move(data)};
             try {
                 variants += LoadPipelineStage(ar, 0);

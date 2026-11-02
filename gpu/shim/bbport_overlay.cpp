@@ -1270,7 +1270,6 @@ void ConfigureContext() {
 
 // One frame's windows, between NewFrame and Render (Render; also the offscreen preview).
 static int shader_progress = -1;
-void SetShaderProgress(int percent) { shader_progress = percent; }
 
 void DrawWindows(float display_height) {
     if (shader_progress >= 0) {
@@ -1316,6 +1315,8 @@ void DrawWindows(float display_height) {
 }
 
 } // namespace
+
+void SetShaderProgress(int percent) { shader_progress = percent; }
 
 void Init(const Vulkan::Instance& instance, vk::Format format, u32 image_count) {
     std::scoped_lock lock{imgui_mutex};

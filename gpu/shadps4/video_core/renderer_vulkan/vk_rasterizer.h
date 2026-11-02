@@ -34,6 +34,9 @@ class Runtime;
 
 class Rasterizer {
 public:
+    // Startup only, before VideoOut and guest command submission begin.
+    void WarmUp(const std::function<void(u32, u32)>& report) { pipeline_cache.WarmUp(report); }
+
     explicit Rasterizer(const Instance& instance, Scheduler& scheduler, Runtime& runtime,
                         AmdGpu::Liverpool* liverpool);
     ~Rasterizer();

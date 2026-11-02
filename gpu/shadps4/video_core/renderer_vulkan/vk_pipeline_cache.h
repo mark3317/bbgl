@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <functional>
 #include <unordered_map>
 #include <shared_mutex>
 #include <variant>
@@ -120,7 +121,7 @@ public:
                            AmdGpu::Liverpool* liverpool, u32 sparse_page_shift);
     ~PipelineCache();
 
-    void WarmUp();
+    void WarmUp(const std::function<void(u32, u32)>& report = {});
     void Sync();
 
     bool LoadComputePipeline(Serialization::Archive& ar);

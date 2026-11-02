@@ -19,6 +19,9 @@ class Instance;
 
 namespace BbOverlay {
 
+/// Startup presenter only; -1 hides the shader preparation screen.
+void SetShaderProgress(int percent);
+
 /// Present thread, once: the ImGui context and its Vulkan backend.
 void Init(const Vulkan::Instance& instance, vk::Format format, u32 image_count);
 

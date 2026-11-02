@@ -412,7 +412,7 @@ bool PipelineCache::LoadPipelineStage(Serialization::Archive& ar, size_t stage) 
     return true;
 }
 
-void PipelineCache::WarmUp() {
+void PipelineCache::WarmUp(const std::function<void(u32, u32)>& report) {
     if (!EmulatorSettings.IsPipelineCacheEnabled()) {
         return;
     }
@@ -481,25 +481,26 @@ void PipelineCache::WarmUp() {
 
     u32 num_pipelines{};
     u32 num_total_pipelines{};
-    // Progress in the window title while the game waits (a first start with a full catalog
-    // builds thousands of pipelines).
+    // Present progress before the guest starts, including in fullscreen.
     const u32 work = Storage::DataBase::Instance().Count(Storage::BlobType::PipelineKey) +
                      Storage::DataBase::Instance().Count(Storage::BlobType::ShaderMeta);
     u32 done = 0;
+    if (work && report) report(0, work);
     auto shown = std::chrono::steady_clock::now();
     const auto progress = [&] {
         ++done;
         const auto now = std::chrono::steady_clock::now();
-        if (work > 200 && now - shown > std::chrono::milliseconds(200)) {
+        if (work && now - shown > std::chrono::milliseconds(100)) {
             shown = now;
             SetWindowStatus(fmt::format("Preparing shaders: {}%", std::min(99u, done * 100 / work)));
+            if (report) report(std::min(done, work - 1), work);
         }
     };
 
     Storage::DataBase::Instance().ForEachBlob(
         Storage::BlobType::PipelineKey, [&](std::vector<u8>&& data) {
             ++num_total_pipelines;
-            progress();
+            const auto completed = std::shared_ptr<void>(nullptr, [&](void*) { progress(); });
 
             Serialization::Archive ar{std::move(data)};
             Serialization::Reader pldata{ar};
@@ -543,7 +544,7 @@ void PipelineCache::WarmUp() {
     u32 variants = 0;
     Storage::DataBase::Instance().ForEachBlob(
         Storage::BlobType::ShaderMeta, [&](std::vector<u8>&& data) {
-            progress();
+            const auto completed = std::shared_ptr<void>(nullptr, [&](void*) { progress(); });
             Serialization::Archive ar{std::move(data)};
             try {
                 variants += LoadPipelineStage(ar, 0);
@@ -553,6 +554,7 @@ void PipelineCache::WarmUp() {
             sel.modules.fill(nullptr);
             sel.fetch_shader.reset();
         });
+    if (work && report) report(work, work);
     SetWindowStatus({});
     if (prebuild) {
         std::printf("Shader pre-build: %u stored shader variants ready, pipelines or not\n",

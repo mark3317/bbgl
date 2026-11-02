@@ -1269,7 +1269,24 @@ void ConfigureContext() {
 }
 
 // One frame's windows, between NewFrame and Render (Render; also the offscreen preview).
+static int shader_progress = -1;
+void SetShaderProgress(int percent) { shader_progress = percent; }
+
 void DrawWindows(float display_height) {
+    if (shader_progress >= 0) {
+        const ImVec2 size = ImGui::GetIO().DisplaySize;
+        const float width = std::min(size.x * 0.75f, 560.0f);
+        ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.65f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(width, 0));
+        ImGui::Begin("##shader-preparation", nullptr, ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::TextUnformatted(L("Preparing shaders"));
+        char label[16];
+        std::snprintf(label, sizeof(label), "%d%%", shader_progress);
+        ImGui::ProgressBar(shader_progress / 100.0f, ImVec2(-1, 18), label);
+        ImGui::End();
+        return;
+    }
     // UI scale follows the display height (1080p = 1).
     const float scale = std::max(display_height / 1080.0f, 0.75f);
     if (std::abs(scale - base_scale) > 0.01f) {
@@ -1490,7 +1507,7 @@ bool HandleEvent(const SDL_Event& event) {
 }
 
 bool Visible() {
-    return initialized && (menu_open || text_entry_active || BbSettings::Get().show_fps ||
+    return initialized && (shader_progress >= 0 || menu_open || text_entry_active || BbSettings::Get().show_fps ||
                            BbMap::IsOpen() || BbAtlasMenu::Visible() || BbAtlasMenu::Animating() ||
                            BbToast::Busy());
 }

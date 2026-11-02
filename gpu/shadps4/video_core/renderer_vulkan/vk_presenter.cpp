@@ -170,6 +170,14 @@ Presenter::Presenter(Frontend::WindowSDL& window_, AmdGpu::Liverpool* liverpool_
     frame_generator = std::make_unique<FrameGenerator>(instance, draw_scheduler);
     swapchain_frame_gen = frame_generator->Wanted();
     rasterizer->GetUpscaler().SetFrameGenerator(frame_generator.get());
+
+    // No VideoOut thread exists yet: startup frames use the normal Vulkan presenter
+    // synchronously, so ImGui and its command scheduler retain a single owner.
+    rasterizer->WarmUp([this](u32 done, u32 total) {
+        BbOverlay::SetShaderProgress(int(u64(done) * 100 / total));
+        Present(PrepareBlankFrame(true), false, false);
+    });
+    BbOverlay::SetShaderProgress(-1);
 }
 
 Presenter::~Presenter() {

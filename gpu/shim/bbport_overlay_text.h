@@ -18,6 +18,7 @@ inline bool Russian() {
 }
 inline const std::unordered_map<std::string_view, const char*>& Translations() {
     static const std::unordered_map<std::string_view, const char*> texts = {
+        {"Preparing shaders", "Подготовка шейдеров"},
         {"%.0f FPS  %.1f ms", "%.0f FPS  %.1f мс"},
         {"%.0f FPS (game %.0f, frame gen %dx)", "%.0f FPS (игра %.0f, генерация %dx)"},
         {"%.1f s", "%.1f с"},

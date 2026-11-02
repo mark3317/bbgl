@@ -235,38 +235,6 @@ bool WindowSDL::PollEvents() {
         fullscreen_applied = want_fullscreen;
         SDL_SetWindowFullscreen(window, want_fullscreen);
     }
-    // The mouse camera (src/mouse_camera.c) holds the mouse after a click in the window, while
-    // the setting is on and nothing else needs the pointer: focus elsewhere, the overlay or a
-    // text entry gives it back (a click takes it again).
-    const bool focused = SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS;
-    g_window_focused.store(focused, std::memory_order_relaxed);
-    {
-        int w = 0, h = 0;
-        SDL_GetWindowSize(window, &w, &h);
-        g_window_points_w.store(w, std::memory_order_relaxed);
-        g_window_points_h.store(h, std::memory_order_relaxed);
-    }
-    // A menu with the pointer (src/menu_pointer.c) shows the cursor; the camera takes the mouse
-    // back without a click when the menu closes, if it held it when the menu opened.
-    const bool menu_pointer = g_menu_pointer.load(std::memory_order_relaxed);
-    if (menu_pointer && !menu_pointer_seen) {
-        menu_pointer_seen = true;
-        rearm_after_menu = mouse_captured;
-    } else if (!menu_pointer && menu_pointer_seen) {
-        menu_pointer_seen = false;
-        mouse_armed = mouse_armed || rearm_after_menu;
-        rearm_after_menu = false;
-    }
-    const bool can_capture = BbSettings::Get().mouse_camera.load() && !text_active &&
-                             !BbOverlay::ReleasesMouse() && focused && !menu_pointer;
-    if (!can_capture && !menu_pointer) {
-        mouse_armed = false;
-    }
-    if ((can_capture && mouse_armed) != mouse_captured) {
-        mouse_captured = can_capture && mouse_armed;
-        SDL_SetWindowRelativeMouseMode(window, mouse_captured);
-        SetMouseCaptured(mouse_captured);
-    }
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
@@ -317,12 +285,17 @@ bool WindowSDL::PollEvents() {
             break;
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
-            mouse_armed = can_capture; // a click in a menu is the pointer's, not the camera's
+            mouse_armed = true; // the capture policy below still gives menus priority
             break;
         case SDL_EVENT_MOUSE_MOTION:
             if (mouse_captured) {
                 NoteMouseMotion(event.motion.xrel, event.motion.yrel);
             }
+            break;
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        case SDL_EVENT_WINDOW_RESTORED:
+        case SDL_EVENT_WINDOW_MAXIMIZED:
+            mouse_armed = true;
             break;
         case SDL_EVENT_WINDOW_FOCUS_LOST:
             mouse_armed = false;
@@ -343,6 +316,37 @@ bool WindowSDL::PollEvents() {
         default:
             break;
         }
+    }
+    // Apply capture after draining window events: restore/focus can arrive together, and
+    // their final state decides whether gameplay can take the pointer back.
+    const bool focused = SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS;
+    g_window_focused.store(focused, std::memory_order_relaxed);
+    {
+        int w = 0, h = 0;
+        SDL_GetWindowSize(window, &w, &h);
+        g_window_points_w.store(w, std::memory_order_relaxed);
+        g_window_points_h.store(h, std::memory_order_relaxed);
+    }
+    // A menu with the pointer (src/menu_pointer.c) shows the cursor; the camera takes the mouse
+    // back without a click when the menu closes, if it held it when the menu opened.
+    const bool menu_pointer = g_menu_pointer.load(std::memory_order_relaxed);
+    if (menu_pointer && !menu_pointer_seen) {
+        menu_pointer_seen = true;
+        rearm_after_menu = mouse_captured;
+    } else if (!menu_pointer && menu_pointer_seen) {
+        menu_pointer_seen = false;
+        mouse_armed = mouse_armed || rearm_after_menu;
+        rearm_after_menu = false;
+    }
+    const bool can_capture = BbSettings::Get().mouse_camera.load() && !text_active &&
+                             !BbOverlay::ReleasesMouse() && focused && !menu_pointer;
+    if (!can_capture && !menu_pointer) {
+        mouse_armed = false;
+    }
+    if ((can_capture && mouse_armed) != mouse_captured) {
+        mouse_captured = can_capture && mouse_armed;
+        SDL_SetWindowRelativeMouseMode(window, mouse_captured);
+        SetMouseCaptured(mouse_captured);
     }
     // Hidden while playing on a controller; the mouse camera's relative mode hides it on its own.
     // mouse_hide_cursor keeps it hidden over the game and its menus too (mouse-to-pad tools,

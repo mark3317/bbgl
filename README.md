@@ -1,6 +1,6 @@
 # Bloodborne Game Launcher (BBGL)
 
-**English** · [Русский](README.ru.md) · [Download 1.0.0](https://github.com/mark3317/bbgl/releases/latest) · [Report a problem](https://github.com/mark3317/bbgl/issues)
+**English** · [Русский](README.ru.md) · [Download 1.1.0](https://github.com/mark3317/bbgl/releases/latest) · [Report a problem](https://github.com/mark3317/bbgl/issues)
 
 **Bloodborne for Windows, focused on convenience and playing through the game with friends.** BBGL is a fork of [yharnam-pc](https://github.com/Jgamrot/yharnam-pc), created to make getting into the game easier, especially in co-op. Game downloading is built into the launcher, and the modified **[BBSC-GL](https://github.com/mark3317/bbsc-gl)** co-op client and hosting server are bundled. After downloading BBGL, you do not need to find separate mod, loader or server packages and match their versions yourself.
 

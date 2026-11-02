@@ -1,3 +1,7 @@
+## 2026-11-02 — cooperative lifecycle delta deployed
+
+Bundled `e72801d` / pin `3f079b9`, installed PC and laptop at 02:27 MSK, build/copy exit=0. Stop member drain, chalice packet routing and pre-load readiness fixed; live validation pending; initial sign/claim cadence remains open. See `mods-src/BBSC/docs/fixes/2026-11-02-stop-routing-fix.md`.
+
 # Roadmap
 
 What this fork is working on, in order. Requirements are kept as they were asked for:
@@ -12,22 +16,20 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
 
 ## Main work, in order
 
-1. **Seamless co-op on our own servers** — status reviewed 30 October 2026.
-   Our Windows launcher/port uses BBSC T18 (`7e30600`) and the signaling fix
-   `f4f0028`, deployed to PC and laptop; VPS and TCP relay already exist.
-   The user reports nearly all critical gameplay bugs fixed. The next main feature
-   is **Chalice Dungeons**: scoped identity/flags/loot are now implemented for a
-   first native-summon test; automatic host dungeon mounting and exact floor identity
-   remain. The target includes shared entry/floor transitions,
-   bosses/wipes and isolation of the guest's own dungeon progression.
-   Remaining release checks include three players, NPC rewards/own Dream with
-   different progression, DLC and save recovery. GPU TDR also reproduced Offline
-   without BBSC; the first Dream trip after reinstalling our own build succeeded,
-   but neither cause nor a durable fix is established. Use our own launcher build;
-   do not replace it with upstream. Current co-op plan and evidence:
-   [BBSC BACKLOG](../../BBSC/docs/BACKLOG.md),
-   [phases / chalices](../../BBSC/docs/PHASES.md),
-   [handoff](../../BBSC/docs/HANDOFF.md).
+1. **Seamless co-op / BBGL + BBSC-GL** — reviewed 1 November 2026.
+   Current source: BBGL `08b556f`, pinned bundled BBSC `875884f` (standalone
+   `df04dd0`). User confirmation on 1 November closes T22 combat latency,
+   T23 return recovery and T24 wipe-camera issues. T25 key/tool recovery is
+   generally solved; rare cases still need coverage. Native guest menu
+   save/disconnect and own-world recovery are confirmed in a two-player run.
+   The user associates intermittent crashes with this PC's GPU problems;
+   they do not reproduce on other devices. Investigation is deferred at the
+   user's request, and this is not a current co-op blocker. Exact fault cause
+   remains unproven. Profile-helper paths are corrected and verified on PC without save changes. Remaining work is broader
+   multiplayer/chalice/progression coverage.
+   Runtime mode switching T26 was reverted; Offline / Co-op are launch modes.
+   See [current handoff](../../BBSC/docs/HANDOFF.md) and
+   [backlog](../../BBSC/docs/BACKLOG.md) for evidence and test boundaries.
 2. **Boss Rematches** (Bloodborne Enhanced features, independently implemented). A Cleric
    Beast rematch was played through on a copied save (14 October 2026); 1.9.1 extends it to all
    19 bosses with a lamp of their own, as an experimental launcher toggle (off;
@@ -91,8 +93,8 @@ the shader recompiler or the pipeline cache format unless noted.
   differently), `d9e505b` + `9b0d326` (1.09 patches only on the real 1.09 code; other builds
   labelled 1.09 crash after start), `1dd8471` (an unsupported CPU named in a message, not a
   crash), `a3baca3` (an eboot with the 60 FPS patch baked in crashes the gestures menu),
-  `d646b1d` (frame limiter, after `fix/frame-cap-28`), `331f6ae` (closing the launcher could cut
-  the game's log output; check ours).
+  `d646b1d` (frame limiter, after `fix/frame-cap-28`), `331f6ae` (upstream reference only: our equivalent log-reader lifetime correction
+  `bbaae0f` is implemented and deployed; see BBSC boss-wipe notes).
 - Later: `e750af8` / `38e7588`, the game on Ivy Bridge and older CPUs (PR #10, about 2,300
   lines; few players need it).
 - Swapchain recreated through `oldSwapchain` (optional;

@@ -1,6 +1,6 @@
 # Bloodborne Game Launcher (BBGL)
 
-[English](README.md) · **Русский** · [Скачать 1.0.0](https://github.com/mark3317/bbgl/releases/latest) · [Сообщить о проблеме](https://github.com/mark3317/bbgl/issues)
+[English](README.md) · **Русский** · [Скачать 1.1.0](https://github.com/mark3317/bbgl/releases/latest) · [Сообщить о проблеме](https://github.com/mark3317/bbgl/issues)
 
 **Bloodborne для Windows с упором на удобство и совместное прохождение.** BBGL — форк [yharnam-pc](https://github.com/Jgamrot/yharnam-pc), созданный, чтобы подготовка к игре, особенно с друзьями, занимала меньше времени. Загрузка игры встроена в лаунчер, а доработанный мод **[BBSC-GL](https://github.com/mark3317/bbsc-gl)** и сервер уже включены в комплект. После скачивания лаунчера не нужно отдельно искать мод, загрузчик, сервер или наборы файлов и вручную совмещать их версии.
 

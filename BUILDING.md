@@ -20,6 +20,7 @@ The two button packs are binary deltas under `bundled-mods/prompts`, applied to 
 
 - `develop`: daily work and fixes.
 - `main`: tested release source.
+- `v1.1.0`: launcher and bundled BBSC-GL 1.1.0.
 - `v1.0.0`: refreshed BBGL release on `main` (replaces the initial test release). Future published release tags should be immutable.
 
 Before releasing: run Python checks, build, verify the ZIP, smoke-test the frozen launcher and bundled account/server programs, and perform the relevant in-game co-op test. Document any untested gameplay changes in release notes. Publish the ZIP and `.sha256` together; do not upload a working installation, settings, accounts, server database or saves.

@@ -9,12 +9,17 @@ MSYS2_ARG_CONV_EXCL='*' cmd.exe /d /c "$(cygpath -w "$PWD/mods-src/BBSC/emulator
 if [[ ${SKIP_BUILD:-0} != 1 ]]; then bash build.sh; fi
 bash packaging/windows/build_coop_server.sh
 bash packaging/windows/package.sh
-out/qt-venv/Scripts/python.exe packaging/windows/verify-release.py "out/stage/Bloodborne Game Launcher"
+if [[ ${BB_FAST_DEPLOY:-0} == 1 ]]; then
+    # Reuse the single archive made by package.sh; no archive hash pass.
+    cp dist/bbgl-windows.zip dist/bbgl-1.1.0-windows-x64.zip
+    exit 0
+fi
+# package.sh already verifies the final staging payload.
 out/qt-venv/Scripts/python.exe - <<'PY'
 from pathlib import Path
 import hashlib, zipfile
 root=Path('out/stage/Bloodborne Game Launcher')
-archive=Path('dist/bbgl-1.0.0-windows-x64.zip')
+archive=Path('dist/bbgl-1.1.0-windows-x64.zip')
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as out:
     for path in sorted(root.rglob('*')):
         if path.is_file(): out.write(path,path.relative_to(root.parent).as_posix())

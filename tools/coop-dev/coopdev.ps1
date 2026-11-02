@@ -3,7 +3,7 @@
 # Actions:
 #   status            game running?, install, user dir, active save, BBSC package, snapshots
 #   deploy-mod        -Source <dir with bbsc.dll, bbsc-launch.exe[, mod.json]>: into <install>\coop\bbsc and the
-#                     active BBSC client package (%LOCALAPPDATA%\bbport-coop\...\bbsc), old files -> *.bak-<stamp>
+#                     active BBSC client package (<install>\coop\client\bbsc), old files -> *.bak-<stamp>
 #   deploy-launcher   -Source <staged Bloodborne Game Launcher folder or .zip>: over <install>, user files kept;
 #                     the first time a full backup of the install goes to <root>\coop-dev\backups\
 #   save-list         snapshots in <root>\coop-dev\saves
@@ -37,16 +37,25 @@ $Dev = Join-Path $Root 'coop-dev'
 $GameProcs = 'bb-probe', 'bb-play', 'bbsc-launch'
 $UserFiles = 'user', 'out', 'mods', 'bbport.ini', 'input.ini', 'mods.json', 'patches.json', 'last_run.log', 'coop-server.json'
 
-function SettingsFile {
-    foreach ($candidate in @(
-        (Join-Path $env:LOCALAPPDATA 'bbgl\settings.json'),
-        (Join-Path $env:LOCALAPPDATA 'bbport-launcher\settings.json'),
-        (Join-Path $env:APPDATA 'bbport-launcher\settings.json'),
-        (Join-Path $env:APPDATA 'bbport-launcher-coop\settings.json'))) {
-        if (Test-Path -LiteralPath $candidate) { return $candidate }
+# Match launcher/bbport_paths.py without calling its migrating/writing initializer.
+function ProfileDir {
+    $current = Join-Path $env:LOCALAPPDATA 'Bloodborne Game Launcher'
+    if (Test-Path -LiteralPath $current -PathType Container) { return $current }
+    foreach ($legacy in @(
+        (Join-Path $env:LOCALAPPDATA 'bbgl'),
+        (Join-Path $env:LOCALAPPDATA 'bbport-launcher'),
+        (Join-Path $env:APPDATA 'bbport-launcher'),
+        (Join-Path $env:APPDATA 'bbport-launcher-coop'))) {
+        if (Test-Path -LiteralPath (Join-Path $legacy 'settings.json') -PathType Leaf) { return $legacy }
     }
+    return $current
+}
+function SettingsFile {
+    $candidate = Join-Path (ProfileDir) 'settings.json'
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     return $null
 }
+
 function Settings {
     $settingsPath = SettingsFile
     if ($settingsPath) { return Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json }
@@ -57,7 +66,7 @@ function UserDir {
     if ($s -and $s.user_dir) { return [IO.Path]::GetFullPath($s.user_dir) }
     $settingsPath = SettingsFile
     if ($settingsPath) { return (Join-Path (Split-Path $settingsPath -Parent) 'user') }
-    return (Join-Path $Install 'user')
+    return (Join-Path (ProfileDir) 'user')
 }
 function ActiveSave {
     $u = UserDir
@@ -77,10 +86,14 @@ function ClientPkg {
     return $null
 }
 function DataPkg {
-    $profile = Join-Path $env:LOCALAPPDATA 'bbgl\coop'
-    if (Test-Path -LiteralPath $profile) { return $profile }
+    # Never mix an existing current profile with stale journals in a legacy profile.
+    $root = ProfileDir
+    $profile = Join-Path $root 'coop'
+    if ((Test-Path -LiteralPath $root -PathType Container) -or
+        (Test-Path -LiteralPath $profile -PathType Container)) { return $profile }
     return (ClientPkg)
 }
+
 function GameRunning { return @(Get-Process -Name $GameProcs -ErrorAction SilentlyContinue) }
 function RequireStopped {
     $r = GameRunning
@@ -96,6 +109,10 @@ switch ($Action) {
     $r = GameRunning
     "game_running=$([bool]$r.Count) $(($r | ForEach-Object { "$($_.Name)#$($_.Id)" }) -join ' ')"
     "install=$Install exists=$(Test-Path $Install)"
+    "profile=$(ProfileDir)"
+    "settings_file=$(SettingsFile)"
+    "bbsc_data=$(DataPkg)"
+    "game_log=$(Join-Path (UserDir) 'last_run.log')"
     "user_dir=$(UserDir)"
     $a = ActiveSave; "active_save=$($a.FullName) modified=$($a.LastWriteTime)"
     $p = ClientPkg; "bbsc_package=$p"

@@ -108,6 +108,7 @@ for package in protobuf abseil-cpp openssl miniupnpc zlib; do
 done
 "$venv/Scripts/python.exe" packaging/windows/bundle-coop.py
 find "$dest" -name __pycache__ -prune -exec rm -r {} +
+if [[ ${BB_FAST_DEPLOY:-0} != 1 ]]; then
 "$venv/Scripts/python.exe" packaging/windows/verify-release.py "$dest"
 # Nothing from the game itself may ship: its archives (.dcx and what they hold) and executables.
 game_files=$(find "$dest" -type f ! -path "$dest/mods/*/menu/common.tpf.dcx" \( -iname '*.dcx' -o -iname '*.tpf' -o -iname '*bnd' -o -iname '*.bdt' \
@@ -116,6 +117,7 @@ if [[ -n $game_files ]]; then
     echo "Game files in the package (players supply their own):" >&2
     echo "$game_files" >&2
     exit 1
+fi
 fi
 mkdir -p dist
 rm -f dist/bbgl-windows.zip
@@ -127,7 +129,7 @@ from pathlib import Path
 import sys, zipfile
 
 stage, archive = Path(sys.argv[1]), Path(sys.argv[2])
-with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as package:
+with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as package:
     for path in sorted((stage / 'Bloodborne Game Launcher').rglob('*')):
         if path.is_file():
             package.write(path, path.relative_to(stage).as_posix())

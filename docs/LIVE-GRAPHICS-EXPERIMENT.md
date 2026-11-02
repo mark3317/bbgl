@@ -1,3 +1,5 @@
+> **Current status, 1 November 2026:** this file records the opt-in implementation and test history, not the current launch defaults. Subsequent commits merged the live controls/native Russian menus; `981fd0c` enables live resolution by default and removes restart actions. Persistent control scrolling/dropdowns were user-confirmed (see final section); the final layout refinement still needs a specific visual result. Check current selectors before using the old opt-in instructions.
+
 # Live graphics experiment (2026-10-31)
 
 Opt-in: `BB_LIVE_GRAPHICS=1` inherited by run.py, patches.py and bb-probe.

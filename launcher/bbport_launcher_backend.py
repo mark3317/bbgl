@@ -1603,7 +1603,7 @@ class LauncherBackend(QObject):
             self._coop_launch_env = coop.co_op_environment(core.game_environment(self.app), address,
                                                            name, password, game, save_copy=backup)
             where = f' Saves backed up to {backup}.' if backup else ''
-            return f'Starting co-op with {address}. Host: ring the Hunt Bell. Guest: ring the Kin Bell.{where}'
+            return f'Starting co-op with {address}. Host: ring the Beckoning Bell. Guest: ring the Small Resonant Bell.{where}'
         self._coop_run('Getting co-op ready…', work)
 
     def shutdown_coop(self):

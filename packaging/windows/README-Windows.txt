@@ -1,4 +1,4 @@
-Bloodborne Game Launcher 1.0.0 — mark3317
+Bloodborne Game Launcher 1.1.0 — mark3317
 
 Start Bloodborne.exe and select your own Bloodborne 1.09 game folder.
 For co-op, enter your account and host invite in the launcher.

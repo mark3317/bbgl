@@ -202,9 +202,9 @@ RU = {
     'Start hosting': 'Запустить сервер',
     'Copy invite code': 'Скопировать код приглашения',
     'Stop hosting': 'Остановить сервер',
-    'Paste the invite code from your host, then Play co-op. The host rings the Hunt Bell; you ring the Kin Bell.':
-        'Вставьте код приглашения от хоста и нажмите «Играть вместе». Хост звонит в Колокол охоты, вы — в '
-        'Колокол родства.',
+    'Paste the invite code from your host, then Play co-op. The host rings the Beckoning Bell; you ring the Small Resonant Bell.':
+        'Вставьте код приглашения от хоста и нажмите «Играть вместе». Хост звонит в Зовущий Колокол, вы — в '
+        'Малый звонкий колокол.',
     'Gameplay patches': 'Патчи геймплея',
     'Optional gameplay changes. All are off by default and apply the next time the game starts.':
         'Необязательные изменения геймплея. По умолчанию все выключены, применяются при следующем запуске игры.',
@@ -698,8 +698,8 @@ PATTERNS = [
     ('Preparing the maps failed: {}', 'Не удалось подготовить карты: {0}'),
     ('Seamless co-op: you host on {}; send your friends the invite code.',
      'Бесшовная совместная игра: вы хост на {0}; отправьте друзьям код приглашения.'),
-    ('Starting co-op with {}. Host: ring the Hunt Bell. Guest: ring the Kin Bell.{}',
-     'Запуск совместной игры с {0}. Хост: звоните в Колокол охоты. Гость: в Колокол родства.{1}'),
+    ('Starting co-op with {}. Host: ring the Beckoning Bell. Guest: ring the Small Resonant Bell.{}',
+     'Запуск совместной игры с {0}. Хост: звоните в Зовущий Колокол. Гость: в Малый звонкий колокол.{1}'),
     ('The game could not start (exit code {}). See the log for details.',
      'Игра не запустилась (код выхода {0}). Подробности — в журнале.'),
     ('This is not a valid trophy keys.json: {}', 'Это не правильный keys.json трофеев: {0}'),

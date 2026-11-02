@@ -61,7 +61,9 @@ bool g_callout_ctx_active = false;
 
 constexpr s64 kHandshakeConnectTimeoutMs = 30'000;
 constexpr s64 kHandshakeRetransmitMs = 500;
-constexpr s64 kKeepaliveIntervalMs = 45'000;
+// Several lost probes must fit inside the liveness window. With 45s/60s a
+// single lost reply caused a healthy peer to be declared dead at the next probe.
+constexpr s64 kKeepaliveIntervalMs = 5'000;
 constexpr s64 kEstablishedLivenessTimeoutMs = 60'000;
 
 static void PS4_SYSV_ABI TimeoutCalloutHandler(u64 arg);
@@ -743,6 +745,18 @@ void CloseConnectionAndDispatchDead(s32 conn_id, s32 error_code) {
 
 static SignalingControl MakeControlLocked(const ConnectionInfo& ci, ControlKind kind);
 
+// UDP readiness is not acknowledged. Reannounce it on probes and incoming
+// activations, even if our own MUTUAL_ACTIVATED already fired: the peer may
+// have missed our original Established. Never echo Established itself (loops).
+static void SendEstablishedLocked(const ConnectionInfo& ci) {
+    if (ci.state != ConnState::Established || ci.dead_fired || ci.deactivate_lingering ||
+        ci.revalidating || ci.addr == 0 || ci.port == 0) {
+        return;
+    }
+    const auto pkt = MakeControlLocked(ci, ControlKind::Established);
+    Stubs::ControlSendTo(&pkt, sizeof(pkt), ci.addr, ci.port);
+}
+
 void EstablishConnection(s32 conn_id, bool peer_activated_hint) {
     bool first_establish = false;
     bool fire_established = false;
@@ -1145,6 +1159,7 @@ void HandleHandshakePacket(u32 from_addr, u16 from_port, const SignalingHandshak
             }
         } else if (kind == HandshakeKind::Check) {
             ConnectionInfo& ci = g_connections[conn_id];
+            SendEstablishedLocked(ci);
             if (ci.peer_conn_id == 0 && pkt.from_conn_id != 0) {
                 ci.peer_conn_id = pkt.from_conn_id;
             }
@@ -1251,6 +1266,7 @@ static void PS4_SYSV_ABI StepCalloutHandler(u64 arg) {
                     SignalingHandshake pkt = MakeHandshakeLocked(ci, HandshakeKind::Check);
                     pkt.nonce = static_cast<u64>(now_us);
                     SendHandshakeLocked(ci, pkt);
+                    SendEstablishedLocked(ci);
                     ArmStepCalloutLocked(ci, kKeepaliveIntervalMs * 1000);
                 }
             }
@@ -1353,6 +1369,20 @@ void HandleControlPacket(u32 from_addr, u16 from_port, const SignalingControl& p
             }
         }
 
+        // ActivationRequest is allowed to introduce a new peer connection. All
+        // other controls belong to the generation learned during the handshake.
+        // A delayed Close/Established/Ack from a previous attempt must not tear
+        // down or mark ready the replacement connection selected by online ID.
+        if (conn_id != 0 && kind != ControlKind::ActivationRequest) {
+            const auto& ci = g_connections.at(conn_id);
+            if (ci.peer_conn_id == 0 || pkt.from_conn_id != ci.peer_conn_id) {
+                LOG_INFO(Lib_NpSignaling,
+                         "Control RECV ignored: stale generation kind={} connId={} peer={} expected={}",
+                         pkt.kind, conn_id, pkt.from_conn_id, ci.peer_conn_id);
+                return;
+            }
+        }
+
         if (kind == ControlKind::ActivationRequest) {
             if (conn_id == 0) {
                 s32 ctx_id = 0;
@@ -1405,6 +1435,7 @@ void HandleControlPacket(u32 from_addr, u16 from_port, const SignalingControl& p
             ci.peer_activated = true;
             ci.addr = pkt.mapped_addr != 0 ? pkt.mapped_addr : from_addr;
             ci.port = from_port;
+            SendEstablishedLocked(ci);
             if (ci.state == ConnState::Inactive) {
                 if (!ci.timeout_callout_armed) {
                     ArmTimeoutCalloutLocked(ci, kHandshakeConnectTimeoutMs * 1000);

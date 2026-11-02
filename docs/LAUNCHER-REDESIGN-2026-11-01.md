@@ -92,3 +92,44 @@ DLSS до создания первого окна; FSR 4 по наличию п
 
 Локальные доказательства: out/latest-build-audit.json,
 out/latest-program-manifest.json, out/home-facts-build.log.
+
+
+## Кнопка отмены и брандмауэр — 01.11.2026 16:30 МСК
+
+BBGL b8fb563: Играть заменяется контурной Отменить на время подготовки;
+отмена подавляет отложенный запуск кооператива или завершает job подготовки.
+Кнопка брандмауэра сохранена только в настройках, скрыта на главной и в мастере.
+При ошибке брандмауэра открывается модальный диалог с описанием и подтверждением.
+13 целевых defaults/startup tests PASS; QML source/staging/installed smoke PASS,
+warnings=0. Состояния подготовки и ошибки в smoke моделировались; реальную игру
+и изменение правил брандмауэра не запускали.
+package.sh / verify-release PASS; установлено на ПК, 16 замен, 5223 файла,
+client/server manifests PASS. Бэкап launcher-lifetime-20261101-162948.
+Скриншоты: bloodborne_pc/out/launch-ui-installed-smoke/{cancel,firewall,home,settings}.png.
+Ноутбук не обновлялся, настройки и сейвы не менялись.
+
+
+## 2026-11-02 — home typography and preset selector installed on PC
+
+Launcher code d1a0b7c: EB Garamond bundled with OFL, compact home summary,
+connection panel background removed, player-name divider always visible;
+serif home labels, Custom preset preserves current values, transparent preset
+selector with active underline. Nine targeted graphics-preset tests passed.
+package.sh BB_FAST_DEPLOY=1 completed exit=0, log out/launcher-ui-build.log.
+Launcher-only deployment on PC completed: 2964 files, no file-content audit.
+Backup: D:/Games/Bloodborne/coop-dev/backups/launcher-ui-polish-20261102-041137.
+Installed frozen UI smoke PASS on isolated temporary profile, QML warnings=0;
+host/client/offline fit at 1290x830; Custom retains graphics values.
+Results: out/launcher-ui-installed-smoke. No game launch or real profile/save
+changes; native game/mod files and laptop were not updated by this deployment.
+
+## 2026-11-02 — same launcher UI installed on laptop
+
+Transferred launcher-only archive from the successful d1a0b7c build, no rebuild.
+DESKTOP-73Q9JB7 stopped; launcher-only copy exit=0, 2964 files replaced.
+Backup: C:/Games/Bloodborne/coop-dev/backups/launcher-ui-polish-20261102-042411.
+Installed frozen UI smoke PASS on isolated temporary profile: host/client/offline
+fit at 1290x830, Custom preserves current graphics values, no QML warnings.
+Laptop results: C:/Games/Bloodborne/coop-dev/runs/launcher-ui-smoke-20261102-042402.
+No file-content audit, native mod/game replacement, real profile/save changes,
+or game launch. Both PC and laptop now have this launcher UI revision.

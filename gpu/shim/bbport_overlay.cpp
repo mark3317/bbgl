@@ -1274,16 +1274,22 @@ static int shader_progress = -1;
 void DrawWindows(float display_height) {
     if (shader_progress >= 0) {
         const ImVec2 size = ImGui::GetIO().DisplaySize;
-        const float width = std::min(size.x * 0.75f, 560.0f);
-        ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.65f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(width, 0));
-        ImGui::Begin("##shader-preparation", nullptr, ImGuiWindowFlags_NoDecoration |
-            ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
-        ImGui::TextUnformatted(L("Preparing shaders"));
-        char label[16];
-        std::snprintf(label, sizeof(label), "%d%%", shader_progress);
-        ImGui::ProgressBar(shader_progress / 100.0f, ImVec2(-1, 18), label);
-        ImGui::End();
+        // A fine ivory rule across the bottom, matching the game's pale text.
+        // Draw directly: no panel, label, percentage, padding or rounded corners.
+        const float scale = std::max(size.y / 1080.0f, 0.75f);
+        const float y = size.y - 28.0f * scale;
+        const float end = size.x * std::clamp(shader_progress / 100.0f, 0.0f, 1.0f);
+        ImDrawList* draw = ImGui::GetForegroundDrawList();
+        draw->AddRectFilled(ImVec2(0, y - scale), ImVec2(size.x, y + 5 * scale),
+                            IM_COL32(24, 23, 22, 255));
+        draw->AddRectFilled(ImVec2(0, y), ImVec2(size.x, y + scale),
+                            IM_COL32(74, 72, 69, 255));
+        if (end > 0) {
+            draw->AddRectFilled(ImVec2(0, y + scale), ImVec2(end, y + 4 * scale),
+                                IM_COL32(224, 222, 216, 255));
+            draw->AddRectFilled(ImVec2(0, y + scale), ImVec2(end, y + 2 * scale),
+                                IM_COL32(244, 242, 235, 255));
+        }
         return;
     }
     // UI scale follows the display height (1080p = 1).

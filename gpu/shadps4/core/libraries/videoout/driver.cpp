@@ -1,3 +1,4 @@
+#include <array>
 // SPDX-FileCopyrightText: Copyright 2025-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -298,6 +299,53 @@ void VideoOutDriver::Flip(const Request& req) {
     });
     Vulkan::FrameCapture::OnFlip(req.index >= 0 ? req.port->buffer_slots[req.index].address_left
                                                 : 0);
+
+    // Lightweight research telemetry, identical in offline and co-op. Guest flips,
+    // not generated/presented frames. No disk access or sorting on each frame.
+    static const bool perf_capture = EmulatorSettingsImpl::Flag("BB_PERF_CAPTURE", true);
+    if (perf_capture) {
+        using Clock = std::chrono::steady_clock;
+        static auto previous = Clock::now();
+        static bool primed = false;
+        static double elapsed = 0;
+        static std::array<unsigned, 2001> histogram{};
+        static unsigned count = 0, over33 = 0, over50 = 0, over100 = 0;
+        static double worst = 0, best = 1e9;
+        const auto now = Clock::now();
+        const double ms = std::chrono::duration<double, std::milli>(now - previous).count();
+        previous = now;
+        if (primed) {
+            ++count;
+            ++histogram[std::min<size_t>(2000, static_cast<size_t>(std::max(0.0, ms)))];
+            elapsed += ms;
+            worst = std::max(worst, ms);
+            best = std::min(best, ms);
+            over33 += ms > 33.333; over50 += ms > 50; over100 += ms > 100;
+            const auto wall = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            if (ms > 50)
+                std::printf("Perf stall: epoch_ms=%lld frame_ms=%.3f\n", (long long)wall, ms);
+            if (elapsed >= 5000) {
+                auto percentile = [&](unsigned percent) {
+                    unsigned cumulative = 0;
+                    for (size_t i = 0; i < histogram.size(); ++i) {
+                        cumulative += histogram[i];
+                        if (cumulative >= (count * percent + 99) / 100) return i + 1;
+                    }
+                    return histogram.size();
+                };
+                std::printf("Perf window: epoch_ms=%lld frames=%u duration_ms=%.3f fps=%.3f "
+                            "best_ms=%.3f worst_ms=%.3f p50_ms=%zu p95_ms=%zu p99_ms=%zu "
+                            "over33=%u over50=%u over100=%u\n",
+                            (long long)wall, count, elapsed, count * 1000.0 / elapsed,
+                            best, worst, percentile(50), percentile(95), percentile(99),
+                            over33, over50, over100);
+                histogram.fill(0); count = over33 = over50 = over100 = 0;
+                elapsed = worst = 0; best = 1e9;
+            }
+        }
+        primed = true;
+    }
 
     // bbport: BB_FRAME_STATS=1 prints flip rate and frame time spread every 5 seconds.
     static const bool frame_stats = EmulatorSettingsImpl::Flag("BB_FRAME_STATS", false);

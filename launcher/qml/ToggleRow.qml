@@ -6,12 +6,13 @@ Item {
     property string label: ""
     property string hint: ""
     property bool checked: false
+    property bool serifLabel: false
     signal toggled(bool checked)
     width: parent ? parent.width : 400
     height: Math.max(58, texts.implicitHeight + 26)
     Column {
         id: texts; x: 2; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 80; spacing: 3
-        Text { width: parent.width; text: row.label; color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; elide: Text.ElideRight }
+        Text { width: parent.width; text: row.label; color: Theme.text; font.family: row.serifLabel ? Theme.serif : Theme.sans; font.pixelSize: row.serifLabel ? 17 : 14; elide: Text.ElideRight }
         Text { visible: row.hint !== ""; width: parent.width; text: row.hint; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap }
     }
     GlassSwitch {

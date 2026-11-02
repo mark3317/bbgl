@@ -632,7 +632,7 @@ class LauncherBackend(QObject):
 
     @Slot(str)
     def applyGraphicsPreset(self, name):
-        if name not in core.GRAPHICS_PRESETS:
+        if name not in core.GRAPHICS_PRESET_INFO:
             return
         core.apply_graphics_preset(name, self.ini, self.app)
         self._write()

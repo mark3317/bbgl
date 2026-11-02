@@ -193,21 +193,40 @@ Item {
                     width: parent.width; height: visible ? presetBox.height + 26 : 0
                     Column {
                         id: presetBox; y: 18; width: parent.width; spacing: 10
-                        Flow {
-                            width: parent.width; spacing: 8
-                            Text { text: launcher.tr("Preset"); color: Theme.text; font.family: Theme.sans; font.pixelSize: 14; width: 92; height: 36; verticalAlignment: Text.AlignVCenter }
+                        Text { text: launcher.tr("Preset"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12 }
+                        Item {
+                            width: parent.width; height: 46
+                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+                            Row {
+                            anchors.fill: parent; spacing: 0
                             Repeater {
-                                model: ["low", "balanced", "high", "ultra"]
-                                delegate: GlassButton {
-                                    width: (presetBox.width - 124) / 4; height: 48
-                                    text: launcher.presetLabel(modelData) + (launcher.recommendedPreset === modelData ? "  ★" : "")
-                                    highlighted: launcher.graphicsPreset === modelData
+                                model: ["low", "balanced", "high", "ultra", "custom"]
+                                delegate: Button {
+                                    id: presetButton
+                                    property bool selected: launcher.graphicsPreset === modelData
+                                    width: presetBox.width / 5; height: 46
+                                    hoverEnabled: true
+                                    text: launcher.presetLabel(modelData)
+                                    contentItem: Text {
+                                        text: presetButton.text; color: presetButton.selected || presetButton.hovered || presetButton.activeFocus ? Theme.text : Theme.textDim
+                                        font.family: Theme.serif; font.pixelSize: 18
+                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                                        elide: Text.ElideRight
+                                    }
+                                    background: Rectangle {
+                                        color: "transparent"
+                                        Rectangle {
+                                            visible: presetButton.selected || presetButton.activeFocus
+                                            height: presetButton.selected ? 2 : 1; width: parent.width - 28
+                                            anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                                            color: presetButton.selected ? Theme.accentHover : Theme.lineStrong
+                                        }
+                                    }
+                                    ToolTip.visible: hovered && launcher.recommendedPreset === modelData
+                                    ToolTip.text: launcher.tr("Recommended")
                                     onClicked: launcher.applyGraphicsPreset(modelData)
                                 }
                             }
-                            Text {
-                                visible: launcher.graphicsPreset === "custom"; text: launcher.tr("Custom"); leftPadding: 6
-                                color: Theme.accentHover; font.family: Theme.sans; font.pixelSize: 13
                             }
                         }
                         Text {

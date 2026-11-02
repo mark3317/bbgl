@@ -9,6 +9,16 @@ import bbport_launcher_win as core
 
 
 class GraphicsPresetTests(unittest.TestCase):
+    def test_custom_preserves_values_and_can_switch_back_to_preset(self):
+        ini, app = self.defaults()
+        original_ini, original_app = dict(ini), dict(app)
+        core.apply_graphics_preset('custom', ini, app)
+        self.assertEqual(ini, original_ini)
+        self.assertEqual(app, dict(original_app, graphics_preset='custom'))
+        self.assertEqual(core.graphics_preset_of(ini, app), 'custom')
+        core.apply_graphics_preset('high', ini, app)
+        self.assertEqual(core.graphics_preset_of(ini, app), 'high')
+
     def defaults(self):
         return dict(core.INI_DEFAULTS), dict(core.APP_DEFAULTS)
 

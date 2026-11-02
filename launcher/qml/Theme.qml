@@ -19,7 +19,8 @@ QtObject {
     readonly property color good: "#8fc59c"
     readonly property color warn: "#e3a878"
 
-    readonly property string serif: "Georgia"
+    readonly property FontLoader gameFont: FontLoader { source: "fonts/EBGaramond.ttf" }
+    readonly property string serif: gameFont.status === FontLoader.Ready ? gameFont.name : "Georgia"
     readonly property string sans: "Segoe UI"
 
     readonly property int railWidth: 76

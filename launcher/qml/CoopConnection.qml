@@ -6,6 +6,7 @@ Column {
     property bool compact: false
     property bool showFirewall: false
     property bool showPlayerName: true
+    property bool serifLabels: false
     spacing: compact ? 6 : 16
     signal attentionRequested(var target)
     onVisibleChanged: if (visible && showFirewall && launcher.coopFirewallError) Qt.callLater(function() { connection.attentionRequested(firewallButton) })
@@ -16,10 +17,11 @@ Column {
     property bool hosting: launcher.coopRole === "host"
     Repeater {
         model: launcher.settingsRevision < 0 ? [] : launcher.sectionFields("Co-op", "Seamless co-op").filter(f => connection.showPlayerName || f.key !== "coop_name")
-        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 54 : 62; compact: connection.compact; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 54 : 62; compact: connection.compact; serifLabel: connection.serifLabels; field: modelData }
     }
     ToggleRow {
         width: parent.width
+        serifLabel: connection.serifLabels
         enabled: !launcher.running && !launcher.coopBusy
         label: launcher.tr("Host on this PC")
         hint: connection.hosting ? launcher.tr("Send your invite code to friends.") : launcher.tr("Join a friend's server using their code.")
@@ -28,7 +30,7 @@ Column {
     }
     Repeater {
         model: connection.hosting ? [] : launcher.sectionFields("Co-op", "Join a host")
-        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 54 : 62; compact: connection.compact; field: modelData }
+        delegate: FieldRow { width: connection.width; minimumHeight: connection.compact ? 54 : 62; compact: connection.compact; serifLabel: connection.serifLabels; field: modelData }
     }
     Row {
         width: parent.width; spacing: 10

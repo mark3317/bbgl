@@ -7,6 +7,7 @@ Item {
     property var field: ({})
     property string settingKey: field.key || ""
     property bool compact: false
+    property bool serifLabel: false
     property bool showDivider: true
     property bool hasHint: !compact && (field.hint || "") !== ""
     property bool isFolder: field.kind === "folder"
@@ -24,7 +25,7 @@ Item {
         spacing: 3
         Text {
             width: parent.width; text: field.label || ""; color: Theme.text; wrapMode: Text.WordWrap
-            font.family: Theme.sans; font.pixelSize: 14
+            font.family: fieldRow.serifLabel ? Theme.serif : Theme.sans; font.pixelSize: fieldRow.serifLabel ? 17 : 14
         }
         Text {
             visible: hasHint; width: parent.width; text: field.hint || ""; color: Theme.textDim

@@ -147,6 +147,7 @@ RU = {
     'Results': 'Результаты',
     'Nothing matches “': 'Ничего не найдено по запросу «',
     'Preset': 'Пресет',
+    'Recommended': 'Рекомендуется',
     '  ★ Suggested for ': '  ★ Рекомендуется для ',
     'Keyboard': 'Клавиатура',
     'Which buttons the game shows, from the next start. Xbox (by Dommo) and Keyboard (PCBButtons by JinkiJinn) '

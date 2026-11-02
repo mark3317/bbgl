@@ -425,6 +425,8 @@ GRAPHICS_PRESET_INFO = {
 def graphics_preset_of(ini, app):
     """Quality preset identity ignores independent upscaling/frame-generation choices."""
     preferred = app.get('graphics_preset', 'balanced')
+    if preferred == 'custom':
+        return 'custom'
     names = ([preferred] if preferred in GRAPHICS_PRESETS else []) + [name for name in GRAPHICS_PRESETS if name != preferred]
     for name in names:
         values = GRAPHICS_PRESETS[name]
@@ -435,6 +437,9 @@ def graphics_preset_of(ini, app):
 
 
 def apply_graphics_preset(name, ini, app):
+    if name == 'custom':
+        app['graphics_preset'] = name
+        return
     for key, value in GRAPHICS_PRESETS[name].items():
         (app if key in APP_DEFAULTS else ini)[key] = value
     app['graphics_preset'] = name

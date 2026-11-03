@@ -74,7 +74,7 @@ def child_environment(profile, base=None):
     env = dict(os.environ if base is None else base)
     for key in ('BB_CONFIG', 'BB_DATA_DIR', 'BB_USER_DIR', 'BBSC_DATA_DIR', 'BB_PARTY_CONFIG',
                 'BB_PARTY_MEMBER', 'BBSC_PARTY_INSTANCE', 'BBSC_PARTY_PORT', 'BBSC_PARTY_TOKEN',
-                'BB_HOST_OVERRIDES', 'BB_P2P_PORT', 'BBSC_SAVE_DIR'):
+                'BB_HOST_OVERRIDES', 'BB_P2P_PORT', 'BBSC_SAVE_DIR', 'BB_LOCAL_PARTY_RUN'):
         env.pop(key, None)
     env.update(BBGL_PROFILE_DIR=str(profile), PYINSTALLER_RESET_ENVIRONMENT='1')
     return env
@@ -100,6 +100,8 @@ def launch_environment(bbgl, entry, cfg_path):
     if 'Skip Intro' not in patches:
         patches.append('Skip Intro')
     env['BB_PATCHES'] = ';'.join(patches)
+    if os.environ.get('BB_LOCAL_PARTY_RUN'):
+        env['BB_LOCAL_PARTY_RUN'] = os.environ['BB_LOCAL_PARTY_RUN']
     for key in tuple(env):
         if key.startswith('BB_THD_') or key == 'BB_NET_BACKEND':
             env.pop(key, None)
@@ -121,6 +123,7 @@ def run_three(port, local_appdata=None, popen=subprocess.Popen):
         reserve_ports(cfg)
         stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d-%H%M%S')
         run = cfg_path.parent / 'runs' / stamp
+        write_json(run / 'coordinator.json', {'heartbeat': time.time()})
         metadata = {'started_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     'group': cfg['group'], 'fps': 60, 'players': [], 'status': 'starting'}
         processes = []
@@ -130,7 +133,9 @@ def run_three(port, local_appdata=None, popen=subprocess.Popen):
             command = [str(port / 'Bloodborne.exe'), '--script', str(port / 'scripts/local_party.py'),
                        '--player', str(entry['index']), '--config', str(cfg_path)]
             with log.open('w', encoding='utf-8') as stream:
-                proc = popen(command, cwd=port, env=child_environment(entry['profile']),
+                child_env = child_environment(entry['profile'])
+                child_env['BB_LOCAL_PARTY_RUN'] = str(run)
+                proc = popen(command, cwd=port, env=child_env,
                              stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
                              creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             processes.append(proc)
@@ -142,7 +147,62 @@ def run_three(port, local_appdata=None, popen=subprocess.Popen):
         write_json(run / 'run.json', metadata)
         # Keep the single-instance guard while any native game belongs to a runner.
         # Do not kill or restart another game when one player exits or fails.
+        await_local_games(run, processes)
         codes = [proc.wait() for proc in processes]
-        metadata.update(status='all runners exited', exit_codes=codes)
+        drained = json.loads((run / 'stop-services.json').read_text())['drained']
+        metadata.update(status='all runners exited', exit_codes=codes, party_drained=drained)
         write_json(run / 'run.json', metadata)
-        return max(codes, default=0)
+        return max([*codes, 0 if drained else 1])
+
+
+def local_party_drained(party):
+    with party.e.lock:
+        e = party.e
+        s = e.state
+        return (s['owner'] is None and s['room'] is None and not s['joined'] and
+                not s['pending'] and e.finalized(s) and not e.pending_local and
+                e.disk['tx'] is None and e.disk['accepted'] is None)
+
+
+def keep_local_party_after_game(party, env, code):
+    """Keep consensus peers alive after their native window closes, until all finish."""
+    if not env.get('BB_LOCAL_PARTY_RUN'):
+        return
+    run = Path(env['BB_LOCAL_PARTY_RUN'])
+    member = env['BB_PARTY_MEMBER']
+    party.local_status['sign'] = None
+    party.publish()
+    party.log('native_process_exited', exit_code=code)
+    while not (run / 'stop-services.json').exists():
+        write_json(run / f'{member}-exited.json',
+                   {'exit_code': code, 'drained': local_party_drained(party)})
+        try:
+            heartbeat = json.loads((run / 'coordinator.json').read_text())['heartbeat']
+        except (OSError, ValueError, KeyError):
+            break
+        if time.time() - heartbeat > 10:
+            party.log('local_coordinator_unavailable')
+            break
+        time.sleep(.2)
+
+
+def await_local_games(run, processes):
+    """Stop services together; a deadline preserves unresolved journals, never grants leave."""
+    all_ended_at = None
+    while True:
+        write_json(run / 'coordinator.json', {'heartbeat': time.time()})
+        statuses = []
+        for i, proc in enumerate(processes, 1):
+            try:
+                status = json.loads((run / f'LocalPlayer{i}-exited.json').read_text())
+            except (OSError, ValueError):
+                status = {'drained': False} if proc.poll() is not None else None
+            statuses.append(status)
+        if all(s is not None for s in statuses):
+            if all_ended_at is None:
+                all_ended_at = time.monotonic()
+            drained = all(s.get('drained') for s in statuses)
+            if drained or time.monotonic() - all_ended_at >= 30:
+                write_json(run / 'stop-services.json', {'drained': drained})
+                return
+        time.sleep(.2)

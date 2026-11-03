@@ -5,6 +5,8 @@ from pathlib import Path
 import socket
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -86,6 +88,54 @@ class LocalPartyTests(unittest.TestCase):
         self.assertEqual(env['BBGL_PROFILE_DIR'],str(self.root/'player'))
         self.assertNotIn('BB_USER_DIR',env);self.assertNotIn('BB_CONFIG',env)
         self.assertNotIn('BB_P2P_PORT',env);self.assertNotIn('BBSC_SAVE_DIR',env)
+
+    def test_closed_native_games_keep_real_consensus_peers_until_owner_releases(self):
+        cfg,_=local.configuration(self.root)
+        clients=[];waiters=[]
+        run=self.root/'run'
+        local.write_json(run/'coordinator.json',{'heartbeat':time.time()})
+        class Process:
+            def poll(self): return None
+        coordinator=threading.Thread(target=local.await_local_games,args=(run,[Process()]*3))
+        try:
+            for entry,member in zip(local.profiles(self.root),cfg['members']):
+                clients.append(Compatibility(Engine(cfg,member['id'],entry['profile']/'state').start()).start())
+            clients[2].e.command({'kind':'acquire'},12)
+            self.assertFalse(local.local_party_drained(clients[2]))
+            coordinator.start()
+            def ended(i):
+                env={'BB_LOCAL_PARTY_RUN':str(run),'BB_PARTY_MEMBER':cfg['members'][i]['id']}
+                t=threading.Thread(target=local.keep_local_party_after_game,args=(clients[i],env,0))
+                waiters.append(t);t.start()
+            ended(0);ended(1)
+            deadline=time.monotonic()+5
+            while not (run/'LocalPlayer2-exited.json').exists() and time.monotonic()<deadline: time.sleep(.02)
+            self.assertTrue(all(t.is_alive() for t in waiters))
+            self.assertFalse((run/'stop-services.json').exists())
+            # The last game's genuine release still has both early-exit peers.
+            clients[2].e.command({'kind':'release'},12)
+            ended(2)
+            coordinator.join(8)
+            self.assertFalse(coordinator.is_alive())
+            self.assertTrue(json.loads((run/'stop-services.json').read_text())['drained'])
+            for t in waiters:t.join(3);self.assertFalse(t.is_alive())
+            self.assertTrue(all(local.local_party_drained(c) for c in clients))
+        finally:
+            local.write_json(run/'stop-services.json',{'drained':False})
+            for t in waiters:t.join(3)
+            if coordinator.ident:coordinator.join(3)
+            for c in clients:c.close()
+
+    def test_shutdown_deadline_reports_unresolved_state_without_granting_release(self):
+        run=self.root/'timeout-run'
+        for i in range(1,4):
+            local.write_json(run/f'LocalPlayer{i}-exited.json',{'exit_code':0,'drained':False})
+        class Process:
+            def poll(self):return None
+        # Only the local service barrier expires; no Engine operation or journal write.
+        with patch.object(local.time,'monotonic',side_effect=[0,0,31]),patch.object(local.time,'sleep'):
+            local.await_local_games(run,[Process()]*3)
+        self.assertFalse(json.loads((run/'stop-services.json').read_text())['drained'])
 
 
 if __name__=='__main__':unittest.main()

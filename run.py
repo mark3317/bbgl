@@ -497,6 +497,9 @@ def main():
         if party_log is not None:
             from run_log import record_exit
             record_exit(party_log, game_proc.pid, code)
+        if party is not None:
+            from bbport_local_test import keep_local_party_after_game
+            keep_local_party_after_game(party, env, code)
         return code
     finally:
         if party_log is not None: party_log.close()

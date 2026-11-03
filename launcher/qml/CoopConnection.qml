@@ -58,5 +58,12 @@ Column {
             onClicked: launcher.coopConfigureFirewall()
         }
     }
+    GlassButton {
+        width: Math.min(parent.width, 450)
+        text: launcher.coopLocalRunning ? launcher.tr("Local test is running") : launcher.tr("Local test: 3 players on this PC")
+        enabled: !launcher.running && !launcher.coopBusy && !launcher.coopLocalRunning
+        onClicked: launcher.coopLocalTest()
+    }
+    Note { text: launcher.tr("Uses the existing Player 1, 2 and 3 profiles and their saves. Close each game normally after the test.") }
     Note { text: launcher.coopStatus }
 }

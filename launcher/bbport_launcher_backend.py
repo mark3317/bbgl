@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QFileDialog as _QFileDialog, QMessageBox as _QMess
 from bbport_setting_hints import HINTS
 import bbport_coop as coop
 import bbport_party as party
+import bbport_local_test as local_test
 import bbport_qml_ru
 import bbport_launcher_win as core
 import bbport_startup
@@ -357,6 +358,10 @@ class LauncherBackend(QObject):
         self.setupFailed.connect(self._fail_game_setup)
         # Seamless co-op (bbport_coop): the servers this launcher hosts, and the last message.
         self._party_discovery = None
+        self._local_test_process = None
+        self._local_test_timer = QTimer(self)
+        self._local_test_timer.setInterval(1000)
+        self._local_test_timer.timeout.connect(self._poll_local_test)
         self._party_ready = False
         self._coop_busy = False
         self._coop_launch_pending = False
@@ -1550,6 +1555,8 @@ class LauncherBackend(QObject):
 
     @Slot(str)
     def _coop_finished(self, message):
+        if self._local_test_process:
+            self._local_test_timer.start()
         self._coop_busy = False
         self._coop_launch_pending = False
         self._coop_status = message
@@ -1595,6 +1602,33 @@ class LauncherBackend(QObject):
             coop.run_setup(self._coop_game_exe(), remote_ranges=ranges)
             return 'Firewall configured. Check the connection again.'
         self._coop_run('Configuring firewall: approve the Windows administrator prompt…', work)
+
+    @Property(bool, notify=coopChanged)
+    def coopLocalRunning(self):
+        return bool(self._local_test_process and self._local_test_process.poll() is None)
+
+    def _poll_local_test(self):
+        if self._local_test_process and self._local_test_process.poll() is not None:
+            self._local_test_process = None
+            self._local_test_timer.stop()
+            self.coopChanged.emit()
+
+    @Slot()
+    def coopLocalTest(self):
+        if self.running or self._coop_busy or self.coopLocalRunning:
+            return
+        def work():
+            local = Path(os.environ['LOCALAPPDATA'])
+            local_test.profiles(local)
+            if not coop.installed('client'):
+                raise coop.CoopError('Bundled BBSC-GL files are missing. Re-extract the launcher release.')
+            command = [str(core.PORT_DIR / 'Bloodborne.exe'), '--script',
+                       str(core.PORT_DIR / 'scripts/local_party.py'), '--all']
+            env = local_test.child_environment(core.DATA_DIR)
+            self._local_test_process = subprocess.Popen(command, cwd=core.PORT_DIR, env=env,
+                stdin=subprocess.DEVNULL, creationflags=core.NO_WINDOW)
+            return 'Starting three local players with existing profiles. No VPN is needed.'
+        self._coop_run('Starting three local players…', work)
 
     @Slot()
     def coopPlay(self):

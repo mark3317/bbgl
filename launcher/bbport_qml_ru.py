@@ -907,3 +907,11 @@ RU.update({
     'Players see different groups. Refresh all launchers.': 'Участники видят разный состав группы. Обновите подключение на всех ПК.',
     'UDP connection failed. Check the VPN and firewall on every PC.': 'Нет связи по UDP. Проверьте VPN и брандмауэр на каждом ПК.',
 })
+
+RU.update({
+    'Local test: 3 players on this PC': 'Локальный тест: 3 игрока на этом ПК',
+    'Local test is running': 'Локальный тест запущен',
+    'Starting three local players…': 'Запуск трёх локальных игроков…',
+    'Starting three local players with existing profiles. No VPN is needed.': 'Запускаются три игры с существующими профилями. VPN не нужна.',
+    'Uses the existing Player 1, 2 and 3 profiles and their saves. Close each game normally after the test.': 'Используются существующие профили Player 1, 2 и 3 и их сейвы. После теста закройте каждую игру штатным способом.',
+})

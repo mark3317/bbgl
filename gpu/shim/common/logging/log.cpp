@@ -104,11 +104,16 @@ void Write(std::string_view log_class, Level level, const char* file, int line, 
     localtime_r(&secs, &local);
 #endif
     const int ms = int(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000);
-    std::fprintf(stderr, "[%02d:%02d:%02d.%03d] GPU [%.*s] <%s> %s:%d %s: %s\n", local.tm_hour, local.tm_min,
-                 local.tm_sec, ms, int(log_class.size()), log_class.data(), names[int(level)], base ? base + 1 : file, line, function, message.c_str());
+    // stderr is unbuffered in the native runner. Passing a large P2P report to
+    // fprintf's %s performs tiny writes on Windows and can stall the receive
+    // thread for hundreds of milliseconds. Submit the complete record in bulk.
+    const auto record = fmt::format("[{:02d}:{:02d}:{:02d}.{:03d}] GPU [{}] <{}> {}:{} {}: {}\n",
+                                    local.tm_hour, local.tm_min, local.tm_sec, ms, log_class,
+                                    names[int(level)], base ? base + 1 : file, line, function,
+                                    message);
+    std::fwrite(record.data(), 1, record.size(), stderr);
     if (log_file) {
-        std::fprintf(log_file, "[%02d:%02d:%02d.%03d] GPU [%.*s] <%s> %s:%d %s: %s\n", local.tm_hour, local.tm_min,
-                     local.tm_sec, ms, int(log_class.size()), log_class.data(), names[int(level)], base ? base + 1 : file, line, function, message.c_str());
+        std::fwrite(record.data(), 1, record.size(), log_file);
         std::fflush(log_file);
     }
 }

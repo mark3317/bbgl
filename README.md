@@ -2,7 +2,7 @@
 
 **English** · [Русский](README.ru.md) · [Download 1.1.0](https://github.com/mark3317/bbgl/releases/latest) · [Report a problem](https://github.com/mark3317/bbgl/issues)
 
-**Bloodborne for Windows, focused on convenience and playing through the game with friends.** BBGL is a fork of [yharnam-pc](https://github.com/Jgamrot/yharnam-pc), created to make getting into the game easier, especially in co-op. Game downloading is built into the launcher, and the modified **[BBSC-GL](https://github.com/mark3317/bbsc-gl)** co-op client and hosting server are bundled. After downloading BBGL, you do not need to find separate mod, loader or server packages and match their versions yourself.
+**Bloodborne for Windows, focused on convenience and playing through the game with friends.** BBGL is a fork of [yharnam-pc](https://github.com/Jgamrot/yharnam-pc), created to make getting into the game easier, especially in co-op. Game downloading is built into the launcher, and the modified **[BBSC-GL](https://github.com/mark3317/bbsc-gl)** distributed P2P co-op client is bundled. After downloading BBGL, you do not need to find separate mod, loader or server packages and match their versions yourself.
 
 ## Why this fork exists
 
@@ -46,7 +46,7 @@ The redesigned interface supports English and Russian. Screenshots show the Engl
 
 1. Download `bbgl-1.0.0-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
 2. Run **Bloodborne.exe**. Use the built-in download button in setup or select an existing Bloodborne **CUSA03173, update 1.09** folder. Game files are not included in the launcher archive.
-3. For solo play, launch the game normally. For co-op, choose Co-op, enter your account and the host's invite code. One player can choose **Host a session**; friends need network access to that PC, for example through Tailscale.
+3. For co-op, open BBGL on every PC in the same VPN or LAN. Choose **Automatic**, **Tailscale**, **Radmin** or **Custom**, check connectivity and start the game. Custom accepts the local adapter IPv4 and optional participant addresses. No server or invite code is required. Start all participants (up to five) before using the bells.
 4. Use the in-game co-op bells to gather your party. Keep everyone on the same BBGL release.
 
 Windows x64 and a compatible Vulkan driver are required. For graphics, hardware, controls, extracting your game and other port details, use the **[original yharnam-pc README](https://github.com/Jgamrot/yharnam-pc#readme)**.

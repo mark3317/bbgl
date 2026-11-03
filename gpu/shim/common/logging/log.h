@@ -1,5 +1,5 @@
 // bbport: replaces shadPS4's spdlog-based logger with a small fmt sink.
-// Level from BB_GPU_LOG (trace|debug|info|warning|error; default warning).
+// Level from BB_GPU_LOG (trace|debug|info|warning|error; default error; BB_DIAGNOSTICS=1 enables debug).
 #pragma once
 #include <algorithm>
 #include <array>
@@ -25,6 +25,7 @@ enum class level : int { trace, debug, info, warn, err, critical, off };
 namespace Common::Log {
 using Level = spdlog::level;
 bool ShouldLog(Level level);
+bool DiagnosticsEnabled();
 bool CoopDiagnosticsEnabled();
 // Level check for one class: BB_GPU_LOG_CLASSES=Lib.NpSignaling,Lib.Net logs those at info.
 bool ShouldLogClass(std::string_view log_class, Level level);

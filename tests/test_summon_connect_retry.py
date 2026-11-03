@@ -12,16 +12,17 @@ CODE = r'''
 using namespace Libraries::Http;
 enum Result { Connected, ConnectTimeout, ReadError, WriteError, HttpError };
 int main() {
-    assert(BbscClaimRetryEnabled(true, "/summon_messenger/request?user_id=1", true));
-    assert(!BbscClaimRetryEnabled(false, "/summon_messenger/request", true));
-    assert(!BbscClaimRetryEnabled(true, "/summon_messenger/request", false));
-    for (auto path : {"/summon_messenger/create", "/summon_messenger/get",
-                      "/summon_messenger/delete", "/summon_messenger/request-extra"})
-        assert(!BbscClaimRetryEnabled(true, path, true));
+    using namespace std::chrono_literals;
+    assert(BbscConnectTimeout(true, 1s) == 3s);
+    assert(BbscConnectTimeout(true, 15s) == 15s);
+    assert(BbscConnectTimeout(true, 30s) == 30s);
+    assert(BbscConnectTimeout(false, 1s) == 1s);
+    assert(BbscConnectRetryEnabled(true));
+    assert(!BbscConnectRetryEnabled(false));
     auto exercise = [](bool enabled, std::vector<Result> sequence, unsigned sends,
                        Result expected) {
         unsigned calls=0, retries=0;
-        auto result=SendBbscClaim(enabled, [&] { return sequence.at(calls++); },
+        auto result=SendBbscHttp(enabled, [&] { return sequence.at(calls++); },
             [](Result r) { return r==ConnectTimeout; },
             [&](unsigned n) { assert(n==++retries); });
         assert(calls==sends && retries==sends-1 && result==expected);

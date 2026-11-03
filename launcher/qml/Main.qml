@@ -113,7 +113,7 @@ ApplicationWindow {
             }
         }
         contentItem: Label {
-            text: launcher.tr("Allow incoming game and co-op server connections on local and Tailscale networks. Windows will ask for administrator permission.")
+            text: launcher.tr("Allow incoming connections for the selected network. A custom address allows server ports from all networks. Windows will ask for administrator permission.")
             color: Theme.textDim; wrapMode: Text.WordWrap
             font.family: Theme.sans; font.pixelSize: 14; lineHeight: 1.25
         }

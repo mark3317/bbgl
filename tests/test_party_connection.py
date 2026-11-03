@@ -13,6 +13,21 @@ import bbport_party as party
 
 
 class PartyConnectionTests(unittest.TestCase):
+    def test_names_preserved_and_rename_keeps_group_identity(self):
+        offers=[dict(id='StableA',seed='a',host='127.0.0.1',name='Host'),
+                dict(id='StableB',seed='b',host='127.0.0.2',name='twin')]
+        before=party.configuration(offers)
+        self.assertEqual([m['name'] for m in before['members']],['Host','twin'])
+        offers[1]['name']='Hunter'
+        after=party.configuration(offers)
+        self.assertEqual(before['group'],after['group'])
+        self.assertEqual(before['secret'],after['secret'])
+        self.assertNotEqual(party.digest(before),party.digest(after))
+        offers[1]['name']='HOST'
+        with self.assertRaisesRegex(ValueError,'different names'):party.configuration(offers)
+        offers[1]['name']='bad name'
+        with self.assertRaisesRegex(ValueError,'Player name'):party.configuration(offers)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.nodes = []

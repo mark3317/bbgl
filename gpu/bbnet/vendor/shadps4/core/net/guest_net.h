@@ -126,7 +126,8 @@ NetResult P2PSocketSendTo(s32 id, const void* buf, size_t len, bool dontwait,
                           const P2P::Endpoint* peer, u16 peer_vport,
                           P2PSendProtection protection = {});
 NetResult P2PSocketRecvFrom(s32 id, void* buf, size_t len, bool peek, bool dontwait,
-                            P2P::Endpoint* from, u16* from_vport, bool waitall = false);
+                            P2P::Endpoint* from, u16* from_vport, bool waitall = false,
+                            bool peek_length = false);
 NetResult P2PSocketGetName(s32 id, u16* udp_port, u16* vport);
 NetResult P2PSocketGetPeerName(s32 id, P2P::Endpoint* peer, u16* peer_vport);
 

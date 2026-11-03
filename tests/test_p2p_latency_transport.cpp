@@ -17,6 +17,15 @@ static void Receive(DatagramSocket& socket, const std::array<u8,64>& expected, b
         const auto result=socket.RecvFrom(payload,peek,nullptr,nullptr);
         if (result.error==Host::Error::Ok) {
             assert(result.bytes==payload.size() && payload==expected);
+            if (peek) {
+                // Original BBSC semantics: query full size through zero/short buffers.
+                const auto size=socket.RecvFrom({},true,nullptr,nullptr,true);
+                assert(size.error==Host::Error::Ok && size.bytes==expected.size());
+                std::array<u8,2> short_buffer{};
+                const auto short_size=socket.RecvFrom(short_buffer,true,nullptr,nullptr,true);
+                assert(short_size.error==Host::Error::Ok && short_size.bytes==expected.size());
+                assert(short_buffer[0]==expected[0] && short_buffer[1]==expected[1]);
+            }
             return;
         }
         assert(result.error==Host::Error::WouldBlock && Clock::now()<until);

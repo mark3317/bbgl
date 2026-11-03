@@ -22,7 +22,7 @@ set -uo pipefail
 
 MNT=$HOME/mnt
 PORT_REPO_W='C:\Users\markn\CLionProjects\bloodborne_pc'
-BBSC_REPO_W='C:\Users\markn\CLionProjects\BBSC'
+BBSC_REPO_W='C:\Users\markn\CLionProjects\bloodborne_pc\mods-src\BBSC'
 PORT_REPO_M='/c/Users/markn/CLionProjects/bloodborne_pc'
 STATE=$MNT/bloodborne_pc/out/coop-dev/state; mkdir -p "$STATE/jobs"   # mounted: survives between shell calls
 JOBS_W="$PORT_REPO_W\\out\\coop-dev\\state\\jobs"
@@ -61,9 +61,9 @@ cmd_commit() {
     local f=$STATE/commit-msg.txt
     printf '%s\n\nCo-Authored-By: %s\n' "$msg" "${CLAUDE_COAUTHOR:-Claude <noreply@anthropic.com>}" > "$f"
     [[ -n ${CLAUDE_SESSION:-} ]] && printf 'Claude-Session: %s\n' "$CLAUDE_SESSION" >> "$f"
-    scp -q "$f" "mark_pc:$(fwd "$w")/.git/COOPDEV_MSG" || return 1
+    scp -q "$f" "mark_pc:$(fwd "$PORT_REPO_W")/out/coop-dev/state/COOPDEV_MSG" || return 1
     local add=""; for p in "$@"; do add+=" \"$p\""; done
-    ssh mark_pc "cd /d $w && git add -u ${add:+&& git add --$add} && git commit -q -F .git/COOPDEV_MSG && del .git\\COOPDEV_MSG && git log --oneline -1 && git status --short" | tr -d '\r'
+    ssh mark_pc "cd /d $w && git add -u ${add:+&& git add --$add} && git commit -q -F $PORT_REPO_W\\out\\coop-dev\\state\\COOPDEV_MSG && del $PORT_REPO_W\\out\\coop-dev\\state\\COOPDEV_MSG && git log --oneline -1 && git status --short" | tr -d '\r'
 }
 
 cmd_push() {

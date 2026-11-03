@@ -25,22 +25,37 @@ static std::wstring ProcessEnv(const wchar_t* name) {
     return value;
 }
 #endif
-bool CoopDiagnosticsEnabled() {
+bool DiagnosticsEnabled() {
+    static const bool enabled = [] {
 #ifdef _WIN32
-    return ProcessEnv(L"BB_COOP") == L"1";
+        return ProcessEnv(L"BB_DIAGNOSTICS") == L"1";
 #else
-    const char* coop = std::getenv("BB_COOP");
-    return coop && std::strcmp(coop, "1") == 0;
+        const char* value = std::getenv("BB_DIAGNOSTICS");
+        return value && std::strcmp(value, "1") == 0;
 #endif
+    }();
+    return enabled;
+}
+bool CoopDiagnosticsEnabled() {
+    static const bool enabled = [] {
+#ifdef _WIN32
+        const auto value = ProcessEnv(L"BB_NET_DIAGNOSTICS");
+        return value.empty() ? DiagnosticsEnabled() : value == L"1";
+#else
+        const char* value = std::getenv("BB_NET_DIAGNOSTICS");
+        return value ? std::strcmp(value, "1") == 0 : DiagnosticsEnabled();
+#endif
+    }();
+    return enabled;
 }
 static Level threshold() {
     static const Level level = [] {
         const char* v = std::getenv("BB_GPU_LOG");
-        if (!v) return Level::warn;
+        if (!v) return DiagnosticsEnabled() ? Level::debug : (CoopDiagnosticsEnabled() ? Level::warn : Level::err);
         static const char* names[] = {"trace", "debug", "info", "warning", "error", "critical"};
         for (int i = 0; i < 6; ++i)
             if (!std::strcmp(v, names[i])) return Level(i);
-        return Level::warn;
+        return DiagnosticsEnabled() ? Level::debug : (CoopDiagnosticsEnabled() ? Level::warn : Level::err);
     }();
     return level;
 }
@@ -50,9 +65,7 @@ bool ShouldLogClass(std::string_view log_class, Level level) {
     static const std::string classes = [] {
         const char* v = std::getenv("BB_GPU_LOG_CLASSES");
         if (v) return std::string(v);
-        const char* coop = std::getenv("BB_COOP");
-        return std::string(coop && std::strcmp(coop, "1") == 0
-            ? "Lib.NpSignaling,Lib.NpMatching2" : "");
+        return std::string{};
     }();
     if (classes.empty() || level < Level::info) return false;
     size_t pos = 0;
@@ -71,25 +84,6 @@ void Write(std::string_view log_class, Level level, const char* file, int line, 
     static std::FILE* log_file = [] {
         const char* v = std::getenv("BB_GPU_LOG_FILE");
         if (v && *v) return std::fopen(v, "a");
-#ifdef _WIN32
-        if (CoopDiagnosticsEnabled()) {
-            auto user = ProcessEnv(L"BB_USER_DIR");
-            if (user.empty()) user = ProcessEnv(L"BB_GPU_USER_DIR");
-            if (!user.empty()) {
-                std::error_code ec;
-                const auto dir = std::filesystem::path(user) / L"log";
-                std::filesystem::create_directories(dir, ec);
-                if (!ec) {
-                    SYSTEMTIME t{}; GetLocalTime(&t);
-                    wchar_t name[96]{};
-                    swprintf_s(name, L"bbnet-%04u%02u%02u-%02u%02u%02u-%lu.log",
-                               t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond,
-                               GetCurrentProcessId());
-                    return _wfopen((dir / name).c_str(), L"a");
-                }
-            }
-        }
-#endif
         return static_cast<std::FILE*>(nullptr);
     }();
     static const char* names[] = {"Trace", "Debug", "Info", "Warning", "Error", "Critical"};

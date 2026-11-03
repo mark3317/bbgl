@@ -22,6 +22,12 @@ int wmain(int argc, wchar_t** argv) {
     assert(client.samples[0].hash==host.samples[0].hash);
     assert(host.samples[1].queue_us==2000000);
     assert(host.samples[0].wall_us-client.samples[0].wall_us==30000);
+    assert(client.samples[0].header==0x01020304);
+    const std::array<std::uint8_t,5> known{'h','e','l','l','o'};
+    LatencySamples wire;
+    wire.Record('W',40,40,known,100,0,0x12345678,3659);
+    assert(wire.samples[0].hash==0xa430d84680aabd0bULL);
+    assert(wire.samples[0].endpoint_addr==0x12345678 && wire.samples[0].endpoint_port==3659);
     auto changed=packet; changed[3]=5;
     host.Record('R',20,10,changed,1040000);
     assert(host.samples[2].hash!=client.samples[0].hash);
@@ -39,13 +45,11 @@ int wmain(int argc, wchar_t** argv) {
     SetEnvironmentVariableW(L"BB_USER_DIR", nullptr);
     SetEnvironmentVariableW(L"BB_GPU_LOG_FILE", nullptr);
     SetEnvironmentVariableW(L"BB_GPU_USER_DIR", argv[1]);
+    SetEnvironmentVariableW(L"BB_NET_DIAGNOSTICS", L"1");
     assert(Common::Log::CoopDiagnosticsEnabled());
     LOG_WARNING(Lib_Net, "P2P diagnostic sink regression marker");
-    bool found=false;
-    for (const auto& f:std::filesystem::directory_iterator(std::filesystem::path(argv[1])/L"log")) {
-        assert(f.path().extension()==L".log"); found=true;
-    }
-    assert(found);
+    // GPU and network share stderr; co-op no longer creates a duplicate file.
+    assert(!std::filesystem::exists(std::filesystem::path(argv[1])/L"log"));
 }
 '''
 with tempfile.TemporaryDirectory(prefix="bbnet-latency-") as tmp:
@@ -61,8 +65,8 @@ with tempfile.TemporaryDirectory(prefix="bbnet-latency-") as tmp:
     env["PATH"] = r"C:\msys64\clang64\bin;" + env["PATH"]
     env.pop("BB_GPU_LOG_FILE", None)
     env["BB_GPU_LOG"] = "warning"
-    subprocess.run([str(binary), str(folder / "журнал")], env=env, check=True, timeout=10)
-    logs = list((folder / "журнал/log").glob("bbnet-*.log"))
-    assert len(logs) == 1
-    assert "sink regression marker" in logs[0].read_text(encoding="utf-8")
-print("PASS: datagram correlation, 2s queue age, bounded overflow, reset, Win32 environment and Unicode GPU user-dir native log")
+    result = subprocess.run([str(binary), str(folder / "журнал")], env=env, check=True,
+                            timeout=10, capture_output=True, text=True, encoding="utf-8")
+    assert "sink regression marker" in result.stderr
+    assert not list(folder.rglob("bbnet-*.log"))
+print("PASS: bounded packet correlation, Win32 diagnostic opt-in and unified native stderr")

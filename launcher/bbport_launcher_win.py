@@ -267,13 +267,13 @@ INI_DEFAULTS = {'upscaler': 'off', 'preset': '2', 'sharpen': '1', 'sharpness': '
                 **{key: '1' if on else '0' for key, _t, on in EFFECTS + EXTRAS + CHEATS + TWEAKS + ENHANCEMENTS}}
 from bbport_coop_settings import SETTINGS as COOP_SETTINGS
 
-APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR / 'game'), 'user_dir': '', 'dlc_dir': '',
+APP_DEFAULTS = {'ui_language': '', 'test_profile_dir': '', 'game_dir': str(PORT_DIR / 'game'), 'user_dir': '', 'dlc_dir': '',
                 'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': 'auto',
                 'voice_language': 'auto',
                 'player_name': '', 'fullscreen': True, 'fullscreen_mode': 'borderless', 'display': '',
                 'hdr': False, 'present_mode': 'Mailbox',
                 'fps_mode': '120', 'frame_cap': '', 'draw_pipe': '', 'readbacks': '',
-                'frames_ahead': '', 'vram_budget_mb': '', 'frame_stats': False, 'gpu_profile': False,
+                'frames_ahead': '', 'vram_budget_mb': '', 'diagnostic_logs': False, 'frame_stats': False, 'gpu_profile': False,
                 'vk_validation': False, 'extra_env': '',
                 'check_updates': True, 'online': False, 'online_server': 'srv.shadps4.net:31313',
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
@@ -629,6 +629,10 @@ def install_prompt_pack(choice, source, mods_dir):
 
 def game_environment(s):
     env = dict(os.environ)
+    from bbport_paths import profile_p2p_port
+    port = profile_p2p_port(DATA_DIR)
+    if port and not env.get('BB_P2P_PORT'):
+        env['BB_P2P_PORT'] = port
     for item in COOP_SETTINGS:
         value = s.get('bbsc_' + item['id'], item['default'])
         if item['type'] == 'bool':
@@ -674,6 +678,7 @@ def game_environment(s):
     for key, name in (('draw_pipe', 'BB_DRAW_PIPE'), ('readbacks', 'BB_READBACKS'), ('frames_ahead', 'BB_FRAMES_AHEAD')):
         if s[key]:
             env[name] = s[key]
+    env.setdefault('BB_DIAGNOSTICS', '1' if s.get('diagnostic_logs', False) else '0')
     for key, name in (('frame_stats', 'BB_FRAME_STATS'), ('gpu_profile', 'BB_GPU_PROFILE'),
                       ('vk_validation', 'BB_VK_VALIDATION')):
         if s[key]:
@@ -1688,6 +1693,7 @@ class Launcher:
                  _('How exactly data the GPU writes is copied back for the game.',
                    'Насколько точно данные, записанные GPU, возвращаются игре.'))
         self.section(f, _('Diagnostics', 'Для разработчика'))
+        self.check(f, 'diagnostic_logs', 'app', _('Detailed diagnostic logs (may reduce performance)', 'Подробные логи диагностики (могут снижать производительность)'))
         self.check(f, 'frame_stats', 'app', _('Frame statistics in the log (every 5 s)', 'Статистика кадров в журнале (раз в 5 с)'))
         self.check(f, 'gpu_profile', 'app', _('GPU time per pass in the log', 'Профиль GPU в журнале'))
         self.check(f, 'vk_validation', 'app', _('Vulkan validation layers (needs the Vulkan SDK; much slower)',

@@ -45,12 +45,12 @@ class RedesignTests(unittest.TestCase):
         self.assertEqual(backend.app['coop_name'], 'ExistingAccount')
         self.assertEqual(backend.app['player_name'], 'ExistingHunter')
 
-    def test_host_without_tailscale_reports_download_and_stops_failed_host(self):
+    def test_host_failure_reports_original_error_without_tailscale_requirement(self):
         backend = backend_module.LauncherBackend()
         backend.app.update(coop_name='Hunter',coop_password='test-only')
         backend._coop_run=lambda message,work: work()
-        with patch.object(backend,'_coop_ensure_packages'), patch.object(coop,'host_address',return_value=('192.168.1.2','LAN')), patch.object(coop,'registration_key',return_value='fixture'), patch.object(coop,'tailscale_exe',return_value=None), patch.object(backend._coop_host,'start',side_effect=coop.CoopError('Could not start')), patch.object(backend._coop_host,'stop') as stop:
-            with self.assertRaisesRegex(coop.CoopError,'https://tailscale.com/download/windows'):
+        with patch.object(backend,'_coop_ensure_packages'), patch.object(coop,'select_host_address',return_value=('192.168.1.2','LAN')), patch.object(coop,'network_candidates',return_value=[]), patch.object(coop,'registration_key',return_value='fixture'), patch.object(coop,'tailscale_exe',return_value=None), patch.object(backend._coop_host,'start',side_effect=coop.CoopError('Could not start')), patch.object(backend._coop_host,'stop') as stop:
+            with self.assertRaisesRegex(coop.CoopError,'Could not start'):
                 backend.coopStartHosting()
             stop.assert_called_once()
 

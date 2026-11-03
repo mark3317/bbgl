@@ -1,4 +1,3 @@
-import io
 import json
 import os
 from pathlib import Path
@@ -6,7 +5,6 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
-import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'launcher'))
 import bbport_coop as coop
@@ -101,13 +99,6 @@ class CoopTests(unittest.TestCase):
         self.assertEqual(Path(env['BBSC_SAVE_DIR']),
                          copy / 'savedata' / '1' / 'CUSA00207' / 'SPRJ0005')
         self.assertTrue((Path(env['BBSC_SAVE_DIR']) / 'userdata0000').is_file())
-
-    def test_unsafe_package_paths_are_refused(self):
-        data = io.BytesIO()
-        with zipfile.ZipFile(data, 'w') as archive:
-            archive.writestr('../outside.txt', 'x')
-        with zipfile.ZipFile(data) as archive, self.assertRaises(coop.CoopError):
-            coop._safe_extract(archive, Path(self.folder.name) / 'unpack')
 
     def test_firewall_rules_stay_on_tailscale_and_the_home_network(self):
         script = coop._firewall_script(r'C:\Games\bbport\bin\bb-probe.exe')

@@ -1,3 +1,36 @@
+# Актуальное состояние — 04.11.2026
+
+Основной кооп использует локальный Party внутри run.py, private-network discovery
+и native UDP; отдельный VPS/shadNet/gameserver для этого пути не нужен.
+Старые серверные инструкции ниже — история, не текущая схема запуска.
+Имена игроков, повтор ожидания того же claim и квестовые guards добавлены в исходники;
+их игровое подтверждение ещё требуется. Второй гость и выход хоста остаются открыты.
+Overlap-admission эксперимент отменён, используется последовательный native admission.
+Для обычного деплоя — BB_FAST_DEPLOY=1, delta изменённых компонентов, без повторного
+verify-release/хэширования. Код, сборка, установка и игровой результат различаются.
+Текущее состояние см. в HANDOFF и отчёте docs/fixes/2026-11-04-project-cleanup.md
+родительского репозитория; исторические пути/версии ниже не применять автоматически.
+
+> **Правила проверок:** [docs/TESTING.md](docs/TESTING.md). Тестировать затронутое поведение; проверки сейвов/восстановления не являются стандартным обязательным прогоном.
+
+# Актуальные рабочие правила — 01.11.2026
+
+При расхождении со старыми разделами ниже приоритет у этой записи и
+[BBSC HANDOFF](mods-src/BBSC/docs/HANDOFF.md).
+Работаем локально в Windows/PowerShell; VM/device_bash не требуются.
+Единственный источник и место сборки мода — подмодуль `mods-src/BBSC`.
+Staging `out/stage/Bloodborne Game Launcher`, ZIP `dist/bbgl-1.0.0-windows-x64.zip`.
+Установка: D:/Games/Bloodborne/Bloodborne Game Launcher (ноут C:/Games/Bloodborne/Bloodborne Game Launcher).
+Профиль: %LOCALAPPDATA%/Bloodborne Game Launcher, данные BBSC: profile/coop;
+бинарники: install/coop/client/bbsc. Старые bbgl/bbport-coop — история.
+coopdev.ps1 исправлен: текущий профиль имеет приоритет; status показывает пути данных и логов.
+T26 отменён; Офлайн / Совместно выбираются при запуске.
+Native menu save/disconnect подтверждён для гостя в группе из двух.
+T22/T23/T24 закрыты пользователем; T25 в целом решён, осталось покрытие.
+Локальные GPU-вылеты этого ПК отложены пользователем, не считать блокером мода.
+Не откатывать сейвы без отдельной просьбы. Не менять файлы игры; не включать их в пакет.
+
+
 # Current naming (2026-10-31)
 
 BBGL = Bloodborne Game Launcher; GitHub: mark3317/bbgl. Mod: BBSC-GL, mark3317/bbsc-gl. Release folder: `Bloodborne Game Launcher`; profile: `%LOCALAPPDATA%\bbgl`. Source checkout folder names below remain local paths. Historical test paths refer to the installation at the time.
@@ -5,7 +38,7 @@ BBGL = Bloodborne Game Launcher; GitHub: mark3317/bbgl. Mod: BBSC-GL, mark3317/b
 # bloodborne_pc / bbport (форк mark3317) — заметки для Claude
 
 Windows-порт Bloodborne (bbport) + Qt/QML-лаунчер на Python, в нашем форке — сборка «bbport-coop»
-с кооперативом BBSC. Цель: релизный кооп (см. CLAUDE.md в `../BBSC`) и лаунчер с минимумом настроек:
+с кооперативом BBSC. Цель: релизный кооп (см. CLAUDE.md в `mods-src/BBSC`) и лаунчер с минимумом настроек:
 запустил → указал игру/сейвы/графику → играешь; моды, сервер, BBSC настраиваются автоматически и скрыто.
 
 Общайся по-русски. Пользователь — Android/Kotlin-разработчик, Linux/macOS знает.
@@ -14,7 +47,7 @@ Windows-порт Bloodborne (bbport) + Qt/QML-лаунчер на Python, в н�
 | Путь | Что |
 |---|---|
 | `C:\Users\markn\CLionProjects\bloodborne_pc` | этот репо |
-| `C:\Users\markn\CLionProjects\BBSC` | форк мода BBSC; его `build\mod` кладётся в пакет |
+| `C:\Users\markn\CLionProjects\bloodborne_pc\mods-src\BBSC` | форк мода BBSC; его `build\mod` кладётся в пакет |
 | `D:\Games\Bloodborne\bbport-coop` | установленный лаунчер на этом ПК (сюда деплоим) |
 | `D:\Games\Bloodborne\game` | файлы игры CUSA03173 v1.09 (только чтение!) |
 
@@ -36,7 +69,7 @@ VPS `remote_server` (77.73.67.175, Ubuntu 24, ssh `root`) — co-op сервер
 ## Сборка (только MSYS2 CLANG64: `C:\msys64\msys2_shell.cmd -clang64` или `bash` с `source msys2-env.sh`)
 - Порт: `bash build.sh` → `out/bb-probe.exe`, `bb-play.exe`, `bb-gpu-capabilities.exe` (лог `out/gpu-build.log`).
 - Полный кооп-пакет: `bash packaging/windows/build-coop-package.sh`
-  (`SKIP_BUILD=1` — без пересборки exe; `COOP_BBSC_BUILD` по умолчанию `../BBSC/build/mod`;
+  (`SKIP_BUILD=1` — без пересборки exe; `COOP_BBSC_BUILD` по умолчанию `mods-src/BBSC/build/mod`;
   `COOP_INVITE`/`COOP_NAME` — сервер по умолчанию). Результат: `out/stage/bbport-windows/` и `dist/bbport-coop-windows.zip`.
 - Co-op сервер (shadnet) для Windows-хоста: `bash packaging/windows/build_coop_server.sh`.
 

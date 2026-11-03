@@ -133,13 +133,13 @@ Item {
             y: 44; width: parent.width; spacing: 10
             Text { text: launcher.tr("Results"); color: Theme.text; font.family: Theme.serif; font.pixelSize: 36 }
             Text {
-                property var hits: launcher.searchSettings(workspace.query)
+                property var hits: launcher.settingsRevision < 0 ? [] : launcher.searchSettings(workspace.query)
                 visible: hits.length === 0; text: launcher.tr("Nothing matches “") + workspace.query + "”."
                 color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
             }
             Item { width: 1; height: 8 }
             Repeater {
-                model: workspace.query !== "" ? launcher.searchSettings(workspace.query) : []
+                model: launcher.settingsRevision < 0 || workspace.query === "" ? [] : launcher.searchSettings(workspace.query)
                 delegate: MenuRow {
                     width: content.width; label: modelData.label; value: launcher.tr(modelData.category) + "  ›  " + launcher.tr(modelData.section)
                     onClicked: workspace.openAt(modelData.category, modelData.section, modelData.key)
@@ -309,10 +309,12 @@ Item {
                         }
                     }
                     Flow { width: parent.width; visible: is("System", "Advanced system"); spacing: 10
+                        GlassButton { text: launcher.tr("Open profile"); width: 180; height: 48; onClicked: launcher.action("openTestProfile") }
                         GlassButton { text: launcher.tr("Open bbport.ini"); width: 180; height: 48; onClicked: launcher.action("openConfig") }
                         GlassButton { text: launcher.tr("Clear shader cache"); width: 180; height: 48; onClicked: launcher.action("clearCache") }
                         GlassButton { text: launcher.tr("Setup wizard"); width: 180; height: 48; onClicked: workspace.openSetup(0) }
                     }
+                    Note { visible: is("System", "Advanced system"); text: launcher.tr("Current profile:") + " " + launcher.activeProfileFolder }
                     Flow { width: parent.width; visible: is("System", "Logs"); spacing: 10
                         GlassButton { text: launcher.tr("Copy log"); width: 180; height: 48; onClicked: launcher.action("copyLog") }
                         GlassButton { text: launcher.tr("Clear log"); width: 180; height: 48; onClicked: launcher.action("clearLog") }

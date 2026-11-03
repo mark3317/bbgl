@@ -449,6 +449,18 @@ extern "C" void bbnet_configure(const char* app0, const char* serial, const char
 // ---- Registration ------------------------------------------------------------------------------
 
 namespace Libraries::Np::NpManager { void InitializeRuntime(); }
+// bbport does not run shadPS4's InstallKernelIntegration. Install its settings
+// hooks before imports become callable: otherwise RunningTransport uses 3658
+// regardless of BB_P2P_PORT, and concurrent profiles depend on launch order.
+void InstallRuntimeNetworkSettings() {
+    auto hooks = Libraries::Net::GetSystemHooks();
+    hooks.is_online = [] { return EmulatorSettings.IsConnectedToNetwork(); };
+    hooks.p2p_port = [] {
+        const int port = EmulatorSettings.GetP2PPort();
+        return static_cast<u16>(port >= 0 && port <= 0xffff ? port : 3658);
+    };
+    Libraries::Net::SetSystemHooks(std::move(hooks));
+}
 extern "C" void bbnet_initialize(void) {
     if (BbThd::Enabled()) {
         BbThd::Initialize();
@@ -472,6 +484,7 @@ extern "C" void bbnet_register(void) {
         Libraries::Ssl2::RegisterLib(sym);
         return;
     }
+    InstallRuntimeNetworkSettings();
     Libraries::Net::RegisterLib(sym);
     Libraries::NetCtl::RegisterLib(sym);
     Libraries::Http::RegisterLib(sym);

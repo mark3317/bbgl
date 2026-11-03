@@ -659,6 +659,7 @@ void NpHandler::ResolveOnlineId(
         std::lock_guard lock(m_mutex_pending_lookup);
         PendingLookupRequest pending;
         pending.user_id = user_id;
+        pending.online_id = online_id;
         pending.on_result = std::move(on_result);
         m_pending_lookup.emplace(pkt_id, std::move(pending));
     }
@@ -668,6 +669,7 @@ void NpHandler::ResolveOnlineId(
 void NpHandler::OnLookupReply(s32 user_id, ShadNet::CommandType /*cmd*/, u64 pkt_id,
                               ShadNet::ErrorType error, const std::vector<u8>& body) {
     std::function<void(s32, u64, const std::string&)> on_result;
+    std::string online_id;
     {
         std::lock_guard lock(m_mutex_pending_lookup);
         auto it = m_pending_lookup.find(pkt_id);
@@ -675,6 +677,7 @@ void NpHandler::OnLookupReply(s32 user_id, ShadNet::CommandType /*cmd*/, u64 pkt
             return; // no waiter (already flushed by a disconnect, or a stray reply)
         }
         on_result = std::move(it->second.on_result);
+        online_id = std::move(it->second.online_id);
         m_pending_lookup.erase(it);
     }
     if (!on_result) {
@@ -691,7 +694,9 @@ void NpHandler::OnLookupReply(s32 user_id, ShadNet::CommandType /*cmd*/, u64 pkt
         return;
     }
     if (error != ShadNet::ErrorType::NoError) {
-        LOG_WARNING(NpHandler, "LookupOnlineId failed: error={}", static_cast<int>(error));
+        LOG_WARNING(NpHandler, "LookupOnlineId failed: user_id={} pkt_id={} onlineId='{}' error={}{}",
+                    user_id, pkt_id, online_id, static_cast<int>(error),
+                    error == ShadNet::ErrorType::Invalid ? " (check server support for command 41)" : "");
         on_result(ORBIS_NP_COMMUNITY_ERROR_BAD_RESPONSE, 0, {});
         return;
     }

@@ -75,6 +75,11 @@ def configuration(offers):
     if not 2 <= len(offers) <= 5:
         raise ValueError('Open the launcher on 2–5 players in the same network.')
     offers = sorted(offers, key=lambda p: p['id'])
+    names = [str(p.get('name', p['id'])).strip() for p in offers]
+    if any(not re.fullmatch(r'[A-Za-z0-9_-]{3,16}', name) for name in names):
+        raise ValueError('Player name must be 3–16 Latin letters, numbers, - or _.')
+    if len({name.casefold() for name in names}) != len(names):
+        raise ValueError('Players must use different names. Change the player name and refresh.')
     if len({p['host'] for p in offers}) != len(offers):
         raise ValueError('Each player needs a separate network address.')
     identity = [{k: p[k] for k in ('id', 'seed')} for p in offers]
@@ -83,7 +88,7 @@ def configuration(offers):
     return {'version': 1, 'group': hashlib.sha256(('group:' + key).encode()).hexdigest()[:32],
             'secret': key, 'epoch': 1,
             'members': [{'id': p['id'], 'host': p['host'], 'port': CONTROL_PORT,
-                         'p2p': GAME_PORT} for p in offers]}
+                         'p2p': GAME_PORT, 'name': name} for p, name in zip(offers, names)]}
 
 
 def digest(cfg):

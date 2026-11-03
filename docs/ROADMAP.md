@@ -1,4 +1,4 @@
-## 2026-11-02 — cooperative lifecycle delta deployed
+## Historical deployment — 2026-11-02
 
 Bundled `e72801d` / pin `3f079b9`, installed PC and laptop at 02:27 MSK, build/copy exit=0. Stop member drain, chalice packet routing and pre-load readiness fixed; live validation pending; initial sign/claim cadence remains open. See `mods-src/BBSC/docs/fixes/2026-11-02-stop-routing-fix.md`.
 
@@ -16,20 +16,23 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
 
 ## Main work, in order
 
-1. **Seamless co-op / BBGL + BBSC-GL** — reviewed 1 November 2026.
-   Current source: BBGL `08b556f`, pinned bundled BBSC `875884f` (standalone
-   `df04dd0`). User confirmation on 1 November closes T22 combat latency,
-   T23 return recovery and T24 wipe-camera issues. T25 key/tool recovery is
-   generally solved; rare cases still need coverage. Native guest menu
-   save/disconnect and own-world recovery are confirmed in a two-player run.
-   The user associates intermittent crashes with this PC's GPU problems;
-   they do not reproduce on other devices. Investigation is deferred at the
-   user's request, and this is not a current co-op blocker. Exact fault cause
-   remains unproven. Profile-helper paths are corrected and verified on PC without save changes. Remaining work is broader
-   multiplayer/chalice/progression coverage.
-   Runtime mode switching T26 was reverted; Offline / Co-op are launch modes.
-   See [current handoff](../../BBSC/docs/HANDOFF.md) and
-   [backlog](../../BBSC/docs/BACKLOG.md) for evidence and test boundaries.
+1. **Seamless co-op / BBGL + BBSC-GL** — reviewed 4 November 2026.
+   Mainline uses embedded Party and private-network peer connections; no external
+   game server/VPS is required. Offline / Co-op remain launch modes (T26 reverted).
+   Latest source includes native player names, a bounded second wait for the same
+   admission claim, opt-in diagnostics and personal quest reward prerequisites.
+   Names, claim recheck and quest reward guards still need build/deploy/gameplay
+   confirmation; earlier installations do not establish their runtime status.
+   Open: second guest admission / three-player world, host menu exit sometimes
+   loading the own world, and broader progression/chalice coverage. Sequential
+   admission was restored after the overlap experiment failed live testing.
+   T22 combat latency, T23 return recovery and T24 wipe camera were confirmed by
+   the user on 1 November; T25 key/tool recovery is generally solved with coverage
+   remaining. Local GPU crash investigation remains deferred by the user.
+   See [review](fixes/2026-11-04-project-cleanup.md),
+   [current handoff](../mods-src/BBSC/docs/HANDOFF.md) and
+   [backlog](../mods-src/BBSC/docs/BACKLOG.md). Historical commit IDs below are not
+   the current source pin; use git status/HEAD and the parent gitlink.
 2. **Boss Rematches** (Bloodborne Enhanced features, independently implemented). A Cleric
    Beast rematch was played through on a copied save (14 October 2026); 1.9.1 extends it to all
    19 bosses with a lamp of their own, as an experimental launcher toggle (off;

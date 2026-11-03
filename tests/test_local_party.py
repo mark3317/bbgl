@@ -19,6 +19,21 @@ from compat import Compatibility
 
 
 class LocalPartyTests(unittest.TestCase):
+    def test_native_launch_uses_name_and_keeps_party_member_id(self):
+        from engine import invite
+        from compat import start_from_environment
+        with socket.socket() as sock:
+            sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
+        cfg=invite([dict(id='StableMember',name='twin',host='127.0.0.1',port=port,p2p=3658)])
+        path=self.root/'names.json';path.write_text(json.dumps(cfg))
+        env=dict(BB_PARTY_CONFIG=str(path),BB_PARTY_MEMBER='StableMember',BBGL_PROFILE_DIR=str(self.root/'named-profile'))
+        client=start_from_environment(env,self.root/'install')
+        try:
+            self.assertEqual(env['BB_SHADNET_NPID'],'twin')
+            self.assertEqual(env['BB_PARTY_MEMBER'],'StableMember')
+            self.assertEqual(client.e.state['roster'],['StableMember'])
+        finally:client.close()
+
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         self.root=Path(self.tmp.name)

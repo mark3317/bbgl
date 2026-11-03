@@ -1336,6 +1336,25 @@ void FireEvent(const PendingEvent& ev) {
         }
         break;
     case PendingEvent::SIGNALING_CB:
+        // An event queued for the old room/self incarnation cannot bind or
+        // disconnect the occupant of a reused native member slot after rejoin.
+        if (ctx->room_id != ev.room_id || ctx->my_member_id != ev.local_member_id) {
+            LOG_INFO(Lib_NpMatching2, "Stale Matching2 signaling callback ignored: room={} member={} self={} current_room={} current_self={}",
+                     ev.room_id, ev.member_id, ev.local_member_id, ctx->room_id, ctx->my_member_id);
+            break;
+        }
+        {
+            const auto room = ctx->room_cache.find(ev.room_id);
+            if (room == ctx->room_cache.end()) break;
+            const auto member = room->second.members.find(ev.member_id);
+            const bool absent = member == room->second.members.end();
+            if ((!absent && member->second.join_date != ev.peer_join_date) ||
+                (absent && ev.sig_event == ORBIS_NP_MATCHING2_SIGNALING_EVENT_ESTABLISHED)) {
+                LOG_INFO(Lib_NpMatching2, "Retired Matching2 member callback ignored: room={} member={}",
+                         ev.room_id, ev.member_id);
+                break;
+            }
+        }
         if (ctx->signaling_callback) {
             LOG_DEBUG(Lib_NpMatching2,
                       "callback SIGNALING ctx={} room={} member={} event={:#x} err={:#x}",
@@ -1350,6 +1369,22 @@ void FireEvent(const PendingEvent& ev) {
         }
         break;
     case PendingEvent::ROOM_EVENT_CB:
+        if (ctx->room_id != ev.room_id || ctx->my_member_id != ev.local_member_id) {
+            LOG_INFO(Lib_NpMatching2, "Stale Matching2 room callback ignored: room={} current_room={}",
+                     ev.room_id, ctx->room_id);
+            break;
+        }
+        if (ev.room_event == ORBIS_NP_MATCHING2_ROOM_EVENT_MEMBER_JOINED ||
+            ev.room_event == ORBIS_NP_MATCHING2_ROOM_EVENT_MEMBER_JOINED_A) {
+            const auto room = ctx->room_cache.find(ev.room_id);
+            if (room == ctx->room_cache.end()) break;
+            const auto member = room->second.members.find(ev.member_id);
+            if (member == room->second.members.end() || member->second.join_date != ev.peer_join_date) {
+                LOG_INFO(Lib_NpMatching2, "Retired Matching2 JOIN callback ignored: room={} member={}",
+                         ev.room_id, ev.member_id);
+                break;
+            }
+        }
         if (ctx->room_event_callback) {
             LOG_DEBUG(Lib_NpMatching2, "callback ROOM_EVENT ctx={} room={} event={:#x} data={}",
                       ev.ctx_id, ev.room_id, static_cast<u16>(ev.room_event),

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "common/logging/log.h"
+#include "core/net/p2p_relay.h"
 #include "common/singleton.h"
 #include "core/libraries/error_codes.h"
 #include "core/libraries/libs.h"
@@ -415,6 +416,10 @@ s32 PS4_SYSV_ABI sceNpSignalingActivateConnection(OrbisNpSignalingContextId ctxI
     }
 
     *outConnId = cid;
+
+    // No signaling mutex held: every accepted local activation, including reuse
+    // of the same connection ID, opens a new bounded trace window.
+    Core::Net::P2P::Relay::BeginAttempt(peer_online_id_str);
 
     if (queue_activation) {
         g_dispatch_cv.notify_all();

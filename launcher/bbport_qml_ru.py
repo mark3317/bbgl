@@ -9,6 +9,17 @@ The classic Tk launcher keeps its own table (bbport_i18n.py).
 import re
 
 RU = {
+    'Player name must be 3–16 Latin letters, numbers, - or _.': 'Имя игрока должно содержать от 3 до 16 латинских букв, цифр, знаков - или _.',
+    'Players must use different names. Change the player name and refresh.': 'Имена игроков должны различаться. Измените имя игрока и обновите подключение.',
+    'Detailed diagnostic logs': 'Подробные логи диагностики',
+    'Collect network packets, mod timeline and performance measurements in last_run.log. Enable only to diagnose a problem; may reduce performance.': 'Записывает сведения о сетевых пакетах, события мода и замеры производительности в last_run.log. Включайте для разбора проблемы; может снижать производительность.',
+    'Profile folder (test)': 'Папка профиля (тест)',
+    'Current profile:': 'Текущий профиль:',
+    'Open profile': 'Открыть профиль',
+    'Open a separate launcher with settings and co-op data in this folder. New folders start with a fresh profile. The current window keeps its profile.': 'Открывает отдельный лаунчер с настройками и данными коопа в этой папке. В новой папке создаётся чистый профиль. Текущее окно сохраняет свой профиль.',
+    'Choose an absolute profile folder path.': 'Укажите абсолютный путь к папке профиля.',
+    'Could not open profile: {}': 'Не удалось открыть профиль: {}',
+    'A separate launcher was opened with the selected profile.': 'Открыт отдельный лаунчер с выбранным профилем.',
     ' of 5': ' из 5',
     'Configure firewall': 'Настроить брандмауэр',
     'Firewall setup is optional. If players cannot connect, use this button to allow incoming connections. Only this action asks for administrator rights; starting co-op does not.': 'Настройка брандмауэра необязательна. Если игроки не могут подключиться, нажмите кнопку, чтобы разрешить входящие соединения. Права администратора запрашиваются только для этого действия, а не при запуске коопа.',
@@ -888,6 +899,30 @@ RU.update({
     'Confirm': 'Подтвердить',
     'Allow incoming game and co-op server connections on local and Tailscale networks. Windows will ask for administrator permission.': 'Будут разрешены входящие подключения для игры и серверов кооператива в локальной сети и Tailscale. Windows запросит права администратора.'
 })
+
+RU.update({
+    'Automatically': 'Автоматически',
+    'Custom IPv4 address': 'Свой IPv4-адрес',
+    'Connection': 'Подключение',
+    'Address': 'Адрес',
+    'Choose an address': 'Выберите адрес',
+    'Choose a connection': 'Выберите подключение',
+    'Your external or VPN IPv4': 'Ваш внешний или VPN IPv4',
+    'Finding connections…': 'Поиск подключений…',
+    'Refresh': 'Обновить',
+    'For a public IP, forward the server ports on your router. Remote access is not verified.': 'Для белого IP нужен проброс портов сервера на роутере. Доступ извне не проверен.',
+    'VPN: friends need the same network. Active adapters are shown; remote access is not verified.': 'Для VPN друзья должны быть в той же сети. Доступ со стороны друзей не проверен.',
+    'Enter a valid IPv4 address for friends.': 'Введите корректный IPv4-адрес для друзей.',
+    'Several VPN connections found. Choose the network your friends use.': 'Найдено несколько VPN. Выберите сеть, которой пользуются друзья.',
+    'No active IPv4 connection found. Refresh the connection list.': 'Активных подключений с IPv4 нет. Обновите список подключений.',
+    'Several connections found. Choose the network your friends use.': 'Найдено несколько подключений. Выберите сеть для друзей.',
+    'The selected connection is unavailable. Refresh the connection list.': 'Выбранное подключение недоступно. Обновите список.',
+    'Choose an address for the selected connection.': 'Выберите адрес для этого подключения.',
+})
+
+RU.update({'Allows co-op server connections through Windows Firewall for the selected connection.': 'Разрешает подключения к серверу в брандмауэре Windows для выбранного подключения.'})
+
+RU.update({'Connection unavailable': 'Подключение недоступно', 'Allow incoming connections for the selected network. A custom address allows server ports from all networks. Windows will ask for administrator permission.': 'Будут разрешены входящие подключения для выбранной сети. Для своего адреса порты сервера открываются для всех сетей. Windows запросит права администратора.'})
 
 RU.update({
     'Custom network': 'Своё подключение',

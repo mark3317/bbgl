@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <cstdlib>
 #include "common/logging/log.h"
@@ -93,7 +94,14 @@ Endpoint FromIPv4(u32 addr_nbo, u16 port_nbo) {
 Relay::RawSend RelaySender(Host::NativeSocket socket) {
     return [socket](std::span<const u8> packet, u32 addr_nbo, u16 port_nbo) {
         const Endpoint to = FromIPv4(addr_nbo, port_nbo);
-        (void)Host::SendTo(socket, packet.data(), packet.size(), 0, to.Sockaddr(), to.Length());
+        const auto result = Host::SendTo(socket, packet.data(), packet.size(), 0, to.Sockaddr(), to.Length());
+        if (result.error != Error::Ok) {
+            static std::atomic<unsigned> errors{0};
+            if (errors.fetch_add(1, std::memory_order_relaxed) < 16)
+                LOG_WARNING(Lib_Net, "P2P relay send failure: bytes={} endpoint={:#x}:{} error={}",
+                            packet.size(), addr_nbo, ntohs(port_nbo), static_cast<s32>(result.error));
+        }
+        return Relay::SendResult{result.value, static_cast<s32>(result.error)};
     };
 }
 
@@ -169,31 +177,53 @@ Transport::DiagnosticCounters& Transport::Diagnostic(u16 vport) {
     return diagnostic_ports_[vport];
 }
 
-std::string Transport::CollectDiagnostics(Clock::time_point now) {
-    if (!diagnostics_ || now - diagnostic_at_ < std::chrono::seconds(5)) return {};
+std::optional<Transport::DiagnosticSnapshot> Transport::TakeDiagnostics(Clock::time_point now) {
+    if (!diagnostics_ || now - diagnostic_at_ < std::chrono::seconds(5)) return std::nullopt;
     diagnostic_at_ = now;
-    std::string report;
+    DiagnosticSnapshot snapshot;
+    snapshot.bound_port = bound_port_;
+    snapshot.direct_rx = diagnostic_direct_rx_;
+    snapshot.relay_rx = diagnostic_relay_rx_;
+    snapshot.omitted = latency_samples_.omitted;
+    snapshot.ports.reserve(diagnostic_ports_.size());
     for (const auto& [vport, c] : diagnostic_ports_) {
         const auto it = datagram_bindings_.find(vport);
         const size_t queued_bytes = it == datagram_bindings_.end() ? 0 : it->second->bytes;
+        snapshot.ports.push_back({vport, c, queued_bytes});
+    }
+    snapshot.streams.reserve(connections_.size());
+    for (const auto& [key, connection] : connections_) {
+        snapshot.streams.push_back({key.local_vport, key.peer_vport,
+            std::string(ToString(connection->tcp->State())),
+            connection->tcp->Retransmissions(), connection->tcp->BytesToRead()});
+    }
+    snapshot.samples.assign(latency_samples_.samples.begin(),
+                            latency_samples_.samples.begin() + latency_samples_.count);
+    latency_samples_.Clear(); // retains the per-attempt capture budget
+    return snapshot;
+}
+
+std::string Transport::FormatDiagnostics(const DiagnosticSnapshot& snapshot) {
+    std::string report;
+    report.reserve(snapshot.samples.size() * 160 + snapshot.ports.size() * 300);
+    for (const auto& port : snapshot.ports) {
+        const auto& c = port.counters;
         report += fmt::format("P2P diagnostic: udp={} vport={} cumulative tx={} tx_error={} queued={} read={} "
                     "wrong_peer={} full={} unbound={} invalid={} digest={} no_key={} auth={} backlog={} "
-                    "direct_rx={} relay_rx={}\n", bound_port_, vport, c.tx, c.tx_error, c.queued, c.read,
+                    "direct_rx={} relay_rx={}\n", snapshot.bound_port, port.vport, c.tx, c.tx_error, c.queued, c.read,
                     c.wrong_peer, c.full, c.unbound, c.invalid, c.digest, c.no_key, c.authentication,
-                    queued_bytes, diagnostic_direct_rx_, diagnostic_relay_rx_);
+                    port.queued_bytes, snapshot.direct_rx, snapshot.relay_rx);
     }
-    for (const auto& [key, connection] : connections_) {
+    for (const auto& stream : snapshot.streams) {
         report += fmt::format("P2P stream: local={} peer={} state={} retransmissions={} unread={}\n",
-            key.local_vport, key.peer_vport, ToString(connection->tcp->State()),
-            connection->tcp->Retransmissions(), connection->tcp->BytesToRead());
+            stream.local, stream.peer, stream.state, stream.retransmissions, stream.unread);
     }
-    for (size_t i = 0; i < latency_samples_.count; ++i) {
-        const auto& s = latency_samples_.samples[i];
-        report += fmt::format("P2P sample: kind={} local={} peer={} bytes={} hash={:016x} wall_us={} queue_us={}\n",
-            s.kind, s.local, s.peer, s.size, s.hash, s.wall_us, s.queue_us);
+    for (const auto& s : snapshot.samples) {
+        report += fmt::format("P2P sample: kind={} local={} peer={} bytes={} hash={:016x} wall_us={} queue_us={} header={:08x} endpoint={:#x}:{}\n",
+            s.kind, s.local, s.peer, s.size, s.hash, s.wall_us, s.queue_us,
+            s.header, s.endpoint_addr, s.endpoint_port);
     }
-    if (latency_samples_.omitted) report += fmt::format("P2P samples omitted={}\n", latency_samples_.omitted);
-    latency_samples_.Clear();
+    if (snapshot.omitted) report += fmt::format("P2P samples omitted={}\n", snapshot.omitted);
     return report;
 }
 
@@ -333,9 +363,12 @@ void Transport::ThreadMain() {
             HandlePacket(data, from_endpoint, now);
         }
         RunTimers(now);
-        auto report = CollectDiagnostics(now);
-        lock.unlock(); // logging must never hold up the game's SendTo/RecvFrom on disk I/O
-        if (!report.empty()) LOG_WARNING(Lib_Net, "{}", report);
+        auto snapshot = TakeDiagnostics(now);
+        lock.unlock(); // formatting and disk I/O must not hold up SendTo/RecvFrom
+        if (snapshot) {
+            const auto report = FormatDiagnostics(*snapshot);
+            if (!report.empty()) LOG_WARNING(Lib_Net, "{}", report);
+        }
     }
 }
 
@@ -371,6 +404,11 @@ void Transport::Reschedule(const Connection& connection) {
 }
 
 Error Transport::SendPacket(std::span<const u8> packet, const Endpoint& to) {
+    const u64 generation = Relay::TraceGeneration();
+    if (generation != trace_generation_) {
+        trace_generation_ = generation;
+        latency_samples_.remaining = 65536; // retain the pending previous batch
+    }
     if (loss_for_testing_ > 0) {
         loss_rng_ ^= loss_rng_ << 13;
         loss_rng_ ^= loss_rng_ >> 7;
@@ -436,6 +474,18 @@ u16 Transport::AllocateVport(bool stream) {
 
 void Transport::HandlePacket(std::span<const u8> packet, const Endpoint& from,
                              Clock::time_point now) {
+    const u64 generation = Relay::TraceGeneration();
+    if (generation != trace_generation_) {
+        trace_generation_ = generation;
+        latency_samples_.remaining = 65536;
+    }
+    if (diagnostics_) {
+        u32 addr{}; u16 port{};
+        IPv4Parts(from, &addr, &port);
+        // I = encoded frame received, before codec rejection; W at SendTo is
+        // the identical bytes before relay wrapping. Server hashes this frame.
+        latency_samples_.Record('I', 0, 0, packet, DiagnosticWallUs(), 0, addr, ntohs(port));
+    }
     // bbport: the shadNet server's STUN echo comes in BBSC's frame (u16 vport ffff, u16 vport
     // ffff, then the 6-byte echo), which the codec does not read - to the signaling queue.
     if (packet.size() == 10 && packet[0] == 0xFF && packet[1] == 0xFF && packet[2] == 0xFF &&
@@ -670,6 +720,12 @@ IoResult DatagramSocket::SendTo(std::span<const u8> data, const Endpoint* to, u1
         'T', binding_->vport, to_vport, data, DiagnosticWallUs());
     const auto packet =
         transport_->codec_->EncodeDatagram(binding_->vport, to_vport, data, *to, protection);
+    if (transport_->diagnostics_) {
+        u32 addr{}; u16 port{};
+        IPv4Parts(*to, &addr, &port);
+        transport_->latency_samples_.Record('W', binding_->vport, to_vport, packet,
+                                            DiagnosticWallUs(), 0, addr, ntohs(port));
+    }
     const Error e = transport_->SendPacket(packet, *to);
     if (transport_->diagnostics_) {
         auto& c = transport_->Diagnostic(binding_->vport);
@@ -683,13 +739,15 @@ IoResult DatagramSocket::SendTo(std::span<const u8> data, const Endpoint* to, u1
     return e == Error::Ok ? IoResult{data.size(), Error::Ok} : IoResult{0, e};
 }
 
-IoResult DatagramSocket::RecvFrom(std::span<u8> out, bool peek, Endpoint* from, u16* from_vport) {
+IoResult DatagramSocket::RecvFrom(std::span<u8> out, bool peek, Endpoint* from, u16* from_vport,
+                                 bool peek_length) {
     std::scoped_lock lock{transport_->mutex_};
     if (!binding_ || binding_->queue.empty()) {
         return {0, Error::WouldBlock};
     }
     auto& packet = binding_->queue.front();
     const size_t n = std::min(out.size(), packet.payload.size()); // rest is discarded
+    const size_t result_size = peek_length ? packet.payload.size() : n;
     std::copy_n(packet.payload.begin(), n, out.begin());
     if (from) {
         *from = packet.from;
@@ -697,13 +755,13 @@ IoResult DatagramSocket::RecvFrom(std::span<u8> out, bool peek, Endpoint* from, 
     if (from_vport) {
         *from_vport = packet.src_vport;
     }
-    if (!peek) {
+    if (!peek && !peek_length) {
         if (transport_->diagnostics_) {
             ++transport_->Diagnostic(binding_->vport).read;
             const s64 queue_us = std::chrono::duration_cast<std::chrono::microseconds>(
                 Clock::now() - packet.queued_at).count();
             transport_->latency_samples_.Record('D', binding_->vport, packet.src_vport,
-                                                packet.payload, DiagnosticWallUs(), queue_us);
+                                                out.first(n), DiagnosticWallUs(), queue_us);
         }
         binding_->bytes -= packet.payload.size();
         binding_->queue.pop_front();
@@ -711,7 +769,7 @@ IoResult DatagramSocket::RecvFrom(std::span<u8> out, bool peek, Endpoint* from, 
             readiness_->readable.Set(false);
         }
     }
-    return {n, Error::Ok};
+    return {result_size, Error::Ok};
 }
 
 u32 DatagramSocket::Events() const {

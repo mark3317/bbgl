@@ -340,6 +340,22 @@ void BuildMemberUpdate(CallbackPayload& p, const RoomCache& rc, const MemberCach
     p.room_event_data = p.room_member_update.get();
 }
 
+OrbisNpMatching2RoomUpdate BuildKickedOutUpdate(OrbisNpMatching2EventCause cause, s32 status) {
+    OrbisNpMatching2RoomUpdate update{};
+    update.eventCause = cause;
+    update.errorCode = status;
+    // BBSC shadNet carries Bloodborne's kick reason in error_code. Native
+    // CC3E80 / CC4209 instead require optData.len == 4 and read the reason
+    // from optData.data (+8). An empty presence silently ignores KICKEDOUT.
+    // Translate only the known game status, leaving other room errors alone.
+    if (cause == ORBIS_NP_MATCHING2_EVENT_CAUSE_KICKOUT_ACTION &&
+        status == static_cast<s32>(0xFF000019u)) {
+        std::memcpy(update.optData.data, &status, sizeof(status));
+        update.optData.len = sizeof(status);
+    }
+    return update;
+}
+
 void HandleRoomEvent(const ShadNet::NotifyRoomEvent& n) {
     ContextObject* ctx =
         ContextManager::Instance().Get(static_cast<OrbisNpMatching2ContextId>(n.ctx_id));
@@ -350,6 +366,7 @@ void HandleRoomEvent(const ShadNet::NotifyRoomEvent& n) {
     const auto cause = static_cast<OrbisNpMatching2EventCause>(n.event_cause);
     const auto room_id = static_cast<OrbisNpMatching2RoomId>(n.room_id);
     const auto member_id = static_cast<OrbisNpMatching2RoomMemberId>(n.member_id);
+    u64 member_join_date = n.member_join_date;
 
     auto payload_owner = std::make_shared<CallbackPayload>();
     CallbackPayload& p = *payload_owner;
@@ -399,6 +416,7 @@ void HandleRoomEvent(const ShadNet::NotifyRoomEvent& n) {
             return;
         }
         BuildMemberUpdate(p, room_it->second, mem_it->second, cause, ctx->a_variant);
+        member_join_date = mem_it->second.join_date;
         QueueMatching2SignalingEvent(*ctx, room_id, member_id,
                                      ORBIS_NP_MATCHING2_SIGNALING_EVENT_DEAD,
                                      ORBIS_NP_MATCHING2_SIGNALING_ERROR_TERMINATED_BY_PEER);
@@ -407,11 +425,16 @@ void HandleRoomEvent(const ShadNet::NotifyRoomEvent& n) {
         break;
     }
     case ORBIS_NP_MATCHING2_ROOM_EVENT_KICKEDOUT: {
-        p.room_update = std::make_unique<OrbisNpMatching2RoomUpdate>();
-        OrbisNpMatching2RoomUpdate& u = *p.room_update;
-        u = OrbisNpMatching2RoomUpdate{};
-        u.eventCause = cause;
-        u.errorCode = n.error_code;
+        if (ctx->room_id != room_id) {
+            LOG_WARNING(Lib_NpMatching2, "Ignoring stale KICKEDOUT ctx={} room={} current={}",
+                        n.ctx_id, room_id, ctx->room_id);
+            return;
+        }
+        p.room_update = std::make_unique<OrbisNpMatching2RoomUpdate>(
+            BuildKickedOutUpdate(cause, n.error_code));
+        LOG_INFO(Lib_NpMatching2, "KICKEDOUT ctx={} room={} cause={} status={:#x} presence_bytes={}",
+                 n.ctx_id, room_id, n.event_cause, static_cast<u32>(n.error_code),
+                 p.room_update->optData.len);
         p.room_event_data = p.room_update.get();
         break;
     }
@@ -563,6 +586,9 @@ void HandleRoomEvent(const ShadNet::NotifyRoomEvent& n) {
     ev.ctx_id = ctx->ctx_id;
     ev.fire_at = std::chrono::steady_clock::now();
     ev.room_id = room_id;
+    ev.local_member_id = ctx->my_member_id;
+    ev.member_id = member_id;
+    ev.peer_join_date = member_join_date;
     ev.room_event = fired_event;
     ev.room_event_data = p.room_event_data;
     ev.request_payload_owner = std::move(payload_owner);
@@ -1273,6 +1299,9 @@ int BbscReplayRoomMembers(bool announce_left) {
                 ev.ctx_id = ctx->ctx_id;
                 ev.fire_at = now + delay;
                 ev.room_id = ctx->room_id;
+                ev.local_member_id = ctx->my_member_id;
+                ev.member_id = member_id;
+                ev.peer_join_date = member.join_date;
                 ev.room_event = ctx->a_variant ? event_a : event;
                 ev.room_event_data = payload->room_event_data;
                 ev.request_payload_owner = std::move(payload);
@@ -1297,6 +1326,8 @@ int BbscReplayRoomMembers(bool announce_left) {
             sig.fire_at = now + join_delay + std::chrono::milliseconds{500};
             sig.room_id = ctx->room_id;
             sig.member_id = member_id;
+            sig.local_member_id = ctx->my_member_id;
+            sig.peer_join_date = member.join_date;
             sig.sig_event = ORBIS_NP_MATCHING2_SIGNALING_EVENT_ESTABLISHED;
             sig.error_code = ORBIS_OK;
             ScheduleEvent(std::move(sig));

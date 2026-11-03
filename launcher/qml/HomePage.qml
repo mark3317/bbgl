@@ -126,9 +126,9 @@ Item {
             id: playButton
             anchors.horizontalCenter: parent.horizontalCenter; y: 54
             width: 296; height: 56; serif: true; highlighted: !launcher.running && !launcher.coopBusy
-            text: launcher.running || launcher.coopBusy ? launcher.tr("Cancel launch") : launcher.tr("Play")
-            enabled: launcher.running || launcher.coopBusy || (!launcher.setupRunning && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked)
-            onClicked: launcher.running || launcher.coopBusy ? launcher.cancelLaunch() : home.primaryRequested()
+            text: launcher.running || launcher.coopLaunchPending ? launcher.tr("Cancel launch") : launcher.tr("Play")
+            enabled: launcher.running || launcher.coopLaunchPending || (!launcher.coopBusy && !launcher.setupRunning && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked)
+            onClicked: launcher.running || launcher.coopLaunchPending ? launcher.cancelLaunch() : home.primaryRequested()
         }
         Text {
             y: 122; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight

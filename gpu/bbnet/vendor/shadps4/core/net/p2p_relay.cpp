@@ -6,6 +6,10 @@
 #include "core/net/host_net.h" // the platform's socket headers first (winsock2 before windows.h)
 #include "core/net/p2p_relay.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+#include <atomic>
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -44,6 +48,14 @@ struct Peer {
     std::vector<std::vector<u8>> early; // sent directly before the switch (sent again then)
 };
 
+struct AttemptTrace {
+    u64 token{};
+    Clock::time_point expires{}, next_marker{};
+    unsigned remaining{4096}, markers{0};
+    bool acknowledged{false};
+    bool local{false};
+};
+
 struct State {
     std::mutex mutex;
     u32 server_addr{0};
@@ -56,6 +68,9 @@ struct State {
     std::vector<std::string> local_ids;
     std::unordered_map<std::string, Peer> peers;     // by padded online id
     std::unordered_map<u64, std::string> alias;      // every known endpoint -> online id
+    std::unordered_map<std::string, AttemptTrace> traces; // bounded by known peers
+    u64 trace_generation{0};
+    u64 mod_attempt_serial{0};
     u32 next_pseudo{1};
     u64 sent{0};
     u64 received{0};
@@ -117,10 +132,51 @@ Peer* FindPeerLocked(State& s, u32 addr_nbo, u16 port_nbo) {
     return it == s.peers.end() ? nullptr : &it->second;
 }
 
+bool TraceEligible(std::span<const u8> frame) {
+    return frame.size() >= 6 && frame[0] == 0xff &&
+        ((frame[2] == 0 && frame[3] == 40) || (frame[4] == 0 && frame[5] == 40) ||
+         (frame[2] == 0xff && frame[3] == 0xff));
+}
+
+// Same hash as server RX/TX and transport W/I; no payload or keys in logs.
+void TraceLocked(State& s, const std::string& peer, const char* stage,
+                 std::span<const u8> frame, SendResult result) {
+    if (!Common::Log::CoopDiagnosticsEnabled() || !TraceEligible(frame)) return;
+    // The responder can send before its BEGIN notification reaches this socket.
+    // Keep those boundary records too; token zero means pre-notification, and
+    // correlation uses frame hash + direction + time until the epoch is known.
+    const auto [it, inserted] = s.traces.try_emplace(peer);
+    auto& t = it->second;
+    if (inserted) t.expires = Clock::now() + std::chrono::seconds(90);
+    if (Clock::now() >= t.expires || t.remaining == 0) return;
+    --t.remaining;
+    u64 hash = 14695981039346656037ull;
+    for (u8 b : frame) hash = (hash ^ b) * 1099511628211ull;
+    const auto wall = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    LOG_WARNING(Lib_Net, "P2P attempt packet: attempt={:016x} peer='{}' stage={} bytes={} "
+                "hash={:016x} wall_us={} sent_bytes={} error={} remaining={}",
+                t.token, IdText(peer), stage, frame.size(), hash, wall, result.bytes, result.error, t.remaining);
+}
+
 // mutex held.
 void SendRelayedLocked(State& s, const Peer& peer, std::span<const u8> framed,
                        const RawSend& send) {
     const std::string& self = s.local_ids.front();
+    const auto trace = s.traces.find(peer.id);
+    if (trace != s.traces.end() && trace->second.local && trace->second.markers == 0) {
+        auto& t = trace->second;
+        std::vector<u8> marker(std::begin(kMagic), std::end(kMagic));
+        marker.push_back(0x06);
+        marker.insert(marker.end(), self.begin(), self.end());
+        marker.insert(marker.end(), peer.id.begin(), peer.id.end());
+        for (int shift = 56; shift >= 0; shift -= 8) marker.push_back(static_cast<u8>(t.token >> shift));
+        const auto result = send(marker, s.server_addr, s.server_port);
+        ++t.markers;
+        t.next_marker = Clock::now() + std::chrono::seconds(1);
+        LOG_WARNING(Lib_Net, "P2P attempt marker: attempt={:016x} peer='{}' try=1 success={}",
+                    t.token, IdText(peer.id), result.error == 0);
+    }
     std::vector<u8> packet;
     packet.reserve(5 + 2 * kIdSize + kEpSize + framed.size());
     packet.insert(packet.end(), std::begin(kMagic), std::end(kMagic));
@@ -132,7 +188,8 @@ void SendRelayedLocked(State& s, const Peer& peer, std::span<const u8> framed,
     std::memcpy(ep + 4, &s.self_port, 2);
     packet.insert(packet.end(), ep, ep + kEpSize);
     packet.insert(packet.end(), framed.begin(), framed.end());
-    send(packet, s.server_addr, s.server_port);
+    const auto result = send(packet, s.server_addr, s.server_port);
+    TraceLocked(s, peer.id, "SOCKET_TX", framed, result);
     ++s.sent;
 }
 
@@ -219,6 +276,60 @@ void RememberPeer(std::string_view online_id, u32 addr_nbo, u16 port_nbo) {
     AddAliasLocked(s, id, addr_nbo, port_nbo, "signaling");
 }
 
+namespace {
+void BeginAttemptLocked(State& s, const std::string& id) {
+    if (!Common::Log::CoopDiagnosticsEnabled()) return;
+    // Wall-clock microseconds plus monotonic increment disambiguate rapid retries.
+    static u64 last_token = 0;
+    const u64 wall = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    last_token = std::max(last_token + 1, wall);
+    auto& t = s.traces[id];
+    t = AttemptTrace{};
+    ++s.trace_generation;
+    t.token = last_token;
+    t.local = true;
+    t.expires = Clock::now() + std::chrono::seconds(90);
+    LOG_WARNING(Lib_Net, "P2P attempt BEGIN: attempt={:016x} peer='{}' budget=4096 seconds=90",
+                t.token, IdText(id));
+}
+u64 ModAttemptSerial() {
+    if (!Common::Log::CoopDiagnosticsEnabled()) return 0;
+#ifdef _WIN32
+    using GetSerial = u64 (*)();
+    static std::atomic<GetSerial> cached{nullptr};
+    auto get = cached.load(std::memory_order_relaxed);
+    if (!get) {
+        if (const auto mod = GetModuleHandleW(L"bbsc.dll")) {
+            get = reinterpret_cast<GetSerial>(GetProcAddress(mod, "BbscNetworkAttemptSerial"));
+            cached.store(get, std::memory_order_relaxed);
+        }
+    }
+    return get ? get() : 0;
+#else
+    return 0;
+#endif
+}
+void ObserveAttemptSerialLocked(State& s, u64 serial) {
+    if (!serial || serial == s.mod_attempt_serial) return;
+    s.mod_attempt_serial = serial;
+    LOG_WARNING(Lib_Net, "P2P attempt lifecycle: mod_serial={} peers={}", serial, s.peers.size());
+    for (const auto& [id, peer] : s.peers) BeginAttemptLocked(s, id);
+}
+}
+void BeginAttempt(std::string_view online_id) {
+    State& s = S();
+    std::lock_guard lock(s.mutex);
+    BeginAttemptLocked(s, PadId(online_id));
+}
+
+u64 TraceGeneration() {
+    if (!Common::Log::CoopDiagnosticsEnabled()) return 0;
+    State& s = S();
+    std::lock_guard lock(s.mutex);
+    return s.trace_generation;
+}
+
 bool Enabled() {
     State& s = S();
     std::lock_guard lock(s.mutex);
@@ -233,8 +344,10 @@ bool IsServer(u32 addr_nbo, u16 port_nbo) {
 
 Path Route(u32 dest_addr_nbo, u16 dest_port_nbo, std::span<const u8> packet,
            const RawSend& send) {
+    const u64 serial = ModAttemptSerial();
     State& s = S();
     std::lock_guard lock(s.mutex);
+    ObserveAttemptSerialLocked(s, serial);
     if (s.server_addr == 0 || s.local_ids.empty() || dest_addr_nbo == s.server_addr) {
         return Path::Direct;
     }
@@ -314,6 +427,33 @@ bool Receive(std::span<const u8> data, std::span<const u8>* frame, u32* from_add
     }
     State& s = S();
     const u8 kind = data[4];
+    // Optional diagnostic notification: origin[16], peer[16], token[8 BE].
+    if (kind == 0x07 && data.size() == 45) {
+        if (!Common::Log::CoopDiagnosticsEnabled()) return false;
+        const std::string origin(reinterpret_cast<const char*>(data.data() + 5), 16);
+        const std::string target(reinterpret_cast<const char*>(data.data() + 21), 16);
+        u64 token = 0;
+        for (u8 b : data.subspan(37, 8)) token = (token << 8) | b;
+        std::lock_guard lock(s.mutex);
+        const bool ours = std::find(s.local_ids.begin(), s.local_ids.end(), origin) != s.local_ids.end();
+        if (!ours && std::find(s.local_ids.begin(), s.local_ids.end(), target) == s.local_ids.end())
+            return false;
+        const auto& peer = ours ? target : origin;
+        auto& t = s.traces[peer];
+        // ACK repeats cannot replenish a used budget. Older notifications cannot
+        // replace a newer attempt when packets are reordered.
+        if (token > t.token) {
+            ++s.trace_generation;
+            t = AttemptTrace{};
+            t.token = token;
+            t.expires = Clock::now() + std::chrono::seconds(90);
+        }
+        if (token == t.token && !t.acknowledged) {
+            t.acknowledged = true;
+            LOG_WARNING(Lib_Net, "P2P attempt ACK: attempt={:016x} peer='{}'", token, IdText(peer));
+        }
+        return false;
+    }
     if (kind == 0x02) {
         std::lock_guard lock(s.mutex);
         if (!s.acked) {
@@ -376,6 +516,7 @@ bool Receive(std::span<const u8> data, std::span<const u8>* frame, u32* from_add
                               "way",
                      IdText(peer.id));
         }
+        TraceLocked(s, id, "SOCKET_RX", data.subspan(27), {static_cast<s64>(data.size()), 0});
         ++s.received;
         *from_addr_nbo = peer.addr;
         *from_port_nbo = peer.port;
@@ -386,12 +527,27 @@ bool Receive(std::span<const u8> data, std::span<const u8>* frame, u32* from_add
 }
 
 void KeepAlive(const RawSend& send) {
+    const u64 serial = ModAttemptSerial();
     State& s = S();
     std::lock_guard lock(s.mutex);
+    ObserveAttemptSerialLocked(s, serial);
     if (s.server_addr == 0 || s.local_ids.empty()) {
         return;
     }
     const auto now = Clock::now();
+    for (auto& [peer, t] : s.traces) {
+        if (!t.local || now >= t.expires || now < t.next_marker || t.markers >= 10) continue;
+        t.next_marker = now + std::chrono::seconds(1);
+        ++t.markers;
+        std::vector<u8> marker(std::begin(kMagic), std::end(kMagic));
+        marker.push_back(0x06);
+        marker.insert(marker.end(), s.local_ids.front().begin(), s.local_ids.front().end());
+        marker.insert(marker.end(), peer.begin(), peer.end());
+        for (int shift = 56; shift >= 0; shift -= 8) marker.push_back(static_cast<u8>(t.token >> shift));
+        const auto result = send(marker, s.server_addr, s.server_port);
+        LOG_WARNING(Lib_Net, "P2P attempt marker: attempt={:016x} peer='{}' try={} success={}",
+                    t.token, IdText(peer), t.markers, result.error == 0);
+    }
     const auto interval = s.acked ? std::chrono::seconds(5) : std::chrono::seconds(2);
     if (s.last_register.time_since_epoch().count() != 0 && now - s.last_register < interval) {
         return;

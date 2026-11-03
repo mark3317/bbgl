@@ -1961,14 +1961,7 @@ s32 PS4_SYSV_ABI sceNetRecv(OrbisNetId s, void* buf, u64 len, s32 flags) {
 static s32 sceNetRecvfromImpl(OrbisNetId s, void* buf, u64 len, s32 flags, OrbisNetSockaddr* addr,
                               u32* paddrlen) {
     const auto msg = ToHostMsgFlags(flags);
-    if (msg.peeklen && buf == nullptr) {
-        // MSG_PEEKLEN with no buffer: peek into our own and return the size waiting.
-        std::vector<u8> scratch(static_cast<size_t>(std::min<u64>(len, MaxPeekLen)));
-        return sceNetRecvfrom(s, scratch.data(), scratch.size(),
-                              (flags & ~ORBIS_NET_MSG_PEEKLEN) | ORBIS_NET_MSG_PEEK, addr,
-                              paddrlen);
-    }
-    if (buf == nullptr && len != 0) {
+    if (buf == nullptr && len != 0 && !msg.peeklen) {
         return SetErrno(ORBIS_NET_EFAULT);
     }
     if (paddrlen == nullptr) {
@@ -1984,9 +1977,13 @@ static s32 sceNetRecvfromImpl(OrbisNetId s, void* buf, u64 len, s32 flags, Orbis
     if (info.p2p) {
         P2P::Endpoint from;
         u16 from_vport = 0;
-        const auto r = Core::Net::P2PSocketRecvFrom(s, buf, static_cast<size_t>(len), msg.peek,
+        // BBSC's original P2PSocket returns the full next datagram size for
+        // MSG_PEEKLEN, even with no buffer or a short buffer, without consuming it.
+        const auto r = Core::Net::P2PSocketRecvFrom(s, buf, buf ? static_cast<size_t>(len) : 0, msg.peek,
                                                     msg.dontwait, addr ? &from : nullptr,
-                                                    addr ? &from_vport : nullptr, msg.waitall);
+                                                    addr ? &from_vport : nullptr, msg.waitall,
+                                                    msg.peeklen);
+
         if (r.error == Error::Ok && !msg.peek && r.value > 0) {
             FlagWatch::Scan("recv", s, from_vport, buf, static_cast<size_t>(r.value));
             FlagWatch::FilterTalkEvents(buf, static_cast<size_t>(r.value));
@@ -1995,6 +1992,13 @@ static s32 sceNetRecvfromImpl(OrbisNetId s, void* buf, u64 len, s32 flags, Orbis
             ToOrbisP2PAddress(from, from_vport, KindOf(info), addr, paddrlen);
         }
         return Return(r);
+    }
+    if (msg.peeklen && buf == nullptr) {
+        // Preserve the existing non-P2P path.
+        std::vector<u8> scratch(static_cast<size_t>(std::min<u64>(len, MaxPeekLen)));
+        return sceNetRecvfrom(s, scratch.data(), scratch.size(),
+                              (flags & ~ORBIS_NET_MSG_PEEKLEN) | ORBIS_NET_MSG_PEEK, addr,
+                              paddrlen);
     }
     sockaddr_storage host{};
     socklen_t host_len = sizeof(host);
@@ -2010,6 +2014,13 @@ static s32 sceNetRecvfromImpl(OrbisNetId s, void* buf, u64 len, s32 flags, Orbis
 s32 PS4_SYSV_ABI sceNetRecvfrom(OrbisNetId s, void* buf, u64 len, s32 flags, OrbisNetSockaddr* addr,
                                 u32* paddrlen) {
     const s32 r = sceNetRecvfromImpl(s, buf, len, flags, addr, paddrlen);
+    if (Common::Log::CoopDiagnosticsEnabled() &&
+        (r > 0 || (flags & ORBIS_NET_MSG_PEEKLEN) == ORBIS_NET_MSG_PEEKLEN)) {
+        static std::atomic<unsigned> traced{0};
+        if (traced.fetch_add(1, std::memory_order_relaxed) < 256)
+            LOG_INFO(Lib_Net, "P2P syscall recv: socket={} capacity={} flags={:#x} result={} address={}",
+                     s, len, flags, r, addr && paddrlen ? FormatSockaddr(addr, *paddrlen) : "none");
+    }
     if (r > 0) {
         CountTraffic(s, false, r);
         if (addr != nullptr && paddrlen != nullptr) {
@@ -2309,6 +2320,12 @@ static s32 sceNetSendtoImpl(OrbisNetId s, const void* buf, u64 len, s32 flags,
 s32 PS4_SYSV_ABI sceNetSendto(OrbisNetId s, const void* buf, u64 len, s32 flags,
                               const OrbisNetSockaddr* addr, u32 addrlen) {
     const s32 r = sceNetSendtoImpl(s, buf, len, flags, addr, addrlen);
+    if (Common::Log::CoopDiagnosticsEnabled()) {
+        static std::atomic<unsigned> traced{0};
+        if (traced.fetch_add(1, std::memory_order_relaxed) < 256)
+            LOG_INFO(Lib_Net, "P2P syscall send: socket={} bytes={} flags={:#x} result={} address={}",
+                     s, len, flags, r, addr ? FormatSockaddr(addr, addrlen) : "connected");
+    }
     if (r > 0) {
         CountTraffic(s, true, r);
         NoteP2PPeer(s, true, addr, addrlen);

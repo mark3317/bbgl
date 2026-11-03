@@ -180,12 +180,16 @@ FIELDS = {
     # Launch shortcuts live on Home; the update
     # toggle has its own row with "Check now" in Main.qml.
     'Advanced': [
+        row('test_profile_dir', 'Profile folder (test)', 'folder',
+            hint='Open a separate launcher with settings and co-op data in this folder. New folders start with a fresh profile. The current window keeps its profile.'),
         row('ui_language', 'Launcher language', 'choice', [('', ('System default',))] + core.UI_LANGUAGES),
         row('draw_pipe', 'Draw pipeline', 'choice', core.DRAW_PIPE),
         row('readbacks', 'GPU readbacks', 'choice', core.READBACKS),
         row('extra_env', 'Extra environment variables'),
     ],
     'Diagnostics': [
+        row('diagnostic_logs', 'Detailed diagnostic logs', 'toggle',
+            hint='Collect network packets, mod timeline and performance measurements in last_run.log. Enable only to diagnose a problem; may reduce performance.'),
         row('frame_stats', 'Frame statistics', 'toggle'),
         row('gpu_profile', 'GPU profiling', 'toggle'),
         row('vk_validation', 'Vulkan validation', 'toggle'),
@@ -224,7 +228,7 @@ SETTINGS_SECTIONS = {
     ],
     'System': [
         ('System', ['ui_language']),
-        ('Advanced system', ['draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'frame_stats', 'gpu_profile', 'vk_validation']),
+        ('Advanced system', ['test_profile_dir', 'draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'diagnostic_logs', 'frame_stats', 'gpu_profile', 'vk_validation']),
         ('Logs', []),
     ],
 }
@@ -753,6 +757,8 @@ class LauncherBackend(QObject):
         return [name for name, _ in SETTINGS_SECTIONS.get(category, [])]
 
     def _field_visible(self, key):
+        if key.startswith('bbsc_scale_'):
+            return self.checked('bbsc_scaling')
         if key == 'frame_cap':
             return self.app.get('fps_mode') == 'uncap'
         if key in ('preset', 'sharpen', 'sharpness', 'live_resolution', 'object_motion'):
@@ -794,6 +800,8 @@ class LauncherBackend(QObject):
                 if not keys:
                     candidates = [('', section)]
                 for key, label in candidates:
+                    if key.startswith('bbsc_scale_') and self is not None and not self._field_visible(key):
+                        continue
                     add(category, section, label, key)
         for category, section, label, terms in SEARCH_ACTIONS:
             add(category, section, label, '', terms)
@@ -801,11 +809,17 @@ class LauncherBackend(QObject):
 
     @Slot(str, result='QVariant')
     def value(self, key):
+        if key == 'test_profile_dir':
+            return str(self.app.get(key) or core.DATA_DIR)
         if key == 'user_dir':
             return str(self.app.get(key) or core.DATA_DIR / 'user')
         if key == 'coop_name':
             return self.app.get(key) or self.app.get('player_name', '')
         return self.ini.get(key, '') if key in core.INI_DEFAULTS else self.app.get(key, '')
+
+    @Property(str, constant=True)
+    def activeProfileFolder(self):
+        return str(core.DATA_DIR)
 
     def _remember_written(self):
         """What settings.json and bbport.ini held when this launcher last read or wrote them."""
@@ -908,7 +922,9 @@ class LauncherBackend(QObject):
                 self._party_discovery = None
             self.coopNetworksChanged.emit()
             self.coopCheckConnection()
-        if key in ('upscaler', 'frame_gen'):
+        if key == 'bbsc_scaling':
+            self._settings_revision += 1
+        if key in ('upscaler', 'frame_gen', 'bbsc_scaling'):
             self.presetApplied.emit()
 
     @Slot(str, result=bool)
@@ -962,7 +978,7 @@ class LauncherBackend(QObject):
         self.changed.emit()
     @Slot(str)
     def browse(self, key):
-        if key not in ('game_dir', 'user_dir', 'dlc_dir', 'mods_dir', 'patches_dir'):
+        if key not in ('test_profile_dir', 'game_dir', 'user_dir', 'dlc_dir', 'mods_dir', 'patches_dir'):
             return
         folder = QFileDialog.getExistingDirectory(None, f'Choose {key.replace("_", " ")}', str(self.value(key) or core.DATA_DIR))
         if folder:
@@ -1720,7 +1736,9 @@ class LauncherBackend(QObject):
 
     @Slot(str)
     def action(self, name):
-        if name == 'openGame':
+        if name == 'openTestProfile':
+            self.open_test_profile()
+        elif name == 'openGame':
             self.openFolder('game_dir')
         elif name == 'openSaves':
             self.openFolder('user_dir')
@@ -1747,4 +1765,34 @@ class LauncherBackend(QObject):
         elif name == 'clearLog':
             self._log = ''
             self.logChanged.emit()
+
+    def open_test_profile(self):
+        """Select the profile before the child imports any launcher modules."""
+        folder = Path(str(self.value('test_profile_dir')).strip()).expanduser()
+        if not folder.is_absolute():
+            self._set_notice('Choose an absolute profile folder path.')
+            return
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            env = os.environ.copy()
+            env['BBGL_PROFILE_DIR'] = str(folder)
+            from bbport_paths import profile_p2p_port
+            # A child profile must not inherit the parent's reserved UDP port.
+            env.pop('BB_P2P_PORT', None)
+            port = profile_p2p_port(folder)
+            if port:
+                env['BB_P2P_PORT'] = port
+            # The other profile must read its own ini even if this launcher was
+            # itself started with an explicit configuration override.
+            for key in ('BB_CONFIG', 'BB_DATA_DIR', 'BB_USER_DIR', 'BBSC_DATA_DIR'):
+                env.pop(key, None)
+            command = [sys.executable]
+            if not core.FROZEN:
+                command.append(str(Path(core.__file__).resolve()))
+            subprocess.Popen(command, cwd=str(core.PORT_DIR), env=env,
+                             creationflags=core.NO_WINDOW)
+        except OSError as error:
+            self._set_notice(T('Could not open profile: {}').format(error))
+            return
+        self._set_notice('A separate launcher was opened with the selected profile.')
 

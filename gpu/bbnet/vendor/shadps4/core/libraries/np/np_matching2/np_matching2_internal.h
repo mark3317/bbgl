@@ -374,6 +374,8 @@ struct PendingEvent {
 
     OrbisNpMatching2RoomId room_id = 0;
     OrbisNpMatching2RoomMemberId member_id = 0;
+    OrbisNpMatching2RoomMemberId local_member_id = 0;
+    u64 peer_join_date = 0;
     OrbisNpMatching2Event sig_event{};
     u32 conn_id = 0;
 

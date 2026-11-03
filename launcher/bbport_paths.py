@@ -8,6 +8,15 @@ import json
 PROFILE_NAME = 'Bloodborne Game Launcher'
 
 
+def profile_p2p_port(folder):
+    """Stable ports for the three local test profiles, including UI-opened ones."""
+    name = Path(folder).name.casefold()
+    for player in range(1, 4):
+        if name == f'{PROFILE_NAME} Player {player}'.casefold():
+            return str(3657 + player)
+    return None
+
+
 def _copy_missing(source, target):
     """Merge old data without replacing any files in the new profile."""
     if not source.is_dir():
@@ -46,6 +55,12 @@ def _migrate_paths(root, legacy):
 
 
 def profile_dir():
+    override = os.environ.get('BBGL_PROFILE_DIR', '').strip()
+    if override:
+        root = Path(override).expanduser()
+        if not root.is_absolute():
+            raise ValueError('BBGL_PROFILE_DIR must be an absolute folder path')
+        return root
     local = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
     roaming = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
     root = local / PROFILE_NAME
@@ -107,7 +122,7 @@ def initialize(port):
     # Import existing portable data once, without overwriting the user's profile.
     # Old installations remain untouched until the user retires that installation.
     marker = root / 'profile-layout-v2'
-    if not marker.exists():
+    if not marker.exists() and not os.environ.get('BBGL_PROFILE_DIR', '').strip():
         for name in ('bbport.ini', 'mods.json', 'patches.json', 'input.ini', 'user'):
             source, target = port / name, root / name
             if source.exists() and not target.exists():

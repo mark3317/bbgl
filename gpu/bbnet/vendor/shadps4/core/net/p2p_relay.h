@@ -39,8 +39,13 @@ void SetSelfEndpoint(u32 addr_nbo, u16 port_nbo);   // our public endpoint (STUN
 void SetLocalId(std::string_view online_id);        // our online id (registered with the relay)
 void RememberPeer(std::string_view online_id, u32 addr_nbo, u16 port_nbo); // a peer's endpoint
 
+// Diagnostic epoch only; never changes connection state or retransmits gameplay.
+void BeginAttempt(std::string_view online_id);
+u64 TraceGeneration();
+
 // --- used by the transport (its socket) ---
-using RawSend = std::function<void(std::span<const u8> packet, u32 addr_nbo, u16 port_nbo)>;
+struct SendResult { s64 bytes; s32 error; };
+using RawSend = std::function<SendResult(std::span<const u8> packet, u32 addr_nbo, u16 port_nbo)>;
 
 enum class Path { Direct, Relay, Both };
 

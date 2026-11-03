@@ -49,3 +49,22 @@ unobserved; the former-host guest-entry problem is NOT claimed fixed.
 User explicitly requested no build. No compilation of DLL/launcher/package,
 deploy, game launch, save/settings/game-file modification or journal reset.
 Source changes are uncommitted; existing unrelated working changes retained.
+
+
+## Later user authorization: build, install and launch at 15:56 MSK
+
+The user subsequently requested launch with all current changes, superseding the
+initial no-build constraint. BBSC diagnostics commit5351ecd, BBGLd588b23; other
+pre-existing local source changes were preserved and included in the build,
+not staged as unrelated commits. Full BB_FAST_DEPLOY=1 build completed exit0:
+DLL3 existing warnings; native port exit0; launcher packaging exit0 (Qt optional
+assetdownloader plugin warning). No release audit or file/hash verification.
+Full PC copy exit0,5145 files, backup
+D:/Games/Bloodborne/coop-dev/backups/local-party-lifetime-20261103-20261103-155517.
+Existing Player EXEs/settings/saves retained. Local client/service changes do not
+require updating the running VPS services.
+
+User-authorized local-three launch15:56:15 MSK (12:56:15 UTC), coordinator22972;
+parent out/coop-dev/runs/local-party-lifetime-20261103-155615/run.json.
+Local coordinator run20261103-125615. Gameplay validation remains pending;
+former-host native guest entry is still not claimed fixed.

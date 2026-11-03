@@ -2,62 +2,25 @@
 Client binaries ship with the launcher; mutable accounts, saves and journals stay in
 LOCALAPPDATA. Upstream authors and licences are recorded in THIRD_PARTY.md.
 """
-import base64
-import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
-import re
 import secrets
 import shutil
 import socket
 import subprocess
 import sys
-import tempfile
 import time
-import urllib.request
-import zipfile
 
-REPO = 'mark3317/bbsc-gl'
-RELEASES = f'https://github.com/{REPO}/releases'
-DISCORD = 'https://discord.gg/Df7BCmfWdt'
-# The BBSC packages this launcher uses, found by name in BBSC's GitHub releases: the newest
-# release that has one is installed, so a new BBSC version needs no launcher update.
-#   client: BBSC-<version>-BBport.zip (bbsc.dll, bbsc-launch.exe, the account tool, BBSC's own
-#           BBport build in emulator\)
-#   server: BBSC-<version>-Server.zip (shadnet.exe, BBSC-GameServer.exe) - only for hosting
-ASSET_PATTERNS = {'client': r'BBSC-(?P<version>[0-9][^-]*)-BBport\.zip',
-                  'server': r'BBSC-(?P<version>[0-9][^-]*)-Server\.zip'}
-# Where each package lives under %LOCALAPPDATA%\bbport-coop, and the folders of the 0.0.1 era
-# (fixed names) still used when they are all there is.
-PACKAGE_FOLDERS = {'client': 'bbsc-client', 'server': 'bbsc-server'}
-LEGACY_FOLDERS = {'client': 'BBSC-0.0.1-BBport', 'server': 'BBSC-0.0.1-Server'}
-VERSION_FILE = 'bbport-package.json'
-# What survives an update of a package: logs, backups and BBSC's own files about the player's
-# world; the host's server keeps its accounts and registration key.
-KEEP_ON_UPDATE = {'client': ('bbsc/logs', 'bbsc/save-backups', 'bbsc/own-world', 'bbsc/captures',
-                             'tools/account.dat'),
-                  'server': ('server/shadnet.cfg', 'server/db', 'server/logs')}
-SHADNET_PORT, MATCHING_PORT, WEBAPI_PORT, GAME_PORT, RELAY_PORT = 31313, 31314, 31315, 20443, 20444
-INVITE_PREFIX = 'BBCOOP-'
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 # Tailscale's own address on every tailnet: a route to it goes out through the Tailscale adapter.
 TAILSCALE_DNS = '100.100.100.100'
-# Inbound rules for hosting: the server ports, from Tailscale's range and this PC's own networks
-# only. The game itself takes the other players' P2P connections from anywhere (a co-op server
-# on the internet: the players' PCs talk directly, or through the server's relay).
+# Private-network Party control/discovery and native gameplay firewall rules.
 FIREWALL_RANGES = ('100.64.0.0/10', 'LocalSubnet')
 FIREWALL_PORTS = (('party control', 'TCP', 37600), ('discovery', 'TCP', 37601),
                   ('discovery UDP', 'UDP', 37601), ('native gameplay', 'UDP', 37658))
 RULE_PREFIX = 'Bloodborne co-op'
-# Shipped with a launcher package (next to Bloodborne.exe):
-#   coop-server.json  {"name": "...", "invite": "BBCOOP-..."} - the co-op server players join when
-#                     their own invite code is empty (a friends' package: name, password, Play)
-#   coop/bbsc/        a BBSC build of our own (bbsc.dll, bbsc-launch.exe) with coop/bbsc.json
-#                     {"base": "<BBSC version>"}: put over the official files of that version only
-DEFAULT_SERVER_FILE = 'coop-server.json'
-OVERRIDE_DIR = Path('coop') / 'bbsc'
-OVERRIDE_FILE = Path('coop') / 'bbsc.json'
 
 
 class CoopError(Exception):
@@ -93,108 +56,6 @@ def installed_version(kind):
         return ''
 
 
-def _version_key(version):
-    return tuple(int(part) if part.isdigit() else 0 for part in re.split(r'[.\-_]', version))
-
-
-# --- Download -------------------------------------------------------------------------------------
-
-def _github(path):
-    request = urllib.request.Request(f'https://api.github.com/repos/{REPO}/{path}',
-                                     headers={'User-Agent': 'bbport-launcher',
-                                              'Accept': 'application/vnd.github+json'})
-    with urllib.request.urlopen(request, timeout=30) as reply:
-        return json.load(reply)
-
-
-def latest_release(kind):
-    """(version, tag, asset name, url, sha256) of the newest BBSC release with this package."""
-    pattern = re.compile(ASSET_PATTERNS[kind])
-    found = []
-    for release in _github('releases?per_page=30'):
-        if release.get('draft'):
-            continue
-        for asset in release.get('assets', []):
-            match = pattern.fullmatch(str(asset.get('name', '')))
-            if not match:
-                continue
-            digest = str(asset.get('digest') or '')
-            if not digest.startswith('sha256:'):
-                continue  # nothing to check it against
-            found.append((match['version'], str(release.get('tag_name', '')), asset['name'],
-                          asset['browser_download_url'], digest.split(':', 1)[1].lower(),
-                          str(release.get('published_at', ''))))
-    if not found:
-        raise CoopError(f'No BBSC release has a {ASSET_PATTERNS[kind]} package ({RELEASES}).')
-    found.sort(key=lambda item: (_version_key(item[0]), item[5]))
-    return found[-1][:5]
-
-
-def update_available(kind):
-    have = installed_version(kind) if installed(kind) else ''
-    source = port_dir() / 'coop' / kind / 'bundle.json'
-    if not source.is_file():
-        raise CoopError('Bundled co-op files are missing. Re-extract the launcher release.')
-    newest = json.loads(source.read_text(encoding='utf-8'))['version']
-    return have, newest if have != newest else ''
-
-
-def _safe_extract(archive, destination):
-    root = destination.resolve()
-    for member in archive.infolist():
-        target = (destination / member.filename).resolve()
-        if root != target and root not in target.parents:
-            raise CoopError(f'Unsafe path in the package: {member.filename}')
-    archive.extractall(destination)
-
-
-def _package_root(staging):
-    """The package's own folder inside an unpacked zip (BBSC-<version>-BBport\\), or the zip's root."""
-    entries = [entry for entry in staging.iterdir() if not entry.name.startswith('__MACOSX')]
-    return entries[0] if len(entries) == 1 and entries[0].is_dir() else staging
-
-
-def _install(kind, zip_path, version, source):
-    staging = Path(tempfile.mkdtemp(prefix='.bbsc-unpack-', dir=coop_dir()))
-    try:
-        with zipfile.ZipFile(zip_path) as archive:
-            _safe_extract(archive, staging)
-        new = _package_root(staging)
-        probe = 'bbsc/bbsc.dll' if kind == 'client' else 'server/shadnet.exe'
-        if not (new / probe).is_file():
-            raise CoopError(f'{Path(zip_path).name} is not a BBSC {kind} package (no {probe}).')
-        old = package_dir(kind)
-        if old.is_dir():
-            for keep in KEEP_ON_UPDATE[kind]:
-                if (old / keep).exists():
-                    target = new / keep
-                    if target.is_dir():
-                        shutil.rmtree(target)
-                    elif target.exists():
-                        target.unlink()
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.move(str(old / keep), str(target))
-        if not version and kind == 'client':
-            try:
-                version = str(json.loads((new / 'bbsc' / 'mod.json').read_text(encoding='utf-8'))['version'])
-            except (OSError, ValueError, KeyError, TypeError):
-                version = ''
-        (new / VERSION_FILE).write_text(json.dumps({'version': version, 'source': source}, indent=2) + '\n',
-                                        encoding='utf-8')
-        folder = coop_dir() / PACKAGE_FOLDERS[kind]
-        if folder.exists():
-            shutil.rmtree(folder)
-        shutil.move(str(new), str(folder))
-        legacy = coop_dir() / LEGACY_FOLDERS[kind]
-        if legacy.is_dir() and legacy != folder:
-            shutil.rmtree(legacy, ignore_errors=True)  # its kept files moved over above
-    finally:
-        shutil.rmtree(staging, ignore_errors=True)
-    if kind == 'client':
-        apply_override()
-    return folder
-
-
 def download(kind, progress=None):
     """Compatibility entry point: validate installed binaries, never copy them to the profile."""
     from bbport_bundle import verify
@@ -202,26 +63,6 @@ def download(kind, progress=None):
         return verify(package_dir(kind))
     except (OSError, ValueError, KeyError) as error:
         raise CoopError(f'Bundled co-op files are damaged. Re-extract the launcher release: {error}') from error
-
-
-def install_zip(kind, zip_path, progress=None):
-    """Installs a BBSC package zip the player downloaded (a test build, or no GitHub access)."""
-    coop_dir().mkdir(parents=True, exist_ok=True)
-    if progress:
-        progress(f'Installing {Path(zip_path).name}…')
-    _install(kind, Path(zip_path), '', str(zip_path))
-    return installed_version(kind)
-
-
-def apply_override():
-    """Synchronize the pinned fork; old package versions are no longer a dependency."""
-    return download('client')
-
-
-def bbsc_emulator():
-    """BBSC's own BBport build in the client package (emulator\\bb-probe.exe), or None."""
-    probe = package_dir('client') / 'emulator' / 'bb-probe.exe'
-    return probe if probe.is_file() else None
 
 
 # --- Network ---------------------------------------------------------------------------------------
@@ -296,8 +137,6 @@ def host_address():
     return None, None
 
 
-# --- One-time setup (one administrator prompt) ---------------------------------------------------
-
 def network_candidates():
     """Active IPv4 adapters; discovery does not claim remote reachability."""
     script = """Get-NetAdapter | Where-Object Status -eq 'Up' | ForEach-Object {
@@ -338,6 +177,39 @@ def network_candidates():
     return sorted(groups.values(), key=lambda item: (not item['vpn'], item['text'].lower()))
 
 
+def select_host_address(networks, connection='auto', selected='', custom=''):
+    if connection == 'custom':
+        address = custom.strip()
+        try:
+            ip = ipaddress.IPv4Address(address)
+            if ip.is_unspecified or ip.is_loopback or ip.is_multicast or ip.is_link_local:
+                raise ValueError()
+        except ValueError:
+            raise CoopError('Enter a valid IPv4 address for friends.') from None
+        return address, 'Custom address'
+    if connection == 'auto':
+        vpns = [item for item in networks if item['vpn']]
+        if len(vpns) > 1:
+            raise CoopError('Several VPN connections found. Choose the network your friends use.')
+        choices = vpns or networks
+        if not choices:
+            raise CoopError('No active IPv4 connection found. Refresh the connection list.')
+        if len(choices) > 1:
+            raise CoopError('Several connections found. Choose the network your friends use.')
+        network = choices[0]
+    else:
+        network = next((item for item in networks if item['value'] == connection), None)
+        if not network:
+            raise CoopError('The selected connection is unavailable. Refresh the connection list.')
+    addresses = network['addresses']
+    if selected in addresses:
+        return selected, network['text']
+    if len(addresses) != 1:
+        raise CoopError('Choose an address for the selected connection.')
+    return addresses[0], network['text']
+
+
+# --- One-time setup (one administrator prompt) ---------------------------------------------------
 
 def _quoted(text):
     """A PowerShell single-quoted string: a path with an apostrophe (C:\\Users\\O'Neil) broke the
@@ -373,8 +245,8 @@ def setup_done(game_exe):
         return False
 
 
-def run_setup(game_exe):
-    """Firewall rules (Tailscale and home network only) and the C++ runtime the servers need.
+def run_setup(game_exe, remote_ranges=None):
+    """Firewall rules for the selected private network and native gameplay.
     Windows asks the player once for administrator rights."""
     script = coop_dir() / 'setup-firewall.ps1'
     result_file = coop_dir() / 'firewall-setup-result.json'
@@ -392,7 +264,7 @@ def run_setup(game_exe):
     body = (
         '$ErrorActionPreference = "Stop"\n'
         f"$result = @{{ok=$false; error=''; request='{request}'}}\n"
-        'try {\n' + _firewall_script(game_exe) + verify + '\n'
+        'try {\n' + _firewall_script(game_exe, remote_ranges) + verify + '\n'
         f"$r = Get-NetFirewallRule -DisplayName {_quoted(names[-1])} -ErrorAction Stop\n"
         f"if (($r | Get-NetFirewallApplicationFilter).Program -ne {_quoted(game_exe)}) "
         "{ throw 'Firewall game path verification failed.' }\n"

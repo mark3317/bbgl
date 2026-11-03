@@ -920,11 +920,13 @@ static s32 RunRealHttpRequest(const SendRequestPlan& plan_in, HttpResponse& out_
             plan.body.empty() ? "" : reinterpret_cast<const char*>(plan.body.data());
         const size_t body_size = plan.body.size();
 
-        const bool retry_claim = BbscClaimRetryEnabled(plan.method == ORBIS_HTTP_METHOD_POST,
-            plan.path, std::any_of(plan.headers.begin(), plan.headers.end(), [](const auto& header) {
-                return HeaderNameMatches(header.first, "X-ShadPS4-Bloodborne-Seamless") &&
+        const bool retry_connect = BbscConnectRetryEnabled(std::any_of(plan.headers.begin(), plan.headers.end(), [](const auto& header) {
+                return (HeaderNameMatches(header.first, "X-ShadPS4-Bloodborne-Seamless") ||
+                        HeaderNameMatches(header.first, "X-BBSC-Connect-Retry")) &&
                        header.second == "1";
             }));
+        cli.set_connection_timeout(BbscConnectTimeout(
+            retry_connect, pick_timeout_seconds(plan.settings.connect_timeout_us, 30)));
         auto send_request = [&]() {
             switch (plan.method) {
             case ORBIS_HTTP_METHOD_GET:
@@ -954,12 +956,12 @@ static s32 RunRealHttpRequest(const SendRequestPlan& plan_in, HttpResponse& out_
                 return cli.Get(plan.path, headers);
             }
         };
-        auto result = SendBbscClaim(retry_claim, send_request,
+        auto result = SendBbscHttp(retry_connect, send_request,
             [](const auto& reply) {
                 return !reply && reply.error() == httplib::Error::ConnectionTimeout;
             },
             [&](unsigned retry) {
-                LOG_WARNING(Lib_Http, "BBSC summon claim: TCP connect timed out before send; retry {}/2", retry);
+                LOG_WARNING(Lib_Http, "BBSC HTTP: TCP connect timed out before send; retry {}/2", retry);
             });
 
         if (!result) {

@@ -9,6 +9,7 @@
 #include "common/debug.h"
 #include "common/polyfill_thread.h"
 #include "core/libraries/videoout/video_out.h"
+#include "core/libraries/videoout/pacing_diagnostics.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -102,6 +103,9 @@ private:
         s64 flip_arg;
         s32 index;
         bool eop;
+        PacingDiagnostics::Time queued{};
+        double prepare_ms = 0;
+        size_t queue_depth = 0; // sampled under mutex when dequeuing, includes this request
 
         operator bool() const noexcept {
             return frame != nullptr;
@@ -120,6 +124,8 @@ private:
     void SwapThread(std::stop_token token);
     void RunPresenter(std::function<void()> work, bool if_idle = false);
 
+    bool pacing_capture = false;
+    PacingDiagnostics pacing;
     std::mutex swap_mutex;
     std::condition_variable_any swap_cv;
     std::deque<std::function<void()>> swap_queue;

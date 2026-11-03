@@ -481,11 +481,10 @@ def main():
     # No stdin: an inherited pipe (shells such as Git Bash) cost the game its console output.
     party_log = None
     options = {}
-    if party is not None:
-        from run_log import open_log
-        party_log = open_log(user_dir, env)
-        options = dict(stdout=party_log, stderr=subprocess.STDOUT)
     try:
+        if party is not None:
+            from run_log import native_output
+            party_log, options = native_output(user_dir, env)
         game_proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, creationflags=no_console(), **options)
     except BaseException:
         if party_log is not None: party_log.close()
@@ -494,9 +493,9 @@ def main():
     started = []
     try:
         code = game_proc.wait()
-        if party_log is not None:
+        if party is not None:
             from run_log import record_exit
-            record_exit(party_log, game_proc.pid, code)
+            record_exit(party_log if party_log is not None else sys.stdout, game_proc.pid, code)
         if party is not None:
             from bbport_local_test import keep_local_party_after_game
             keep_local_party_after_game(party, env, code)

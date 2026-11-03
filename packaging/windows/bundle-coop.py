@@ -1,51 +1,11 @@
-"""Assemble a self-contained client and server from the pinned fork and vendor tools.
-
-Only shadNet runtime/account dependencies are taken from the checksum-pinned archive.
-The BBSC mod and game server are built from mods-src/BBSC, never from that archive.
-"""
-import hashlib
+"""Assemble the bundled BBSC client and in-process Party runtime from mods-src/BBSC."""
 import json
 from pathlib import Path
 import shutil
 import subprocess
-import sys
-import urllib.request
-import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 FORK = ROOT / 'mods-src/BBSC'
-VENDORS = {
-    'BBport': '001efc0a03b47bd6b2660c598fd6d172d2aaae3201a4982134d1f215918acd3c',
-}
-
-
-def vendor(kind):
-    name = f'BBSC-0.0.2-{kind}.zip'
-    path = ROOT / 'out/vendor' / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists():
-        temporary = path.with_suffix('.part')
-        urllib.request.urlretrieve(f'https://github.com/CLSAMG22/BBSC/releases/download/v0.0.2/{name}', temporary)
-        temporary.replace(path)
-    if hashlib.sha256(path.read_bytes()).hexdigest() != VENDORS[kind]:
-        raise RuntimeError(f'Vendor checksum mismatch: {name}')
-    return zipfile.ZipFile(path)
-
-
-def extract_vendor(kind, prefix, destination, allowed):
-    with vendor(kind) as archive:
-        base = f'BBSC-0.0.2-{kind}/{prefix}/'
-        for name in archive.namelist():
-            relative = name.removeprefix(base)
-            if not name.startswith(base) or not allowed(relative):
-                continue
-            if '..' in Path(relative).parts or Path(relative).is_absolute():
-                raise RuntimeError('Unsafe vendor path')
-            target = destination / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(archive.read(name))
-
-
 def main():
     dest = ROOT / 'out/stage/Bloodborne Game Launcher/coop'
     client = dest / 'client'

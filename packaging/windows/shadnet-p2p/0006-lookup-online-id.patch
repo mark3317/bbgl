@@ -1,0 +1,92 @@
+diff --git a/src/protocol.h b/src/protocol.h
+--- a/src/protocol.h
++++ b/src/protocol.h
+@@ -45,6 +45,7 @@
+     GetToken = 39,
+     // Presence: mid-session Appear-Offline toggle (payload: SetAppearOfflineRequest).
+     SetAppearOffline = 40,
++    LookupOnlineId = 41,
+     // Matchmaking
+     ContextStart = 100,
+     CreateRoom = 101,
+diff --git a/src/client_session.h b/src/client_session.h
+--- a/src/client_session.h
++++ b/src/client_session.h
+@@ -192,6 +192,8 @@
+     ErrorType CmdLogin(StreamExtractor& data, QByteArray& reply);
+     ErrorType CmdDelete(StreamExtractor& data);
+ 
++    ErrorType CmdLookupOnlineId(StreamExtractor& data, QByteArray& reply);
++
+     // commands cmd_friend.cpp
+     ErrorType CmdAddFriend(StreamExtractor& data);
+     ErrorType CmdRemoveFriend(StreamExtractor& data);
+diff --git a/src/client_session.cpp b/src/client_session.cpp
+--- a/src/client_session.cpp
++++ b/src/client_session.cpp
+@@ -187,6 +187,8 @@
+         return CmdRemoveBlock(se);
+     case CommandType::SetAppearOffline:
+         return CmdSetAppearOffline(se);
++    case CommandType::LookupOnlineId:
++        return CmdLookupOnlineId(se, reply);
+     case CommandType::GetServerFeatures:
+         return CmdGetServerFeatures(reply);
+     case CommandType::GetBoardInfos:
+diff --git a/src/shadnet.proto b/src/shadnet.proto
+--- a/src/shadnet.proto
++++ b/src/shadnet.proto
+@@ -54,6 +54,16 @@
+     string avatar_url = 3;  // optional; server uses default if empty
+     string email      = 4;
+     string secret_key = 5;  // optional; must match server config if set
++}
++
++// Resolve an online ID, including registered users who are currently offline.
++message LookupOnlineIdRequest {
++    string npid = 1;
++}
++
++message LookupOnlineIdReply {
++    uint64 account_id = 1;
++    string npid = 2;
+ }
+ 
+ // Friend / block commands
+diff --git a/src/cmd_account.cpp b/src/cmd_account.cpp
+--- a/src/cmd_account.cpp
++++ b/src/cmd_account.cpp
+@@ -257,3 +257,33 @@
+     qInfo() << "CmdGetToken: served token for" << m_info.npid;
+     return ErrorType::NoError;
+ }
++
++// Command 41: u32-LE-prefixed LookupOnlineIdRequest / LookupOnlineIdReply.
++// DispatchCommand permits this only after authentication. Account IDs come from
++// the same database as LoginReply; presence and room membership are irrelevant.
++ErrorType ClientSession::CmdLookupOnlineId(StreamExtractor& data, QByteArray& reply) {
++    shadnet::LookupOnlineIdRequest req;
++    if (!decodeProto(req, data) || data.error())
++        return ErrorType::Malformed;
++
++    const QString npid = QString::fromStdString(req.npid());
++    if (!IsValidNpid(npid))
++        return ErrorType::InvalidInput;
++
++    QSqlQuery query(m_db->Conn());
++    query.prepare("SELECT user_id,username FROM account WHERE username=? COLLATE NOCASE");
++    query.addBindValue(npid);
++    if (!query.exec()) {
++        qWarning() << "LookupOnlineId: database query failed";
++        return ErrorType::DbFail;
++    }
++    if (!query.next())
++        return ErrorType::NotFound;
++
++    shadnet::LookupOnlineIdReply rep;
++    rep.set_account_id(query.value(0).toULongLong());
++    rep.set_npid(query.value(1).toString().toStdString());
++    appendProto(reply, rep);
++    qInfo() << "LookupOnlineId:" << npid << "accountId=" << rep.account_id();
++    return ErrorType::NoError;
++}

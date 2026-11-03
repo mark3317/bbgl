@@ -8,8 +8,14 @@
 #include <chrono>
 #include <cstdio>
 #include <time.h>
-#ifndef _WIN32
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
 #include <sys/resource.h>
+#include <unistd.h>
 #endif
 #include "common/assert.h"
 #include "bbport_settings.h"
@@ -21,6 +27,7 @@
 #include "core/emulator_settings.h"
 #include "core/libraries/kernel/time.h"
 #include "core/libraries/videoout/driver.h"
+#include "core/libraries/videoout/async_perf_log.h"
 #include "core/libraries/videoout/videoout_error.h"
 #include "imgui/renderer/imgui_core.h"
 #include "video_core/amdgpu/liverpool.h"
@@ -36,6 +43,34 @@ extern std::atomic<u32> g_bb_compiles;
 } // namespace Vulkan
 
 namespace Libraries::VideoOut {
+
+PacingDiagnostics::Cpu PacingDiagnostics::ReadCpu() {
+    Cpu c;
+#ifdef _WIN32
+    FILETIME created{}, exited{}, kernel{}, user{}, idle{}, system_kernel{}, system_user{};
+    const auto ms = [](FILETIME t) {
+        return (static_cast<unsigned long long>(t.dwHighDateTime) * 4294967296ULL +
+                t.dwLowDateTime) / 10000.0;
+    };
+    c.pid = GetCurrentProcessId();
+    if (!GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernel, &user)) return c;
+    c.process_ms = ms(kernel) + ms(user);
+    if (!GetThreadTimes(GetCurrentThread(), &created, &exited, &kernel, &user)) return c;
+    c.thread_ms = ms(kernel) + ms(user);
+    if (!GetSystemTimes(&idle, &system_kernel, &system_user)) return c;
+    c.total_ms = ms(system_kernel) + ms(system_user);
+    c.busy_ms = c.total_ms - ms(idle);
+#else
+    rusage process{}, thread{};
+    c.pid = static_cast<unsigned long>(getpid());
+    if (getrusage(RUSAGE_SELF, &process) || getrusage(RUSAGE_THREAD, &thread)) return c;
+    const auto ms = [](timeval t) { return t.tv_sec * 1000.0 + t.tv_usec / 1000.0; };
+    c.process_ms = ms(process.ru_utime) + ms(process.ru_stime);
+    c.thread_ms = ms(thread.ru_utime) + ms(thread.ru_stime);
+#endif
+    c.valid = true;
+    return c;
+}
 
 constexpr static bool Is32BppPixelFormat(PixelFormat format) {
     switch (format) {
@@ -60,6 +95,8 @@ constexpr u32 PixelFormatBpp(PixelFormat pixel_format) {
 }
 
 VideoOutDriver::VideoOutDriver(u32 width, u32 height) {
+    pacing_capture = EmulatorSettingsImpl::Flag("BB_PERF_CAPTURE", Common::Log::DiagnosticsEnabled()) &&
+                     EmulatorSettingsImpl::Flag("BB_PACING_CAPTURE", true);
     main_port.resolution.full_width = width;
     main_port.resolution.full_height = height;
     main_port.resolution.pane_width = width;
@@ -293,16 +330,30 @@ int VideoOutDriver::ChangeBufferAttribute(VideoOutPort* port, s32 attributeIndex
 
 void VideoOutDriver::Flip(const Request& req) {
     // Update HDR status before presenting, then present the frame (bbport: on the swap thread).
-    RunPresenter([this, frame = req.frame, hdr = req.port->is_hdr] {
+    const auto swap_queued = pacing_capture ? PacingDiagnostics::Clock::now()
+                                           : PacingDiagnostics::Time{};
+    RunPresenter([this, frame = req.frame, hdr = req.port->is_hdr, swap_queued] {
+        const auto start = pacing_capture ? PacingDiagnostics::Clock::now()
+                                          : PacingDiagnostics::Time{};
         presenter->SetHDR(hdr);
         presenter->Present(frame);
+        if (pacing_capture) {
+            const auto finish = PacingDiagnostics::Clock::now();
+            pacing.swap_queue_us.fetch_add(static_cast<unsigned long long>(
+                std::chrono::duration_cast<std::chrono::microseconds>(start - swap_queued).count()),
+                std::memory_order_relaxed);
+            pacing.swap_work_us.fetch_add(static_cast<unsigned long long>(
+                std::chrono::duration_cast<std::chrono::microseconds>(finish - start).count()),
+                std::memory_order_relaxed);
+            pacing.swap_count.fetch_add(1, std::memory_order_relaxed);
+        }
     });
     Vulkan::FrameCapture::OnFlip(req.index >= 0 ? req.port->buffer_slots[req.index].address_left
                                                 : 0);
 
     // Lightweight research telemetry, identical in offline and co-op. Guest flips,
     // not generated/presented frames. No disk access or sorting on each frame.
-    static const bool perf_capture = EmulatorSettingsImpl::Flag("BB_PERF_CAPTURE", true);
+    static const bool perf_capture = EmulatorSettingsImpl::Flag("BB_PERF_CAPTURE", Common::Log::DiagnosticsEnabled());
     if (perf_capture) {
         using Clock = std::chrono::steady_clock;
         static auto previous = Clock::now();
@@ -324,7 +375,7 @@ void VideoOutDriver::Flip(const Request& req) {
             const auto wall = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
             if (ms > 50)
-                std::printf("Perf stall: epoch_ms=%lld frame_ms=%.3f\n", (long long)wall, ms);
+                QueuePerfLine("Perf stall: epoch_ms=%lld frame_ms=%.3f\n", (long long)wall, ms);
             if (elapsed >= 5000) {
                 auto percentile = [&](unsigned percent) {
                     unsigned cumulative = 0;
@@ -334,12 +385,12 @@ void VideoOutDriver::Flip(const Request& req) {
                     }
                     return histogram.size();
                 };
-                std::printf("Perf window: epoch_ms=%lld frames=%u duration_ms=%.3f fps=%.3f "
+                QueuePerfLine("Perf window: epoch_ms=%lld frames=%u duration_ms=%.3f fps=%.3f "
                             "best_ms=%.3f worst_ms=%.3f p50_ms=%zu p95_ms=%zu p99_ms=%zu "
-                            "over33=%u over50=%u over100=%u\n",
+                            "over33=%u over50=%u over100=%u report_async=1 reports_dropped=%llu\n",
                             (long long)wall, count, elapsed, count * 1000.0 / elapsed,
                             best, worst, percentile(50), percentile(95), percentile(99),
-                            over33, over50, over100);
+                            over33, over50, over100, PerfLinesDropped());
                 histogram.fill(0); count = over33 = over50 = over100 = 0;
                 elapsed = worst = 0; best = 1e9;
             }
@@ -610,6 +661,8 @@ bool VideoOutDriver::SubmitFlip(VideoOutPort* port, s32 index, s64 flip_arg,
 }
 
 void VideoOutDriver::SubmitFlipInternal(VideoOutPort* port, s32 index, s64 flip_arg, bool is_eop) {
+    const auto prepare_start = pacing_capture ? PacingDiagnostics::Clock::now()
+                                             : PacingDiagnostics::Time{};
     Vulkan::Frame* frame;
     if (index == -1) {
         frame = presenter->PrepareBlankFrame(false);
@@ -620,6 +673,8 @@ void VideoOutDriver::SubmitFlipInternal(VideoOutPort* port, s32 index, s64 flip_
         frame = presenter->PrepareFrame(group, buffer.address_left);
     }
 
+    const auto prepare_finish = pacing_capture ? PacingDiagnostics::Clock::now()
+                                              : PacingDiagnostics::Time{};
     {
         std::scoped_lock lock{mutex};
         requests.push({
@@ -628,6 +683,8 @@ void VideoOutDriver::SubmitFlipInternal(VideoOutPort* port, s32 index, s64 flip_
             .flip_arg = flip_arg,
             .index = index,
             .eop = is_eop,
+            .queued = pacing_capture ? PacingDiagnostics::Clock::now() : PacingDiagnostics::Time{},
+            .prepare_ms = pacing_capture ? PacingDiagnostics::Ms(prepare_finish - prepare_start) : 0,
         });
     }
     request_cv.notify_one();
@@ -641,6 +698,7 @@ void VideoOutDriver::PresentThread(std::stop_token token) {
     Common::SetCurrentThreadRealtime(vblank_period);
 
     Common::AccurateTimer timer{vblank_period};
+    if (pacing_capture) pacing.Start();
 
     // bbport: frame limit (see EmulatorSettings::GetFrameLimit). A request waits in the queue
     // until its slot, and the next slot is one period after the flip actually made: two flips
@@ -684,11 +742,24 @@ void VideoOutDriver::PresentThread(std::stop_token token) {
     const auto receive_request = [this] -> Request {
         std::scoped_lock lk{mutex};
         if (!requests.empty()) {
-            const auto request = requests.front();
+            auto request = requests.front();
+            if (pacing_capture) request.queue_depth = requests.size();
             requests.pop();
             return request;
         }
         return {};
+    };
+
+    const auto dispatch = [&](const Request& request, PacingDiagnostics::Time deadline) {
+        const auto start = pacing_capture ? PacingDiagnostics::Clock::now()
+                                          : PacingDiagnostics::Time{};
+        Flip(request);
+        if (pacing_capture) {
+            pacing.Record(start, PacingDiagnostics::Clock::now(), request.queued,
+                          request.prepare_ms, deadline, frame_limit != 0, request.queue_depth,
+                          PacingDiagnostics::Ms(period_now()));
+            pacing.Report(frame_limit, strict_cap, slot_grid);
+        }
     };
 
     // bbport: with a frame limit (uncapped presets) a queued flip is presented as soon as it
@@ -711,6 +782,7 @@ void VideoOutDriver::PresentThread(std::stop_token token) {
         const bool flip_slot = !frame_limit || now >= next_flip;
         if (flip_slot && vblank_status.count % (main_port.flip_rate + 1) == 0) {
             const auto request = receive_request();
+            const auto deadline = next_flip;
             if (request && frame_limit) {
                 next_flip = advance_slot(now);
             }
@@ -723,7 +795,7 @@ void VideoOutDriver::PresentThread(std::stop_token token) {
                     }
                 }
             } else {
-                Flip(request);
+                dispatch(request, deadline);
                 FRAME_END;
             }
         }
@@ -759,8 +831,14 @@ void VideoOutDriver::PresentThread(std::stop_token token) {
         while (!token.stop_requested()) {
             {
                 std::unique_lock lk{mutex};
-                if (!request_cv.wait_until(lk, tick_deadline,
-                                           [&] { return !requests.empty(); })) {
+                const bool empty = pacing_capture && requests.empty();
+                const auto wait_start = empty ? PacingDiagnostics::Clock::now()
+                                              : PacingDiagnostics::Time{};
+                const bool available = request_cv.wait_until(lk, tick_deadline,
+                                                             [&] { return !requests.empty(); });
+                if (empty) pacing.producer_wait.Add(PacingDiagnostics::Ms(
+                    PacingDiagnostics::Clock::now() - wait_start));
+                if (!available) {
                     break; // next vblank
                 }
             }
@@ -768,21 +846,48 @@ void VideoOutDriver::PresentThread(std::stop_token token) {
                 if (next_flip >= tick_deadline) {
                     break;
                 }
+                const auto wait_start = pacing_capture ? PacingDiagnostics::Clock::now()
+                                                       : PacingDiagnostics::Time{};
                 if (strict_cap) {
                     Common::PreciseSleepUntil(next_flip);
                 } else {
                     std::this_thread::sleep_until(next_flip);
                 }
+                if (pacing_capture) {
+                    const auto woke = PacingDiagnostics::Clock::now();
+                    pacing.cap_wait.Add(PacingDiagnostics::Ms(woke - wait_start));
+                    pacing.cap_wake.Add(std::max(0.0, PacingDiagnostics::Ms(woke - next_flip)));
+                }
             }
             const auto now = std::chrono::steady_clock::now();
             const auto request = receive_request();
             if (request) {
+                const auto deadline = next_flip;
                 next_flip = advance_slot(now);
-                Flip(request);
+                dispatch(request, deadline);
                 FRAME_END;
             }
         }
-        std::this_thread::sleep_until(tick_deadline);
+        const auto tail_start = pacing_capture ? PacingDiagnostics::Clock::now()
+                                               : PacingDiagnostics::Time{};
+        // A queued frame often reaches next_flip via this vblank sleep instead
+        // of the inner cap wait. A coarse wake here shifts every relative cap
+        // deadline (~0.8 ms/frame in the 03-Nov capture: ~57 FPS at cap 60).
+        // Use the same precise wait as the inner strict-cap path, keeping the
+        // existing deadline and avoiding early/catch-up flips.
+        if (strict_cap) {
+            Common::PreciseSleepUntil(tick_deadline);
+        } else {
+            std::this_thread::sleep_until(tick_deadline);
+        }
+        if (pacing_capture) {
+            if (tail_start < tick_deadline) {
+                pacing.tail_wake.Add(std::max(0.0, PacingDiagnostics::Ms(
+                    PacingDiagnostics::Clock::now() - tick_deadline)));
+            } else {
+                pacing.tail_overrun.Add(PacingDiagnostics::Ms(tail_start - tick_deadline));
+            }
+        }
     }
 }
 

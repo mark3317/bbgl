@@ -1,3 +1,158 @@
+## 04.11.2026 — current architecture and cleanup review
+
+Mainline uses embedded Party; external server/VPS is not required. Removed
+unreachable launcher ZIP/vendor installation helpers, retained native compatibility
+and save paths. Targeted cleanup checks PASS; no product build/deploy/gameplay.
+Second guest admission and host menu exit remain OPEN. Names/claim recheck/quest
+guards retain their source-only status below. Full state committed at user request.
+Review: [fixes/2026-11-04-project-cleanup.md](fixes/2026-11-04-project-cleanup.md).
+
+## 03.11.2026 — all-current changes built/deployed; three local games launched
+
+User requested waiting for current parallel fixes, then build/install/launch3.
+Related chats completed before build; source input size/mtime and HEAD stable
+through build. Parent d588b23 / BBSC ac5e70b plus inherited working changes.
+Includes second-guest cooldown consumption fix, host title reload correction,
+host quit input wait, accelerated initial guest placement and precise vblank tail.
+DLL build0 + native incremental build0; explicit6-file delta copy0, no repeated
+tests/file verification/full package. Backup:
+D:/Games/Bloodborne/coop-dev/backups/all-current-three-20261103-20261103-162312.
+Run out/coop-dev/runs/all-current-three-20261103-162200; coordinator27708,
+local20261103-132331, UTC13:23:31. Three native PIDs12068/30784/26556 observed.
+Existing local-three group/profiles and service-lifetime coordinator retained;
+no save/settings/journal resets. Latest changes are client DLL/native pacing;
+no VPS/server protocol change in this batch, laptop unchanged. Games left running.
+Gameplay pending: second guest joins, host reaches title without reload and
+input lock retains camera, guest teleport visibility and FPS/stutters. Build and
+startup do not close these bugs. Earlier source-only statuses describe pre-build.
+
+## 03.11.2026 — source-only second-guest cooldown consumption fix
+
+Native018732DD marks pending.state1 BEFORE SummonBuild's enabled/positive role
+cooldown guard can returnnull. Same-generation node stays consumed forever.
+Production ApplyBbscSummonRoleDelayMask at signature-checked Scan01873269 defers
+roles7/21/22/23/24 before consumption, preserving node/timer/counters/native
+capacity/identity/readiness. Hook selected with research off; change-only mask
+log. Exact native scan+builder-guard/production trampoline fixture reproduces
+baseline and fixes delayed retry/renewed nodes; existing matchmaking fixture PASS.
+Historical node/countdown not logged: causal fit, not proof of every live failure.
+User no build: source only; only temporary regression harness compiled, no product
+build/deploy/launch/save/settings/journal changes. Gameplay pending. See
+ mods-src/BBSC/docs/fixes/2026-11-03-second-guest-cooldown.md.
+
+## 03.11.2026 — host title reload corrected in source, build deferred
+
+P2 character creation16:02:49.548 was automatic after menu exit, per user;
+the older Continue interpretation below is superseded. Removed StageTransition
+after OnReturnTitle: actual native command execution confirms this second call
+arms a separate world reload despite pending title request2. Production menu
+regression FAIL before/PASS after; native command regression PASS. No production
+build/deploy/launch for this fix. Gameplay confirmation pending; details in
+mods-src/BBSC/docs/fixes/2026-11-03-host-title-world-reload.md.
+
+## 03.11.2026 — 16:03 run: signs returned, second guest never claimed; clean final79
+
+Collected9 stable logs/warnings0 +3 party events +coordinator metadata:
+parent out/coop-dev/runs/review-20261103-1603/pc. P1->P3, P1->P2, P3->P2 native
+state6/two hunters confirmed. P3 native host->guest works after role termination,
+not menu/Continue. At P3+P1, P2 sign returned but no claim. At P2+P1, P3 returned
+but only claimed after P1 leaves and room recreated. P1 after guest menu/Continue
+returned to P2+P3 but never claimed. Thus second-guest blocker narrowed to native
+candidate/request path; exact predicate unknown, no proven UDP/capacity cause.
+No3-player session, no crossed responder icon. P1 guest title0.673s/P2host3.045s.
+Final79 unanimous owner/roomnull, joined/pendingempty, tx/acceptedabsent;
+all native exits0, coordinatorparty_drainedtrue. Owner released BEFORE native
+processes closed: missing-ACK early-close reproduction not exercised. No code,
+build/deploy/launch/save/settings edits. See parent
+ docs/fixes/2026-11-03-second-guest-run-1603.md.
+
+## 03.11.2026 — 15:56 user-authorized all-current build and local-three launch
+
+After the initial no-build request, user explicitly requested launch with all
+latest changes. BBSC5351ecd / parentd588b23 plus inherited working changes:
+full fast build0 (DLL/native/launcher), PC copy0/5145 files, backup
+local-party-lifetime-20261103-20261103-155517. Coordinator22972;
+run local-party-lifetime-20261103-155615, local20261103-125615. No journal reset,
+save/settings changes or VPS update. Gameplay pending. The service lifetime
+fix is implemented/tested; former-host native admission remains open.
+
+## 03.11.2026 — source-only local exit lifetime fix; former-host admission remains open
+
+P1/P2 native exits previously immediately closed their consensus nodes before
+P3 final release. Local-three coordinator now keeps early-exit services alive
+until all native games exit and unanimous idle is durable; missing coordinator
+or 30s unresolved drain stops services without forced ACK/release/journal reset.
+Real 3-peer lifetime regression and former-host sign/admission socket fixture
+PASS; timeout/profile checks PASS. Compatibility sign_search diagnostics expose
+returned/excluded/missing peers without payloads/secrets. No native search bypass;
+actual P1 guest recovery remains open. User said no build: source only, no build,
+deploy, game launch or save/settings edits. See parent
+ docs/fixes/2026-11-03-local-party-service-lifetime.md.
+
+## 03.11.2026 — 15:38 run: P2->P1 works; former-host P1 publishes but is never claimed
+
+Collected9 stable mod/native logs +3 event logs, warnings0; parent
+out/coop-dev/runs/review-20261103-responder-area/pc. DLL15:28:11. P2 publishes in
+Cathedral240000 and joins P1 state6/two hunters. P1 active title exit2.662s and
+Continue observed. P3 later becomes native host (room created); P2 joins state6.
+P1 after Continue has normal responder icon, publishes sign15:35:17, but NO claim/
+JoinRoom/state4/6. Crossed-area gate/publication improved; former-host guest entry
+NOT confirmed/fixed. P3 earlier pre-room attempt toP1 phase11 ready=false times
+out15:34:31; exact cause open. No3-player session or quit-during-Join exercised.
+P2 guest menu/title1.110s+Continue works. Final all3 rev56 retains ownerP3 with
+room=null/joined/pending empty. Last P3 title waits for release: persistent tx
+prepare release seq18 ACK onlyP3; P1/P2 processes closed BEFORE P3 quit request.
+No unilateral release/journal reset performed. P1 last idle title transition
+also unconfirmed. Analysis only; no build/deploy/settings/save changes. See
+parent docs/fixes/2026-11-03-responder-area-run-1538.md.
+## 03.11.2026 — crossed responder bell area gate fixed, P1/P2 guest validation pending
+
+User clarifies P1/P2 could not join one another after hosting; bell HUD crossed.
+Prior P1->P2 success covered P3 as guest only. Native0191A750 still retained
+!area_disable_flag in AL (Cathedral240000->flag2405) after goods/SosStatus allowed
+the area. 0191A8C3 signed patch copiedAL; now MOV CL,1 lifts this geographical
+veto while native common-player eligibility/range/null checks remain. Exact
+native function fixture reproduces old rejection and fixes positive/negative
+areas; guest-bell/matchmaking fixtures PASS. Runtime2405/common values absent
+from old logs, so historical cause is consistent, not proven for every attempt.
+Read-only change-only bell icon/area/publication diagnostics added. Bundled
+c1d3cfd / parent1469079, inherited working changes retained. DLL build0 (3 old
+warnings),5-file PC copy0, backup responder-area-crossed-bell-20261103-20261103-152859.
+User-authorized coordinator20692, run responder-area-fix-20261103-152919.
+P1<->P2 actual former-host guest gameplay pending; no claim of completed fix in
+game. Journals/settings/saves/VPS/laptop unchanged. See parent
+ docs/fixes/2026-11-03-responder-crossed-bell.md.
+## 03.11.2026 — 15:07 host rotation run reviewed, P3 grant without native room remains open
+
+Collected9 stable PC logs +3 party event logs, warnings0:
+parent out/coop-dev/runs/review-20261103-host-rotation/pc. DLL14:56:31 present.
+Old closing rev18 recovered normally. P1+P3 state6/two hunters; P1 addressed kick
+returns P3 home. P1 role drains, P2 acquires and P3 joins state6/two hunters.
+P2 active title exit completes in2.493s, guest returns home, Continue observed.
+P3 next acquire unanimously final rev38 at15:06:26, BUT native remainsstate0:
+no CreateJoinRoom/state1/state3 until menu15:06:59. Exact post-item/native-start
+cause unknown; third hosting NOT confirmed. P3 menu releases owner rev39; all3
+journals end idle. No native negotiation failure/slow-disconnect ERROR; failed
+admission retry and quit-during-Join hook NOT exercised. No3-player gameplay.
+All runner exit0; P2 last idle exit only reaches final-leave log before shutdown,
+not a separately confirmed title transition. Analysis only; no runtime changes.
+See parent docs/fixes/2026-11-03-host-rotation-run-1507.md.
+## 03.11.2026 — host rotation retry/guest join exit fixed and installed, game pending
+
+Prior local3 consensus DID rotate P2->P1 (rev8 release/rev9 acquire). P3 initial
+native phase11 timeout had15/15 recorded UDP frames delivered; inner ready=false
+cause remains unproven. Proven recovery bug: private Force delete retained pending
+rev11, replayed failed claim and prevented fresh admission. Delivered-pending Force
+withdrawal now requires native idle/no load and revision ticket (stale rejected).
+Guest explicit cancel+idle now retires joined membership even without owner close.
+Native stopped Join task8 selects ordinary deadline/failure cleanup via C9C6AB
+read hook; no state/task writes or title ACK bypass. Real3-process rotation/failure/
+retry/quit scenario + exact native predicate/CC51F0/trampoline + menu/leave fixtures
+PASS. DLL build0,7-file fast PC copy0, backup p2p-host-rotation-20261103-20261103-145849.
+User explicitly requested launch: coordinator28988, parent run
+out/coop-dev/runs/host-rotation-fix-20261103-1459. All3 native games running15:00 (P1=33516,P2=36244,P3=20616), new DLL14:56:31 ready; gameplay pending. Saves/settings/
+journals/VPS/laptop unchanged; inherited working changes kept, no pin/push.
+See parent docs/fixes/2026-11-03-host-rotation-retry-exit.md.
 # Переход на P2P — памятка для дальнейших исправлений
 
 Состояние на **03.11.2026**, после запуска трёх локальных игр. Этот файл —

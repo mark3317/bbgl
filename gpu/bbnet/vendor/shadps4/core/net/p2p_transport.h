@@ -122,7 +122,8 @@ public:
     // to == nullptr sends to the SetPeer peer. extra is per-message protection.
     IoResult SendTo(std::span<const u8> data, const Endpoint* to, u16 to_vport,
                     Protection extra = {});
-    IoResult RecvFrom(std::span<u8> out, bool peek, Endpoint* from, u16* from_vport);
+    IoResult RecvFrom(std::span<u8> out, bool peek, Endpoint* from, u16* from_vport,
+                      bool peek_length = false);
     u32 Events() const; // Host::EventBits
     const Readiness& Handles() const {
         return *readiness_;
@@ -242,9 +243,20 @@ private:
     std::map<u16, DiagnosticCounters> diagnostic_ports_;
     u64 diagnostic_direct_rx_{}, diagnostic_relay_rx_{};
     Clock::time_point diagnostic_at_{};
+    u64 trace_generation_{0};
     LatencySamples latency_samples_;
     DiagnosticCounters& Diagnostic(u16 vport);
-    std::string CollectDiagnostics(Clock::time_point now);
+    struct DiagnosticSnapshot {
+        struct Port { u16 vport; DiagnosticCounters counters; size_t queued_bytes; };
+        struct Stream { u16 local, peer; std::string state; u64 retransmissions, unread; };
+        u16 bound_port;
+        u64 direct_rx, relay_rx, omitted;
+        std::vector<Port> ports;
+        std::vector<Stream> streams;
+        std::vector<LatencySamples::Sample> samples;
+    };
+    std::optional<DiagnosticSnapshot> TakeDiagnostics(Clock::time_point now); // under mutex_
+    static std::string FormatDiagnostics(const DiagnosticSnapshot& snapshot); // outside mutex_
 
     const int family_;
     std::unique_ptr<Codec> codec_;

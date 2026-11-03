@@ -270,7 +270,10 @@ bool ResolvePeerEndpointUnremembered(const MemberCache& member, PeerInfo& peer) 
 
 void MarkMatching2PeerActive(ContextObject& ctx, OrbisNpMatching2RoomId room_id,
                              OrbisNpMatching2RoomMemberId member_id, u32 addr, u16 port) {
-    if (member_id == 0 || member_id == ctx.my_member_id) {
+    const auto room = ctx.room_cache.find(room_id);
+    if (ctx.room_id != room_id || room == ctx.room_cache.end() ||
+        !room->second.members.contains(member_id) ||
+        member_id == 0 || member_id == ctx.my_member_id) {
         return;
     }
 
@@ -376,6 +379,22 @@ void HandleMatching2HandshakePacket(u32 from_addr, u16 from_port,
         !ShouldConnectToPeer(room_it->second, ctx->my_member_id, member_id)) {
         return;
     }
+
+    // UDP may outlive MEMBER_LEFT and the slot may already belong to another
+    // incarnation. Only the server roster can introduce an identity. In
+    // particular a stale Check must not resurrect a PeerInfo and ESTABLISHED.
+    const auto member = room_it->second.members.find(member_id);
+    if (member == room_it->second.members.end() ||
+        std::memcmp(member->second.np_id.handle.data, pkt.online_id_from,
+                    ORBIS_NP_ONLINEID_MAX_LENGTH) != 0) {
+        static std::atomic<unsigned> logged{0};
+        if (logged.fetch_add(1, std::memory_order_relaxed) < 64)
+            LOG_INFO(Lib_NpMatching2, "Matching2 stale handshake ignored: room={} member={} kind={} (not current roster identity)",
+                     room_id, member_id, pkt.kind);
+        return;
+    }
+    if (pkt.kind < static_cast<u8>(Matching2HandshakeKind::Offer) ||
+        pkt.kind > static_cast<u8>(Matching2HandshakeKind::CheckAck)) return;
 
     PeerInfo& peer = ctx->peers[member_id];
     peer.member_id = member_id;
@@ -524,6 +543,11 @@ void QueueMatching2SignalingEvent(ContextObject& ctx, OrbisNpMatching2RoomId roo
     ev.fire_at = std::chrono::steady_clock::now();
     ev.room_id = room_id;
     ev.member_id = member_id;
+    ev.local_member_id = ctx.my_member_id;
+    if (const auto room = ctx.room_cache.find(room_id); room != ctx.room_cache.end()) {
+        if (const auto member = room->second.members.find(member_id);
+            member != room->second.members.end()) ev.peer_join_date = member->second.join_date;
+    }
     ev.sig_event = event;
     ev.error_code = error_code;
     ScheduleEvent(std::move(ev));

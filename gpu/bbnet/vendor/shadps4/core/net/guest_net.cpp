@@ -1272,7 +1272,7 @@ NetResult P2PSocketSendTo(s32 id, const void* buf, size_t len, bool dontwait,
 }
 
 NetResult P2PSocketRecvFrom(s32 id, void* buf, size_t len, bool peek, bool dontwait,
-                            P2P::Endpoint* from, u16* from_vport, bool waitall) {
+                            P2P::Endpoint* from, u16* from_vport, bool waitall, bool peek_length) {
     const auto s = g_objects.Get<GuestSocket>(id);
     if (!s || !s->IsP2P()) {
         return NetResult::Fail(s ? Error::Inval : Error::BadF);
@@ -1282,7 +1282,7 @@ NetResult P2PSocketRecvFrom(s32 id, void* buf, size_t len, bool peek, bool dontw
     auto* bytes = static_cast<u8*>(buf);
     const bool loop = blocking && waitall && !peek && s->p2p_stream != nullptr;
     return ReceiveAll(len, loop, [&](size_t got) {
-        const std::span<u8> out{bytes + got, len - got};
+        const std::span<u8> out{bytes ? bytes + got : nullptr, len - got};
         return RunBlocking(*s, Side::Recv, Host::Readable, deadline, blocking, [&] {
             P2P::IoResult io;
             if (s->p2p_stream) {
@@ -1291,7 +1291,7 @@ NetResult P2PSocketRecvFrom(s32 id, void* buf, size_t len, bool peek, bool dontw
                     s->p2p_stream->GetPeer(from, from_vport);
                 }
             } else {
-                io = s->p2p_dgram->RecvFrom(out, peek, from, from_vport);
+                io = s->p2p_dgram->RecvFrom(out, peek, from, from_vport, peek_length);
             }
             return io.error == Error::Ok ? NetResult::Ok(static_cast<s64>(io.bytes))
                                          : NetResult::Fail(io.error);

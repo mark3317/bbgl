@@ -28,7 +28,8 @@ if (Test-Path -LiteralPath (Join-Path $Snapshot 'SPRJ0005.sce_sys')) {
     Copy-Item -LiteralPath (Join-Path $Snapshot 'SPRJ0005.sce_sys') -Destination (Join-Path $Profile 'user/savedata/1/CUSA00207/SPRJ0005.sce_sys') -Recurse
 }
 Copy-Item -LiteralPath $Invitation -Destination (Join-Path $Profile 'party/invitation.json')
-$cmdText="@echo off`r`nset `"BBGL_PROFILE_DIR=$Profile`"`r`nset `"BB_PARTY_CONFIG=$Profile\party\invitation.json`"`r`nset `"BB_PARTY_MEMBER=$Member`"`r`nset `"BB_PARTY_GAME=$Game`"`r`ncd /d `"%~dp0`"`r`n`"%~dp0Bloodborne.exe`" --script `"%~dp0coop\party\launch.py`"`r`n"
+Copy-Item -LiteralPath $Invitation -Destination (Join-Path $target 'coop/party/invitation.json')
+$cmdText="@echo off`r`nset `"BBGL_PROFILE_DIR=$Profile`"`r`nset `"BB_PARTY_CONFIG=$Profile\party\invitation.json`"`r`nset `"BB_PARTY_MEMBER=$Member`"`r`nset `"BB_PARTY_GAME=$Game`"`r`ncd /d `"%~dp0`"`r`n`"%~dp0Bloodborne.exe`" --script `"%~dp0coop\party\launch.py`" %*`r`n"
 [IO.File]::WriteAllText((Join-Path $target 'Play Party.cmd'),$cmdText,[Text.Encoding]::ASCII)
 $legacyText="@echo off`r`nset `"BBGL_PROFILE_DIR=$Profile`"`r`nset `"BB_PARTY_CONFIG=`"`r`nset `"BB_PARTY_MEMBER=`"`r`ncd /d `"%~dp0`"`r`n`"%~dp0Bloodborne.exe`"`r`n"
 [IO.File]::WriteAllText((Join-Path $target 'Play Legacy.cmd'),$legacyText,[Text.Encoding]::ASCII)

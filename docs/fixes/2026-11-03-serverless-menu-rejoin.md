@@ -41,3 +41,30 @@ LeaveRoom→idle→новая комната того же хоста→новы
 PASS. Два прямых contract сценария (полный compatibility и close/recreate) PASS.
 Итого3 tests/18.2s. Только Python adapter; DLL7872819 актуальна, rebuild не нужен.
 Живой menu/rejoin после исправления требует повторного прогона.
+
+## Уточнение пользователя: подтверждение до загрузки меню
+
+Пользователь потребовал подтверждать выход гостя до загрузки главного меню.
+Дополнение BBSCeab2dc2 после первой Python-правкиa58870b:
+
+- После успешного native save и Stop меню остаётся в pending.stopping; native
+  idle теперь недостаточен для OnReturnTitle. Переход проходит PartyTitleReady.
+- Подтверждение запрашивается worker через local /party/leave_ready, game tick
+  читает только атомарный cache. Body содержит текущий cancel_seq; API проверяет
+  свежий native idle, совпадение sequence, final group revision, отсутствие
+  pending_local и самого игрока в owner/pending/joined/members/departing.
+- Каждый выход вооружает новый cancel_seq даже при уже idle native. ACK от
+  прошлого Бланка/меню не подходит; просроченный cache и HTTP ошибки запрещают
+  переход. Таймаут ожидания не заменяет подтверждение. Legacy bypass сохранён.
+- В логе появляются waiting for final party leave / final party leave confirmed
+  перед permitting title load. Меню/движение удерживаются штатным quit guard.
+
+Production menu fixture с BBSC_MOD gate PASS: save→disconnect→idle без group ACK
+не вызывает title, даже через60s; после ACK вызывает. Existing save failure,
+role/slot guards и menu movement ограничения также PASS в этом fixture.
+Реальный WinHTTP bridge +2 независимых клиента PASS: guest joined, native idle,
+leave при network partition не разрешает title; после reconnect и final leave
+ready появляется; следующий cancel мгновенно инвалидирует старый ACK.
+Повторный guest menu/rejoin lifecycle PASS. Это не игровой результат.
+DLL пересобирается для этого дополнения; первый Python delta уже был установлен
+до уточнения пользователя. Пользователь закрыл обе игры для установки новой DLL.

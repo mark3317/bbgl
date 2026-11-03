@@ -213,6 +213,12 @@ def main():
     if missing := missing_port_files():
         fail(explain_missing_port_files(missing))
     env = os.environ
+    # The party component lives in this existing launch process, with no server process.
+    party = None
+    if env.get('BB_PARTY_CONFIG'):
+        sys.path.insert(0, str(PORT / 'coop' / 'party'))
+        from compat import start_from_environment
+        party = start_from_environment(env, PORT)
     data = Path(env.get('BB_DATA_DIR', PORT))
     out = data / 'out'
     out.mkdir(parents=True, exist_ok=True)
@@ -478,6 +484,8 @@ def main():
     try:
         return game_proc.wait()
     finally:
+        if party is not None:
+            party.close()
         for proc in started:
             proc.terminate()
         if game_proc.poll() is None:

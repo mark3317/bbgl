@@ -96,7 +96,7 @@ def run_role(argv):
         path = str(PORT_DIR / 'run.py')
         sys.argv = [path, *argv[1:]]
     try:
-        runpy.run_path(path, run_name='__main__')
+        runpy.run_path(path, run_name='__main__', init_globals={'BBGL_RUNTIME': sys.modules[__name__]})
     except SystemExit as stop:
         return stop.code if isinstance(stop.code, int) else (0 if stop.code is None else 1)
     return 0

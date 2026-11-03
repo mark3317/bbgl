@@ -36,7 +36,7 @@ fi
 "$venv/Scripts/python.exe" -m pip install -q --disable-pip-version-check pyinstaller pillow certifi bsdiff4==1.2.6 PySide6_Essentials==6.12.0
 # The scripts run inside Bloodborne.exe (--script): the standard modules they import come along.
 hidden=()
-for module in bsdiff4 argparse base64 bisect collections contextlib hashlib json re shutil struct tempfile               xml.etree.ElementTree urllib.request ctypes.wintypes certifi; do
+for module in bsdiff4 argparse base64 bisect collections contextlib hashlib json re shutil struct tempfile               xml.etree.ElementTree urllib.request ctypes.wintypes certifi http.server socketserver hmac secrets uuid; do
     hidden+=(--hidden-import "$module")
 done
 "$venv/Scripts/python.exe" -m PyInstaller --noconfirm --clean --log-level WARN --windowed \

@@ -479,11 +479,27 @@ def main():
                '--user', str(user_dir),
                '--timeout', env.get('BB_TIMEOUT', '0'), *args]
     # No stdin: an inherited pipe (shells such as Git Bash) cost the game its console output.
-    game_proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, creationflags=no_console())
+    party_log = None
+    options = {}
+    if party is not None:
+        from run_log import open_log
+        party_log = open_log(user_dir, env)
+        options = dict(stdout=party_log, stderr=subprocess.STDOUT)
+    try:
+        game_proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, creationflags=no_console(), **options)
+    except BaseException:
+        if party_log is not None: party_log.close()
+        if party is not None: party.close()
+        raise
     started = []
     try:
-        return game_proc.wait()
+        code = game_proc.wait()
+        if party_log is not None:
+            from run_log import record_exit
+            record_exit(party_log, game_proc.pid, code)
+        return code
     finally:
+        if party_log is not None: party_log.close()
         if party is not None:
             party.close()
         for proc in started:

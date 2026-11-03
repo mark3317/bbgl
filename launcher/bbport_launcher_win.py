@@ -279,6 +279,7 @@ APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR / 'game'), 'user_dir
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
                 'play_mode': 'offline', 'coop_role': 'client', 'graphics_preset': 'balanced',
+                'coop_connection': 'auto', 'coop_host_address': '', 'coop_custom_address': '', 'coop_peer_addresses': '',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
                 # finished or skipped.
                 'setup_name_edited': False, 'setup_auto_name': '', 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,

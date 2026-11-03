@@ -7,7 +7,6 @@ source ./msys2-env.sh
 git -C mods-src/BBSC submodule update --init emulator/externals/fmt emulator/externals/xbyak
 MSYS2_ARG_CONV_EXCL='*' cmd.exe /d /c "$(cygpath -w "$PWD/mods-src/BBSC/emulator/mod/build-mod-bbport.cmd")"
 if [[ ${SKIP_BUILD:-0} != 1 ]]; then bash build.sh; fi
-bash packaging/windows/build_coop_server.sh
 bash packaging/windows/package.sh
 if [[ ${BB_FAST_DEPLOY:-0} == 1 ]]; then
     # Reuse the single archive made by package.sh; no archive hash pass.

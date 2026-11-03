@@ -888,3 +888,22 @@ RU.update({
     'Confirm': 'Подтвердить',
     'Allow incoming game and co-op server connections on local and Tailscale networks. Windows will ask for administrator permission.': 'Будут разрешены входящие подключения для игры и серверов кооператива в локальной сети и Tailscale. Windows запросит права администратора.'
 })
+
+RU.update({
+    'Custom network': 'Своё подключение',
+    'Check connection': 'Проверить подключение',
+    'Local IPv4 of your network adapter': 'Локальный IPv4 выбранного сетевого адаптера',
+    'Player IPv4 addresses, separated by commas (optional)': 'IPv4 участников через запятую (если не найдены автоматически)',
+    'Open the launcher on every PC in the same VPN or local network. Roles are chosen with bells in the game.': 'Откройте лаунчер на всех ПК в одной VPN или локальной сети. Роли выбираются колоколами в игре.',
+    'Choose a connection and check the players in your network.': 'Выберите подключение и проверьте связь с участниками.',
+    'Finding players and checking the connection…': 'Поиск игроков и проверка связи…',
+    'Connection checked: TCP and UDP between all players.': 'Связь проверена: TCP и UDP между всеми участниками.',
+    'Checking the connection before launch…': 'Проверка связи перед запуском…',
+    'Starting P2P co-op. Host: Beckoning Bell. Guest: Small Resonant Bell.': 'Запуск P2P. Хозяин: Зовущий колокол. Гость: Малый звонкий колокол.',
+    'Open the launcher on 2–5 players in the same network.': 'Откройте лаунчер у 2–5 участников в одной сети.',
+    'Selected network is not connected. Check the VPN and refresh.': 'Выбранная сеть недоступна. Проверьте VPN и обновите подключение.',
+    'Several networks found. Choose Tailscale, Radmin or a custom local IPv4.': 'Найдено несколько сетей. Выберите Tailscale, Radmin или локальный IPv4 своего подключения.',
+    'P2P co-op over your network': 'Кооператив P2P через вашу сеть',
+    'Players see different groups. Refresh all launchers.': 'Участники видят разный состав группы. Обновите подключение на всех ПК.',
+    'UDP connection failed. Check the VPN and firewall on every PC.': 'Нет связи по UDP. Проверьте VPN и брандмауэр на каждом ПК.',
+})

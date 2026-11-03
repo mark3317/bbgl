@@ -16,7 +16,7 @@ def verify(root):
             raise ValueError(f'Missing release file: {name}')
     if sorted(p.name for p in root.glob('*.exe')) != ['Bloodborne.exe']:
         raise ValueError('Only the launcher EXE may be in the package root')
-    for kind in ('client', 'server'):
+    for kind in ('client',):
         folder = root / 'coop' / kind
         manifest = json.loads((folder / 'bundle.json').read_text(encoding='utf-8'))
         for name, expected in manifest['files'].items():
@@ -28,9 +28,6 @@ def verify(root):
         if hashlib.sha256((prompts / name).read_bytes()).hexdigest() != digest:
             raise ValueError('Damaged ready-made prompt mod')
     allowed_archives = {'mods/' + name for name in ready if name.endswith('.dcx')}
-    for line in (root / 'coop/server/server/shadnet.cfg').read_text(encoding='utf-8').splitlines():
-        if line.startswith('RegistrationSecretKey=') and line.split('=', 1)[1].strip():
-            raise ValueError('Personal registration key in release')
     if 'coopSetup()' in (root / 'launcher/qml/SettingsWorkspace.qml').read_text(encoding='utf-8'):
         raise ValueError('Obsolete BBSC preparation button in release')
     for path in root.rglob('*'):

@@ -17,7 +17,7 @@ Item {
         {name: "Visuals", icon: "visuals", tile: "tile-visuals", detail: launcher.tr("Graphics, display & frame rate")},
         {name: "Controls", icon: "controls", tile: "tile-controls", detail: launcher.tr("Prompts, mouse & keyboard")},
         {name: "Game & Saves", icon: "folder", tile: "tile-game-and-saves", detail: launcher.tr("Game files, saves & language")},
-        {name: "Co-op", icon: "online", tile: "tile-online", detail: launcher.tr("Seamless co-op: host or join")},
+        {name: "Co-op", icon: "online", tile: "tile-online", detail: launcher.tr("P2P co-op over your network")},
         {name: "Mods & Patches", icon: "puzzle", tile: "tile-mods-and-patches", detail: launcher.tr("Mods, enhancements & tweaks")},
         {name: "System", icon: "system", tile: "tile-system", detail: launcher.tr("Startup, updates & diagnostics")}
     ]

@@ -47,9 +47,8 @@ TAILSCALE_DNS = '100.100.100.100'
 # only. The game itself takes the other players' P2P connections from anywhere (a co-op server
 # on the internet: the players' PCs talk directly, or through the server's relay).
 FIREWALL_RANGES = ('100.64.0.0/10', 'LocalSubnet')
-FIREWALL_PORTS = (('shadnet', 'TCP', SHADNET_PORT), ('matching', 'UDP', MATCHING_PORT),
-                  ('webapi', 'TCP', WEBAPI_PORT), ('game server', 'TCP', GAME_PORT),
-                  ('relay', 'TCP', RELAY_PORT), ('sessions', 'TCP', 18671), ('STUN', 'UDP', 3478))
+FIREWALL_PORTS = (('party control', 'TCP', 37600), ('discovery', 'TCP', 37601),
+                  ('discovery UDP', 'UDP', 37601), ('native gameplay', 'UDP', 37658))
 RULE_PREFIX = 'Bloodborne co-op'
 # Shipped with a launcher package (next to Bloodborne.exe):
 #   coop-server.json  {"name": "...", "invite": "BBCOOP-..."} - the co-op server players join when
@@ -82,8 +81,7 @@ def package_dir(kind):
 def installed(kind):
     folder = package_dir(kind)
     if kind == 'client':
-        return all((folder / p).is_file() for p in ('bbsc/bbsc-launch.exe', 'bbsc/bbsc.dll',
-                                                     'account/shadnet-sample.exe'))
+        return all((folder / p).is_file() for p in ('bbsc/bbsc-launch.exe', 'bbsc/bbsc.dll'))
     return all((folder / 'server' / p).is_file() for p in ('shadnet.exe', 'BBSC-GameServer.exe',
                                                             'shadnet.cfg'))
 
@@ -220,23 +218,6 @@ def apply_override():
     return download('client')
 
 
-def default_invite():
-    """The co-op server a launcher package was made for (coop-server.json), or ''."""
-    try:
-        data = json.loads((port_dir() / DEFAULT_SERVER_FILE).read_text(encoding='utf-8'))
-        return str(data.get('invite', '')).strip()
-    except (OSError, ValueError, AttributeError):
-        return ''
-
-
-def default_server_name():
-    try:
-        data = json.loads((port_dir() / DEFAULT_SERVER_FILE).read_text(encoding='utf-8'))
-        return str(data.get('name', '')).strip()
-    except (OSError, ValueError, AttributeError):
-        return ''
-
-
 def bbsc_emulator():
     """BBSC's own BBport build in the client package (emulator\\bb-probe.exe), or None."""
     probe = package_dir('client') / 'emulator' / 'bb-probe.exe'
@@ -317,14 +298,58 @@ def host_address():
 
 # --- One-time setup (one administrator prompt) ---------------------------------------------------
 
+def network_candidates():
+    """Active IPv4 adapters; discovery does not claim remote reachability."""
+    script = """Get-NetAdapter | Where-Object Status -eq 'Up' | ForEach-Object {
+      $adapter = $_
+      Get-NetIPAddress -InterfaceIndex $_.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+      Where-Object AddressState -eq 'Preferred' | ForEach-Object {
+        [pscustomobject]@{id=[string]$adapter.InterfaceGuid; name=$adapter.Name;
+          description=$adapter.InterfaceDescription; address=$_.IPAddress; prefix=$_.PrefixLength}
+      }
+    } | ConvertTo-Json -Compress"""
+    try:
+        result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', script],
+                                capture_output=True, text=True, timeout=12, creationflags=NO_WINDOW)
+        if result.returncode:
+            return []
+        rows = json.loads(result.stdout or '[]')
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return []
+    groups = {}
+    for row in ([rows] if isinstance(rows, dict) else rows):
+        try:
+            address = ipaddress.IPv4Address(row['address'])
+        except (ValueError, KeyError):
+            continue
+        if address.is_loopback or address.is_link_local or address.is_unspecified or address.is_multicast:
+            continue
+        name = row['name']
+        description = (name + ' ' + row.get('description', '')).lower()
+        vpn = any(word in description for word in ('tailscale', 'radmin', 'wireguard', 'zerotier',
+                                                  'hamachi', 'openvpn', 'tap-windows', 'wintun', 'vpn'))
+        key = 'adapter:' + row['id']
+        group = groups.setdefault(key, {'value': key, 'text': name, 'vpn': vpn, 'provider': 'tailscale' if 'tailscale' in description else 'radmin' if 'radmin' in description else '', 'addresses': [], 'ranges': []})
+        if str(address) not in group['addresses']:
+            group['addresses'].append(str(address))
+        subnet = str(ipaddress.IPv4Network(f'{address}/{row.get("prefix", 32)}', strict=False))
+        if subnet not in group['ranges']:
+            group['ranges'].append(subnet)
+    return sorted(groups.values(), key=lambda item: (not item['vpn'], item['text'].lower()))
+
+
+
 def _quoted(text):
     """A PowerShell single-quoted string: a path with an apostrophe (C:\\Users\\O'Neil) broke the
     script, and the setup then never finished."""
     return "'" + str(text).replace("'", "''") + "'"
 
 
-def _firewall_script(game_exe):
-    ranges = ','.join(f"'{r}'" for r in FIREWALL_RANGES)
+def _firewall_script(game_exe, remote_ranges=None):
+    validated = [('Any' if r == 'Any' else 'LocalSubnet' if r == 'LocalSubnet' else
+                  str(ipaddress.IPv4Network(r, strict=False))) for r in
+                 (FIREWALL_RANGES if remote_ranges is None else remote_ranges)]
+    ranges = ','.join(f"'{r}'" for r in validated)
     lines = ['$ErrorActionPreference = "Stop"', f'$ranges = @({ranges})']
     for label, protocol, port in FIREWALL_PORTS:
         rule = f'{RULE_PREFIX} {label} {port}'
@@ -335,10 +360,6 @@ def _firewall_script(game_exe):
     lines.append(f"Remove-NetFirewallRule -DisplayName '{rule}' -ErrorAction SilentlyContinue")
     lines.append(f"New-NetFirewallRule -DisplayName '{rule}' -Direction Inbound -Program {_quoted(game_exe)} "
                  "-Action Allow | Out-Null")
-    redist = package_dir('server') / 'server' / 'vc_redist.x64.exe'
-    lines.append("$key = 'HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64'")
-    lines.append(f"if (-not ((Test-Path $key) -and (Get-ItemProperty $key).Installed -eq 1) -and "
-                 f"(Test-Path {_quoted(redist)})) {{ Start-Process {_quoted(redist)} -ArgumentList '/install /quiet /norestart' -Wait }}")
     return '\r\n'.join(lines) + '\r\n'
 
 
@@ -432,297 +453,6 @@ def run_as_administrator(program, parameters, verb='runas'):
         kernel32.WaitForSingleObject(wintypes.HANDLE(info.hProcess), 0xFFFFFFFF)
         kernel32.CloseHandle(wintypes.HANDLE(info.hProcess))
     return True
-
-
-# --- Hosting -----------------------------------------------------------------------------------------
-
-# This port's build of the co-op shadNet server (packaging/windows/build_coop_server.sh):
-# Wozzardman's shadnet-p2p with one patch, so clients on shadPS4 0.20's network code (this port
-# since 1.9.5) get STUN replies; BBSC's own shadnet.exe drops their signaling packets. BBSC's game
-# server is used as it is.
-PORT_DIR = (Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False)
-            else Path(__file__).resolve().parent.parent)
-
-
-def bundled_server():
-    for folder in (PORT_DIR / 'coop' / 'server' / 'server',
-                   PORT_DIR / 'bin' / 'coop-server', PORT_DIR / 'out' / 'coop-server'):
-        if (folder / 'shadnet.exe').is_file():
-            return folder
-    return None
-
-
-def shadnet_dir(sync=False):
-    """Only configuration, database and logs live in the writable profile."""
-    target = coop_dir() / 'server'
-    if sync:
-        target.mkdir(parents=True, exist_ok=True)
-        for name in ('shadnet.cfg', 'worlds.cfg', 'scoreboards.cfg'):
-            source = package_dir('server') / 'server' / name
-            if not (target / name).exists():
-                shutil.copy2(source, target / name)
-    return target
-
-
-def registration_key():
-    """The host's own key (created on first use): only players who have it can make accounts."""
-    cfg = shadnet_dir() / 'shadnet.cfg'
-    if not cfg.is_file():
-        cfg = shadnet_dir(sync=True) / 'shadnet.cfg'
-    text = cfg.read_text(encoding='utf-8')
-    for line in text.splitlines():
-        if line.startswith('RegistrationSecretKey='):
-            value = line.split('=', 1)[1].strip()
-            if value:
-                return value
-            key = secrets.token_hex(20)
-            cfg.write_text(text.replace(line, f'RegistrationSecretKey={key}'), encoding='utf-8')
-            return key
-    key = secrets.token_hex(20)
-    cfg.write_text(text.rstrip('\n') + f'\nRegistrationSecretKey={key}\n', encoding='utf-8')
-    return key
-
-
-class Host:
-    """The two server programs while this launcher hosts."""
-
-    def __init__(self):
-        self.processes = []
-        self.address = None
-
-    @property
-    def running(self):
-        return any(p.poll() is None for p in self.processes)
-
-    def start(self, address):
-        self.stop()
-        server = package_dir('server') / 'server'
-        shadnet = shadnet_dir()
-        # Servers left over from a launcher that closed without stopping them hold the ports.
-        end_leftovers(server)
-        if shadnet != server:
-            end_leftovers(shadnet)
-        shadnet = shadnet_dir(sync=True)
-        logs = shadnet / 'logs'
-        logs.mkdir(exist_ok=True)
-        stamp = time.strftime('%Y%m%d-%H%M%S')
-        env = dict(os.environ, SHADNET_BLOODBORNE_SEAMLESS_COOP='1',
-                   BBSC_SERVER_DATA_DIR=str(shadnet))
-        shadnet_log = open(logs / f'shadnet-{stamp}.log', 'w', encoding='utf-8', errors='replace')
-        self.processes.append(subprocess.Popen([str(server / 'shadnet.exe')], cwd=shadnet, env=env,
-                                               stdout=shadnet_log, stderr=subprocess.STDOUT,
-                                               stdin=subprocess.DEVNULL, creationflags=NO_WINDOW))
-        time.sleep(2)
-        game_log = open(logs / f'gameserver-{stamp}.log', 'w', encoding='utf-8', errors='replace')
-        self.processes.append(subprocess.Popen(
-            [str(server / 'BBSC-GameServer.exe'), '--shadnet', address, '--host', '0.0.0.0',
-             '--advertise', address, '--summon-interval', '5', '--no-playlog',
-             '--data', str(shadnet / 'online-data.json'), '--log-dir', str(logs)],
-            cwd=shadnet, stdout=game_log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-            creationflags=NO_WINDOW))
-        time.sleep(1)
-        if not self.running or any(p.poll() is not None for p in self.processes):
-            self.stop()
-            raise CoopError(f'A co-op server stopped at start; see {logs}.')
-        self.address = address
-
-    def stop(self):
-        for process in self.processes:
-            if process.poll() is None:
-                end_tree(process)
-        self.processes = []
-        self.address = None
-
-
-def end_tree(process):
-    """BBSC-GameServer.exe runs a second copy of itself as a child: end the whole tree, or the
-    child keeps the ports after Stop hosting."""
-    if os.name == 'nt':
-        subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'], capture_output=True,
-                       creationflags=NO_WINDOW)
-    else:
-        process.terminate()
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        process.kill()
-
-
-def end_leftovers(server):
-    """Ends shadnet.exe and BBSC-GameServer.exe processes started from this server folder."""
-    if os.name != 'nt':
-        return
-    folder = str(Path(server).resolve()).replace("'", "''")
-    script = (f"Get-CimInstance Win32_Process | Where-Object {{ $_.ExecutablePath -and "
-              f"$_.ExecutablePath.StartsWith('{folder}\\', 'OrdinalIgnoreCase') }} | "
-              "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
-    subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
-                   capture_output=True, creationflags=NO_WINDOW)
-
-
-# --- Invites and accounts ------------------------------------------------------------------------
-
-def make_invite(address, key):
-    data = json.dumps({'a': address, 'k': key}, separators=(',', ':')).encode()
-    return INVITE_PREFIX + base64.urlsafe_b64encode(data).decode().rstrip('=')
-
-
-def read_invite(code):
-    # Chat apps wrap long codes over lines and add spaces: none belong to the code.
-    code = ''.join(code.split())
-    if not code.startswith(INVITE_PREFIX):
-        raise CoopError(f'An invite code starts with {INVITE_PREFIX}')
-    body = code[len(INVITE_PREFIX):]
-    try:
-        data = json.loads(base64.urlsafe_b64decode(body + '=' * (-len(body) % 4)))
-        address, key = str(data['a']), str(data.get('k', ''))
-    except (ValueError, KeyError, TypeError):
-        raise CoopError('That invite code is damaged; ask the host to copy it again.') from None
-    return address, key
-
-
-def _account_tool(address, *arguments):
-    tool = package_dir('client') / 'account' / 'shadnet-sample.exe'
-    account_dir = coop_dir() / 'account'
-    account_dir.mkdir(parents=True, exist_ok=True)
-    if not tool.is_file():
-        raise CoopError('Set up co-op first (the BBSC package is missing).')
-    try:
-        result = subprocess.run([str(tool), address, str(SHADNET_PORT), *arguments], capture_output=True,
-                                text=True, timeout=30, cwd=account_dir, creationflags=NO_WINDOW)
-    except subprocess.TimeoutExpired:
-        raise CoopError(f'No answer from the co-op server at {address}. Is the host hosting, '
-                        'and are you both on Tailscale?') from None
-    return (result.stdout or '') + (result.stderr or '')
-
-
-def create_account(address, key, name, password):
-    """Creates the account on the host's server, then checks it signs in. An existing account
-    (the same name and password) only gets the check."""
-    if not (3 <= len(name) <= 16 and all(c.isalnum() or c in '-_' for c in name)):
-        raise CoopError('A co-op name is 3-16 letters, numbers, - or _.')
-    if len(password) < 4:
-        raise CoopError('Choose a password of at least 4 characters (one you use nowhere else).')
-    out = _account_reply(address, 'login', name, password)
-    if '[login] OK' in out:
-        return 'signed in'
-    # The server answers LoginInvalidPassword for an unknown name too: only creating it tells.
-    if _account_error(out) == 'LoginAlreadyLoggedIn':
-        raise _account_failure(address, name, out)
-    arguments = ['register', name, password, f'{name}@bbport-coop.invalid']
-    if key:
-        arguments.append(key)
-    out = _account_reply(address, *arguments)
-    if 'Account created successfully' not in out:
-        raise _account_failure(address, name, out)
-    out = _account_reply(address, 'login', name, password)
-    if '[login] OK' not in out:
-        raise _account_failure(address, name, out)
-    return 'created'
-
-
-# Connection attempts to the account server: the host's own server may still be starting
-# (Start hosting asks it right after starting it), which used to read as a taken name (#28).
-ACCOUNT_RETRY_WINDOW_S, ACCOUNT_RETRY_S = 10, 2
-
-
-def _account_reply(address, *arguments):
-    """The account tool's output, asked again for a few seconds while the server refuses the
-    connection."""
-    deadline = time.monotonic() + ACCOUNT_RETRY_WINDOW_S
-    while True:
-        out = _account_tool(address, *arguments)
-        if _account_error(out) != 'connect' or time.monotonic() + ACCOUNT_RETRY_S > deadline:
-            return out
-        time.sleep(ACCOUNT_RETRY_S)
-
-
-def _account_error(out):
-    """What failed in the account tool's output: 'connect', 'timeout', the server's error name
-    (Unauthorized, CreationExistingUsername, ...) or ''."""
-    if '[connect] FAILED' in out:
-        return 'connect'
-    for line in out.splitlines():
-        if line.startswith(('[login] FAILED:', '[create] FAILED:')):
-            return line.split(':', 1)[1].strip()
-    return 'timeout' if '[timeout]' in out else ''
-
-
-def _account_failure(address, name, out):
-    """The co-op account error for the player, from the account tool's output. All of these
-    used to say "the name may be taken, or the invite is from another host" (#28)."""
-    error = _account_error(out)
-    if error in ('connect', 'timeout'):
-        return CoopError(f'No answer from the co-op server at {address}. The host must be hosting '
-                         '(launcher open), and both of you on Tailscale or the same network.')
-    if error == 'Unauthorized':
-        return CoopError("The invite code does not match the host's server: it is from an older "
-                         'session or another host. Ask the host to copy the invite code again.')
-    if error == 'LoginAlreadyLoggedIn':
-        return CoopError(f'{name} is signed in on the host\'s server right now. Every player needs '
-                         'their own co-op name; if it is yours, close the game that uses it first.')
-    if error in ('CreationExistingUsername', 'CreationExistingEmail', 'LoginInvalidPassword'):
-        return CoopError(f'{name} is already taken on the host\'s server, with another password. Use '
-                         'the password you chose with this name before, or another co-op name.')
-    if error == 'InvalidInput':
-        return CoopError(f"The host's server does not accept the name {name}; choose another.")
-    detail = error or (out.strip().splitlines() or ['no answer'])[-1]
-    return CoopError(f"The host's server did not create the account ({detail}).")
-
-
-# --- The game ------------------------------------------------------------------------------------
-
-def co_op_environment(env, address, name, password, probe, save_copy=None):
-    """The normal game environment, pointed at the host's servers with BBSC loaded. run.py writes
-    this launch's server redirects (user/host_overrides.json) from these values."""
-    launcher = package_dir('client') / 'bbsc' / 'bbsc-launch.exe'
-    # BBSC's own redirect (its play-bbport.ps1): the game server and the summon messenger the
-    # BBSC game server's server info names, both on the host.
-    overrides = coop_dir() / 'host_overrides.json'
-    overrides.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps({
-        'https://ss4.scej-network.jp:20443': f'http://{address}:{GAME_PORT}',
-    }, indent=2) + '\n'
-    overrides.write_text(text, encoding='utf-8')
-    # BBSC reads the same file itself, but only from <folder the game starts in>\user (run.py
-    # starts it in the port's folder), its exe's folder\user or %APPDATA%\shadPS4. Every normal
-    # online launch rewrites the port's user\host_overrides.json, so this copy serves this
-    # co-op launch only.
-    from bbport_paths import profile_dir
-    port_user = profile_dir() / 'user'
-    port_user.mkdir(parents=True, exist_ok=True)
-    (port_user / 'host_overrides.json').write_text(text, encoding='utf-8')
-    env = dict(env)
-    # Co-op runs on the shadNet backend against the selected host,
-    # whatever pool the main online settings choose (run.py drops these again for BB_COOP=1).
-    for key in ('BB_NET_BACKEND', 'BB_THD_TOKEN', 'BB_THD_ONLINE_ID', 'BB_THD_SERVER', 'BB_THD_AUTH',
-                'BB_THD_RULESET'):
-        env.pop(key, None)
-    # BBSC's co-op kit (its Hunt Bell, Kin Bell and the rest, which replace the vanilla bells) is
-    # only given after BBSC has copied the save folder BBSC_SAVE_DIR names (BBSC's
-    # BackupBbscSaves; it finds saves only in shadPS4's layout otherwise). Copying the save the
-    # running game has open failed every time, so the kit never came and a new character had no
-    # bell to start co-op with. BBSC gets the copy this launcher made just before the session
-    # (`save_copy`, backup_saves), which nothing has open; the bells still go into the live save.
-    save_dir = (active_save_dir(save_copy) if save_copy else None) or \
-        active_save_dir(Path(env.get('BB_USER_DIR') or port_user))
-    if save_dir:
-        env['BBSC_SAVE_DIR'] = str(save_dir)
-    env.update({
-        'BBSC_DATA_DIR': str(coop_dir() / 'bbsc'),
-        'BBSC_RELAY': f'{address}:{RELAY_PORT}',  # BBSC's relay (warps, world sync) on the host
-        'BB_PROBE': str(launcher),
-        'BBSC_EMULATOR': str(probe),
-        'BB_ONLINE': '1',
-        'BB_SHADNET_SERVER': f'{address}:{SHADNET_PORT}',
-        'BB_SHADNET_WEBAPI': f'http://{address}:{WEBAPI_PORT}',
-        'BB_HOST_OVERRIDES': str(overrides),
-        'BB_SHADNET_NPID': name,
-        'BB_SHADNET_PASSWORD': password,
-        'BB_USER_NAME': name,
-        'BB_COOP': '1',
-    })
-    return env
 
 
 def active_save_dir(user_dir):

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QFileDialog as _QFileDialog, QMessageBox as _QMess
 
 from bbport_setting_hints import HINTS
 import bbport_coop as coop
+import bbport_party as party
 import bbport_qml_ru
 import bbport_launcher_win as core
 import bbport_startup
@@ -165,10 +166,7 @@ FIELDS = {
               'toggle' if item['type'] == 'bool' else 'text', hint=item['description'])
           for item in core.COOP_SETTINGS],
         row('coop_name', 'Player name', hint='3–16 Latin letters, numbers, - or _. Also used in game.'),
-        row('coop_password', 'Co-op password', 'password',
-            hint="For your co-op account on the host's server. Use one you use nowhere else."),
-        row('coop_invite', 'Host invite code',
-            hint='Paste the code from your host. Empty uses the default server.'),
+
     ],
     'Mods': [
         row('mods_enabled', 'Enable mods', 'toggle'),
@@ -214,9 +212,9 @@ SETTINGS_SECTIONS = {
         ('In-game preferences', ['language', 'voice_language']),
     ],
     'Co-op': [
-        ('Seamless co-op', ['coop_name', 'coop_password']),
+        ('Seamless co-op', ['coop_name']),
         ('Co-op gameplay', ['bbsc_' + item['id'] for item in core.COOP_SETTINGS]),
-        ('Join a host', ['coop_invite']),
+        ('Connection', []),
     ],
     'Mods & Patches': [
         ('Installed mods', ['mods_enabled', 'mods_dir', 'patches_dir']),
@@ -304,6 +302,8 @@ class LauncherBackend(QObject):
     gameDownloadChanged = Signal()
     _gameDownloadProgress = Signal(float, str)
     coopChanged = Signal()
+    coopNetworksChanged = Signal()
+    _coopNetworksDone = Signal(list)
     _coopDone = Signal(str)
     _coopProgress = Signal(str)
     playModeChanged = Signal()
@@ -356,12 +356,16 @@ class LauncherBackend(QObject):
         self.setupCompleted.connect(self._complete_game_setup)
         self.setupFailed.connect(self._fail_game_setup)
         # Seamless co-op (bbport_coop): the servers this launcher hosts, and the last message.
-        self._coop_host = coop.Host()
+        self._party_discovery = None
+        self._party_ready = False
         self._coop_busy = False
+        self._coop_launch_pending = False
+        self._coop_networks = []
+        self._coop_networks_loading = False
+        self._coopNetworksDone.connect(self._coop_networks_finished)
         self._coop_status = ''
         self._coop_firewall_error = False
         self._launch_cancelled = False
-        self._coop_invite = ''
         self._coop_launch_env = None
         self._coopDone.connect(self._coop_finished)
         self._coopProgress.connect(self._coop_show_progress)
@@ -375,6 +379,7 @@ class LauncherBackend(QObject):
         if self._checks_started:
             return
         self._checks_started = True
+        self.coopRefreshNetworks()
         self._gpu_thread = threading.Thread(target=self._detect_gpu, daemon=True)
         self._gpu_thread.start()
         if self.app.get('check_updates'):
@@ -851,13 +856,13 @@ class LauncherBackend(QObject):
 
     @Slot(str, 'QVariant')
     def setValue(self, key, value):
-        if key in ('upscaler', 'frame_gen') and str(value) == 'dlss' and not self._dlss_supported:
-            return
-        if key == 'coop_role':
+        if key in ('coop_connection', 'coop_host_address', 'coop_custom_address', 'coop_peer_addresses', 'coop_name'):
             if self.running or self._coop_busy:
                 return
-            if value == 'client' and self._coop_host.running:
-                self.coopStopHosting()
+            if key == 'coop_connection':
+                self.app['coop_host_address'] = ''
+        if key in ('upscaler', 'frame_gen') and str(value) == 'dlss' and not self._dlss_supported:
+            return
         if key not in core.APP_DEFAULTS and key not in core.INI_DEFAULTS:
             return
         if key in core.INI_DEFAULTS:
@@ -891,6 +896,13 @@ class LauncherBackend(QObject):
             if key == 'user_dir' and self._setup_naming:
                 self._update_setup_name()
         self._write()
+        if key in ('coop_connection', 'coop_host_address', 'coop_custom_address', 'coop_peer_addresses', 'coop_name'):
+            self._party_ready = False
+            if self._party_discovery:
+                self._party_discovery.close()
+                self._party_discovery = None
+            self.coopNetworksChanged.emit()
+            self.coopCheckConnection()
         if key in ('upscaler', 'frame_gen'):
             self.presetApplied.emit()
 
@@ -1102,6 +1114,10 @@ class LauncherBackend(QObject):
         self._flush_output()
         self._append_log(f'\n— The game exited (code {code}) —\n')
         self.process = None
+        if self._party_discovery:
+            self._party_discovery.locked = None
+        self._party_ready = False
+        self.coopChanged.emit()
         if self.job:
             self.job.close()
             self.job = None
@@ -1427,38 +1443,88 @@ class LauncherBackend(QObject):
         self._set_notice('Bloodborne was added to your Steam library.')
 
 
-    # --- Seamless co-op (experimental): BBSC, hosted on one player's PC over Tailscale -------------
+    # --- Distributed P2P over a selected private network --------------------------------------
 
     @Property(str, notify=playModeChanged)
     @translated
     def coopStatus(self):
-        if self._coop_status:
-            return self._coop_status
-        if not coop.installed('client'):
-            return 'Bundled BBSC-GL files are missing. Re-extract the launcher release.'
-        if self._coop_host.running:
-            return T('Server is running. Send the invite code to friends.')
-        return T('Start hosting to invite friends.') if self.coopRole == 'host' else T('Enter your details and play co-op.')
+        return self._coop_status or 'Choose a connection and check the players in your network.'
 
     @Property(bool, notify=coopChanged)
     def coopFirewallError(self):
         return self._coop_firewall_error
 
-    @Property(str, notify=changed)
-    def coopRole(self):
-        return self.app.get('coop_role', 'client')
-
-    @Property(str, notify=coopChanged)
-    def coopInvite(self):
-        return self._coop_invite
-
-    @Property(bool, notify=coopChanged)
-    def coopHosting(self):
-        return self._coop_host.running
-
     @Property(bool, notify=coopChanged)
     def coopBusy(self):
         return self._coop_busy
+
+    @Property(bool, notify=coopChanged)
+    def coopLaunchPending(self):
+        return self._coop_launch_pending
+
+    @Property(bool, notify=coopChanged)
+    def coopReady(self):
+        return self._party_ready
+
+    @Property('QVariantList', notify=coopNetworksChanged)
+    def coopConnections(self):
+        return [{'text': T(label), 'value': key} for key, label in
+                [('auto', 'Automatically'), ('tailscale', 'Tailscale'), ('radmin', 'Radmin'), ('custom', 'Custom network')]]
+
+    @Property(str, notify=coopNetworksChanged)
+    def coopConnection(self):
+        return self.app.get('coop_connection', 'auto')
+
+    @Property(str, notify=coopNetworksChanged)
+    def coopHostAddress(self):
+        return self._party_discovery.address if self._party_discovery else ''
+
+    @Property(bool, notify=coopNetworksChanged)
+    def coopNetworksLoading(self):
+        return self._coop_networks_loading
+
+    @Slot()
+    def coopRefreshNetworks(self):
+        if self._coop_networks_loading or self._coop_busy or self.running:
+            return
+        self._coop_networks_loading = True
+        self.coopNetworksChanged.emit()
+        def discover():
+            self._coopNetworksDone.emit(coop.network_candidates())
+        threading.Thread(target=discover, daemon=True).start()
+
+    @Slot(list)
+    def _coop_networks_finished(self, networks):
+        self._coop_networks = networks
+        self._coop_networks_loading = False
+        self.coopNetworksChanged.emit()
+        self.coopCheckConnection()
+
+    def _prepare_party(self):
+        address, network = party.choose_network(self._coop_networks, self.coopConnection,
+                                               self.app.get('coop_custom_address', ''))
+        targets = party.candidate_addresses(network, coop.tailscale_exe(),
+                                            self.app.get('coop_peer_addresses', ''))
+        from bbport_paths import profile_dir
+        if self._party_discovery and self._party_discovery.address != address:
+            self._party_discovery.close()
+            self._party_discovery = None
+        if not self._party_discovery:
+            self._party_discovery = party.Discovery(profile_dir(), address, targets,
+                                                    str(self.value('coop_name')))
+        self._party_discovery.targets = targets
+        time.sleep(2.2)
+        cfg, _ = self._party_discovery.check()
+        self._party_ready = True
+        names = ', '.join(p.get('name') or p['host'] for p in self._party_discovery.offers())
+        return f"{T('Connection checked: TCP and UDP between all players.')} {len(cfg['members'])}/5: {names}"
+
+    @Slot()
+    def coopCheckConnection(self):
+        if self.running or self._coop_busy or self._coop_networks_loading:
+            return
+        self._party_ready = False
+        self._coop_run('Finding players and checking the connection…', self._prepare_party)
 
     def _coop_run(self, message, work):
         if self._coop_busy:
@@ -1472,9 +1538,11 @@ class LauncherBackend(QObject):
             try:
                 result = work()
             except (coop.CoopError, OSError, ValueError) as error:
+                self._party_ready = False
                 self._coop_firewall_error = any(word in str(error).casefold() for word in ('firewall', 'брандмауэр', 'access denied', 'blocked'))
-                result = f'Co-op: {error}'
-            except Exception as error:  # download and process errors: report, never crash the UI
+                result = f'Co-op: {T(str(error))}'
+            except Exception as error:  # report, never crash the UI
+                self._party_ready = False
                 result = f'Co-op: {type(error).__name__}: {error}'
             self._coopDone.emit(result or '')
 
@@ -1483,6 +1551,7 @@ class LauncherBackend(QObject):
     @Slot(str)
     def _coop_finished(self, message):
         self._coop_busy = False
+        self._coop_launch_pending = False
         self._coop_status = message
         self.coopChanged.emit()
         env, self._coop_launch_env = self._coop_launch_env, None
@@ -1511,104 +1580,42 @@ class LauncherBackend(QObject):
                 return candidate
         raise coop.CoopError('bb-probe.exe is missing from this install.')
 
-    def _coop_account(self):
-        return str(self.value('coop_name')).strip(), self.app.get('coop_password', '')
-
     @Slot()
     def openCoopHelp(self):
-        webbrowser.open(coop.RELEASES)
+        webbrowser.open('https://www.radmin-vpn.com/help/index.html')
 
     @Slot()
     def coopConfigureFirewall(self):
         if self.process or self._coop_busy:
             return
-
         def work():
-            coop.run_setup(self._coop_game_exe())
-            return 'Firewall configured. You can start co-op without administrator rights.'
+            _, network = party.choose_network(self._coop_networks, self.coopConnection,
+                                              self.app.get('coop_custom_address', ''))
+            ranges = tuple(network['ranges']) + ('LocalSubnet',)
+            coop.run_setup(self._coop_game_exe(), remote_ranges=ranges)
+            return 'Firewall configured. Check the connection again.'
         self._coop_run('Configuring firewall: approve the Windows administrator prompt…', work)
-
-    @Slot()
-    def coopStartHosting(self):
-        name, password = self._coop_account()
-        if not name or not password:
-            self._coop_status = 'Fill in your co-op name and password first; they make your account on your server.'
-            self.coopChanged.emit()
-            return
-
-        def work():
-            self._coop_ensure_packages(('client', 'server'))
-            address, network = coop.host_address()
-            if not address:
-                raise coop.CoopError(T('No network found. Install or connect Tailscale: ') + 'https://tailscale.com/download/windows')
-            key = coop.registration_key()
-            try:
-                self._coop_host.start(address)
-                how = coop.create_account(address, key, name, password)
-            except (coop.CoopError, OSError, ValueError) as error:
-                self._coop_host.stop()
-                if not coop.tailscale_exe():
-                    raise coop.CoopError(str(error) + '\n' + T('Tailscale is not installed. Download: ') +
-                                         'https://tailscale.com/download/windows') from error
-                raise
-            self._coop_invite = coop.make_invite(address, key)
-            return (f'Hosting on {network} ({address}); your account is {how}. Copy the invite code '
-                    'for your friend, then press Play co-op. The servers stay active until you exit the game.')
-        self._coop_run('Starting the co-op servers…', work)
-
-    @Slot()
-    def coopStopHosting(self):
-        self._coop_host.stop()
-        self._coop_invite = ''
-        self._coop_status = 'Stopped hosting.'
-        self.coopChanged.emit()
-
-    @Slot()
-    def coopCopyInvite(self):
-        if self._coop_invite:
-            QGuiApplication.clipboard().setText(self._coop_invite)
-            self._coop_status = 'Invite code copied. Send it to your friend in a private message.'
-            self.coopChanged.emit()
 
     @Slot()
     def coopPlay(self):
         if self.process or self._coop_busy:
             return
-        name, password = self._coop_account()
-        if self.coopRole == 'host' and not self._coop_host.running:
-            self._coop_status = T('Start hosting before playing co-op.')
-            self.coopChanged.emit()
-            return
-        if not name or not password:
-            self._coop_status = 'Fill in your co-op name and password first.'
-            self.coopChanged.emit()
-            return
-        if self._coop_host.running:
-            address, key = self._coop_host.address, coop.registration_key()
-        else:
-            try:
-                address, key = coop.read_invite(self.app.get('coop_invite', '').strip() or
-                                                coop.default_invite())
-            except coop.CoopError as error:
-                self._coop_status = f'{error}. Or host a session yourself.'
-                self.coopChanged.emit()
-                return
         self._write()
-
         def work():
-            self._coop_ensure_packages()
-            game = self._coop_probe()
-            coop.create_account(address, key, name, password)
-            backup = coop.backup_saves(self.app.get('user_dir') or core.DATA_DIR / 'user')
-            self._coop_launch_env = coop.co_op_environment(core.game_environment(self.app), address,
-                                                           name, password, game, save_copy=backup)
-            where = f' Saves backed up to {backup}.' if backup else ''
-            return f'Starting co-op with {address}. Host: ring the Beckoning Bell. Guest: ring the Small Resonant Bell.{where}'
-        self._coop_run('Getting co-op ready…', work)
+            if not coop.installed('client'):
+                raise coop.CoopError('Bundled BBSC-GL files are missing. Re-extract the launcher release.')
+            if not self._party_discovery:
+                self._prepare_party()
+            self._coop_launch_env = party.launch_environment(core.game_environment(self.app),
+                                                             self._party_discovery)
+            return 'Starting P2P co-op. Host: Beckoning Bell. Guest: Small Resonant Bell.'
+        self._coop_launch_pending = True
+        self._coop_run('Checking the connection before launch…', work)
 
     def shutdown_coop(self):
-        """The launcher is closing: hosted servers stop with it."""
-        self._coop_host.stop()
+        if self._party_discovery:
+            self._party_discovery.close()
+            self._party_discovery = None
 
 
     # --- Play mode: offline or seamless co-op ----------------
@@ -1626,10 +1633,7 @@ class LauncherBackend(QObject):
         self._write()
 
     def _coop_ready(self):
-        name, password = self._coop_account()
-        if self.coopRole == 'host':
-            return bool(name and password and self._coop_host.running)
-        return bool(name and password and (self._coop_host.running or self.app.get('coop_invite', '').strip() or coop.default_invite()))
+        return self._party_ready
 
     @Property(bool, notify=playModeChanged)
     def playModeBlocked(self):
@@ -1644,22 +1648,12 @@ class LauncherBackend(QObject):
         """One line under PLAY: what it will start."""
         mode = self.playMode
         if mode == 'coop':
-            name, password = self._coop_account()
-            if not name or not password:
-                return 'Seamless co-op: choose a co-op name and password first (Settings → Co-op).'
-            if self._coop_host.running:
-                return f'Seamless co-op: you host on {self._coop_host.address}; send your friends the invite code.'
-            if self.app.get('coop_invite', '').strip():
-                return "Seamless co-op: joining your host's server from the invite code."
-            return "Seamless co-op: start hosting, or paste a host's invite code (Settings → Co-op)."
+            return self.coopStatus
         return 'Offline: your own world, no servers.'
 
     @Property('QVariantList', notify=playModeChanged)
     def playModeSettings(self):
         """Where the setting that blocks PLAY is: [category, section]."""
-        if self.playMode == 'coop':
-            name, password = self._coop_account()
-            return ['Co-op', 'Seamless co-op' if not (name and password) else 'Host a session']
         return ['Co-op', 'Seamless co-op']
 
     @Slot()

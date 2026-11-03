@@ -21,7 +21,7 @@ Column {
             width: parent.width * 0.65 - 16; height: 38
             enabled: !launcher.running && !launcher.coopBusy
             model: launcher.coopConnections; textRole: "text"; valueRole: "value"
-            currentIndex: indexOfValue(launcher.coopConnection)
+            currentIndex: Math.max(0, indexOfValue(launcher.coopConnection))
             onActivated: launcher.setValue("coop_connection", currentValue)
         }
     }

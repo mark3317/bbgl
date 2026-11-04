@@ -27,8 +27,11 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
    admission claim, opt-in diagnostics and personal quest reward prerequisites.
    Names, claim recheck and quest reward guards are included in the 4 November
    PC build/deploy (BBSC 7b464e0); gameplay confirmation remains pending.
-   Open: second guest admission / three-player world, host menu exit sometimes
-   loading the own world, and broader progression/chalice coverage. Sequential
+   Player1 menu-exit source fix d893098: local unload no longer waits for absent
+   peers; native System-exit latch restored after save/Stop. Targeted checks PASS;
+   build/deploy in progress, actual title arrival remains unconfirmed.
+   Open: second guest admission / three-player world, menu-exit gameplay validation,
+   and broader progression/chalice coverage. Sequential
    admission was restored after the overlap experiment failed live testing.
    T22 combat latency, T23 return recovery and T24 wipe camera were confirmed by
    the user on 1 November; T25 key/tool recovery is generally solved with coverage

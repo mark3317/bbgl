@@ -1,3 +1,14 @@
+## 04.11.2026 — Player 1 menu exit fix, BBSC d893098
+
+Latest solo Player1 run retained Party ownerPlayer3/joinedPlayer1 at rev239.
+Permit local title unload after fresh native Stop/idle and explicit current ticket,
+without waiting forever for absent peers. Shared ownership/leave consensus unchanged.
+Restore confirmed native System-exit latch after save/Stop and CloseMenus;
+actual StageFlow branch test proves task+150 is otherwise omitted by request2.
+Targeted native/production/RPC/WinHTTP checks PASS. Build/deploy in progress;
+actual title arrival still unconfirmed. No saves/settings/journals changed.
+See ../mods-src/BBSC/docs/fixes/2026-11-04-player1-menu-exit.md.
+
 ## 04.11.2026 — cleanup/localization installed on this PC
 
 Built BBSC DLL and launcher package with BB_FAST_DEPLOY=1, SKIP_BUILD=1;

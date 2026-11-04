@@ -1,4 +1,4 @@
-// The approved tarnished-silver arrow, embedded so packaging needs no loose assets.
+// The approved minimalist silver arrow, embedded so packaging needs no loose assets.
 #pragma once
 #include <SDL3/SDL.h>
 #include "silver_cursor_data.h"

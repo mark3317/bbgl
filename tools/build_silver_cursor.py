@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "assets/cursors/silver-arrow.png"
+SOURCE = ROOT / "assets/cursors/minimal-arrow.png"
 TARGET = ROOT / "gpu/shim/silver_cursor_data.h"
 
 
@@ -30,14 +30,14 @@ def main():
             tip_y = next(y for y in range(size[1]) if alpha.crop((0,y,size[0],y+1)).getextrema()[1] >= 128)
             tip_x = next(x for x in range(size[0]) if alpha.getpixel((x,tip_y)) >= 128)
             parts.append(f"inline constexpr int Width=32, Height=48, HotX={tip_x}, HotY={tip_y};\n")
-            canvas.save(SOURCE.with_name("silver-arrow-32x48.png"))
+            canvas.save(SOURCE.with_name("minimal-arrow-32x48.png"))
         raw = canvas.tobytes()
         parts.append(f"inline constexpr unsigned char Pixels{factor}x[] = {{\n")
         parts.extend("    " + ",".join(str(v) for v in raw[i:i+32]) + ",\n" for i in range(0,len(raw),32))
         parts.append("};\n")
     parts.append("} // namespace BbSilverCursor\n")
     TARGET.write_text("".join(parts), encoding="utf-8")
-    print(f"Packed silver arrow, hotspot ({tip_x},{tip_y}), 32x48 + 64x96")
+    print(f"Packed minimal arrow, hotspot ({tip_x},{tip_y}), 32x48 + 64x96")
 
 
 if __name__ == "__main__":

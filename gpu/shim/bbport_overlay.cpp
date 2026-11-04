@@ -236,7 +236,7 @@ void SetOpen(bool value) {
     if (menu_open.exchange(value) == value) {
         return;
     }
-    ImGui::GetIO().MouseDrawCursor = value;
+    // WindowSDL owns the silver hardware cursor, also used by native menus.
     if (value) {
         active_tab = 0;
         menu_opened_ms = ClockMs();
@@ -1308,7 +1308,9 @@ void DrawWindows(float display_height) {
     // Hunter's Atlas: the open map, or the Map tile beside the game's quick menu.
     if (BbMap::IsOpen()) BbMap::Draw();
     if (!menu_open && !text_entry_active && !BbMap::IsOpen()) BbAtlasMenu::Draw();
-    ImGui::GetIO().MouseDrawCursor = menu_open || BbMap::IsOpen() || BbAtlasMenu::Visible();
+    // Use the same silver SDL cursor in the guide, Atlas and native menus.
+    // Visibility/capture stays on the window thread; no second ImGui arrow.
+    ImGui::GetIO().MouseDrawCursor = false;
     if (BbSettings::Get().show_fps && !menu_open && !BbMap::IsOpen()) {
         FpsCounter();
     }

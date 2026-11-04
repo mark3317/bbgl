@@ -11,6 +11,7 @@
 #include "common/assert.h"
 #include "common/logging/log.h"
 #include "sdl_window.h"
+#include "silver_cursor.h"
 #include "bbport_overlay.h"
 #include "stage_point.h"
 #include "bbport_settings.h"
@@ -141,6 +142,12 @@ WindowSDL::WindowSDL(s32 width_, s32 height_, const char* title) : width{width_}
     window = SDL_CreateWindowWithProperties(props);
     SDL_DestroyProperties(props);
     ASSERT_MSG(window, "Failed to create window: {}", SDL_GetError());
+    silver_cursor = BbSilverCursor::Create();
+    if (silver_cursor) {
+        SDL_SetCursor(silver_cursor);
+    } else {
+        LOG_WARNING(Frontend, "Silver cursor unavailable, using system arrow: {}", SDL_GetError());
+    }
     // BB_FULLSCREEN_MODE=exclusive (the launcher's Fullscreen type): fullscreen switches the
     // display to its desktop mode instead of a borderless window over it (the default). A
     // window is borderless in fullscreen until it is given a display mode; the in-game
@@ -186,6 +193,10 @@ WindowSDL::WindowSDL(s32 width_, s32 height_, const char* title) : width{width_}
 }
 
 WindowSDL::~WindowSDL() {
+    if (silver_cursor) {
+        SDL_SetCursor(SDL_GetDefaultCursor());
+        SDL_DestroyCursor(silver_cursor);
+    }
     SDL_DestroyWindow(window);
 }
 

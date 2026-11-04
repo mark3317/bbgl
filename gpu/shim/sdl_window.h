@@ -7,6 +7,7 @@
 #include "common/types.h"
 
 struct SDL_Window;
+struct SDL_Cursor;
 
 namespace Frontend {
 
@@ -53,6 +54,7 @@ private:
     std::string text, text_prompt, base_title;
     void UpdateTextTitle();
     SDL_Window* window{};
+    SDL_Cursor* silver_cursor{};
     WindowSystemInfo window_info{};
 };
 

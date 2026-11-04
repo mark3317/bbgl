@@ -29,7 +29,7 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
    PC build/deploy (BBSC 7b464e0); gameplay confirmation remains pending.
    Player1 menu-exit source fix d893098: local unload no longer waits for absent
    peers; native System-exit latch restored after save/Stop. Targeted checks PASS;
-   build/deploy in progress, actual title arrival remains unconfirmed.
+   DLL and Party delta installed on this PC (exit0); title arrival unconfirmed.
    Open: second guest admission / three-player world, menu-exit gameplay validation,
    and broader progression/chalice coverage. Sequential
    admission was restored after the overlap experiment failed live testing.

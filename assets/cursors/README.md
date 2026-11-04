@@ -1,10 +1,33 @@
-# Minimalist arrow (variant 2, current)
+# Classic minimalist arrow (variant 1, current)
+
+The user selected variant 1 of the minimalist sheet and requested approximately
+the default Windows cursor size. `classic-arrow.png` is the new ImageGen master;
+`classic-arrow-32x32.png` is the normal-size preview. The converter packs a 32x32
+canvas with an arrow at most 28px tall, plus a 64x64 high-DPI representation.
+This replaces the previous 32x48/64x96 cursor (at most 46px tall at normal DPI).
+The click hotspot is derived from the upper-left solid tip, as before.
+The historical masters below are retained, not used at runtime.
+
+## Classic image prompt (built-in ImageGen)
+
+Extract and faithfully recreate ONLY variant 1, the FIRST column of the reference
+comparison sheet: the CLASSIC COMPACT arrow mouse pointer. A simple conventional
+arrow pointing upper-left with a vertical left edge, diagonal right edge, angular
+shoulders and short stem extending lower-right. Preserve the silhouette of variant
+1, NOT the elongated narrow variant 2. Solid uniform warm off-white fill, very thin
+crisp near-black outline. Completely flat 2D UI sprite. Truly transparent background
+and clean alpha outside the outline. NO glow, NO shadow, NO gradients, NO texture,
+NO scratches, NO bevel, NO shine, NO text or number, NO other arrows. Single isolated
+arrow with sharp upper-left tip and only a small transparent margin. Suitable for a
+Windows-default-sized 32x32 cursor canvas. Match the minimalist reference exactly.
+
+## Minimalist arrow (variant 2, historical)
 
 Selected on 4 November 2026 from the second, minimalist comparison sheet:
 a narrow pale arrow with a short stem and a thin dark outline.
 `minimal-arrow.png` is the ImageGen master; `minimal-arrow-32x48.png` is the
 normal-size preview. The existing `tools/build_silver_cursor.py` packs this
-current artwork into `gpu/shim/silver_cursor_data.h` for the same SDL integration.
+artwork into `gpu/shim/silver_cursor_data.h` for the same SDL integration.
 The current click hotspot is (1,2), matching the upper-left tip after downscaling.
 Old variant 1 assets below are retained as design history, not used at runtime.
 

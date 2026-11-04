@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PARTY=ROOT/'mods-src/BBSC/party'
 RUNNER=(ROOT/'run.py').read_text(encoding='utf-8')
-launch=textwrap.dedent(RUNNER[RUNNER.index('    party_log = None'):RUNNER.index('    started = []')])
+launch=textwrap.dedent(RUNNER[RUNNER.index('    party_log = None'):RUNNER.index('    try:\n        code = game_proc.wait()')])
 wait_start=RUNNER.index('        code = game_proc.wait()')
 wait_end=RUNNER.index('        if party is not None:\n            from bbport_local_test',wait_start)
 finish=textwrap.dedent(RUNNER[wait_start:wait_end])

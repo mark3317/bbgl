@@ -14,7 +14,7 @@ Item {
     property real controlWidth: Math.min(330, width * 0.44)
     property real minimumHeight: 62
     property real folderInputY: labels.y + labels.implicitHeight + 10
-    implicitHeight: isFolder ? folderInputY + 48 + 16 : Math.max(minimumHeight, labels.implicitHeight + 28)
+    implicitHeight: isFolder ? folderInputY + 48 + 16 : Math.max(minimumHeight, labels.implicitHeight + 28, field.kind === "choice" ? choice.implicitHeight + 16 : 0)
     height: implicitHeight
 
     Column {
@@ -39,9 +39,10 @@ Item {
         onToggled: launcher.setValue(settingKey, checked)
     }
     GlassComboBox {
+        id: choice
         visible: field.kind === "choice"
         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-        width: fieldRow.controlWidth; height: 38
+        width: fieldRow.controlWidth
         model: field.options || []
         textRole: "text"
         valueRole: "value"

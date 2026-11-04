@@ -6,7 +6,6 @@ from pathlib import Path
 import secrets
 import socket
 import subprocess
-import sys
 import time
 
 from bbport_party import write_json

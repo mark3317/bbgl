@@ -144,7 +144,6 @@ FIELDS = {
         row('language', 'Game language', 'choice', core.LANGUAGES),
         row('voice_language', 'Voice language', 'choice', core.VOICE_LANGUAGES,
             'As in the game uses the original voice setting; other choices use available tracks.'),
-        row('player_name', 'Hunter name'),
         *[row(key, title[0], 'toggle') for key, title, _ in core.EXTRAS[:1]],
     ],
     'Controller': [
@@ -238,7 +237,7 @@ SEARCH_TERMS = {
     'frame_cap': 'fps limit unlocked', 'upscaler': 'dlss fsr taa',
     'vram_budget_mb': 'vram video memory texture cache pressure budget',
     'user_dir': 'save folder save path', 'game_dir': 'eboot install game files',
-    'online_npid': 'account id username', 'mouse_camera': 'camera controls', 'mouse_menu': 'cursor pointer click menus',
+    'mouse_camera': 'camera controls', 'mouse_menu': 'cursor pointer click menus',
     'mouse_hide_cursor': 'cursor pointer hide invisible',
     'ui_language': 'launcher language', 'mods_enabled': 'load mods',
 }
@@ -310,7 +309,6 @@ class LauncherBackend(QObject):
     coopNetworksChanged = Signal()
     _coopNetworksDone = Signal(list)
     _coopDone = Signal(str)
-    _coopProgress = Signal(str)
     playModeChanged = Signal()
     gameStarted = Signal()
     gameFinished = Signal(int, bool)  # exit code, whether the game got as far as running
@@ -377,7 +375,6 @@ class LauncherBackend(QObject):
         self._launch_cancelled = False
         self._coop_launch_env = None
         self._coopDone.connect(self._coop_finished)
-        self._coopProgress.connect(self._coop_show_progress)
         self.refresh_addons()
         if self._route['mode'] != 'direct':
             self.start_background_checks()
@@ -708,24 +705,6 @@ class LauncherBackend(QObject):
     def fsrStatus(self):
         missing = core.fsr4_missing()
         return 'FSR 4 assets ready' if not missing else f'{len(missing)} FSR 4 assets missing'
-
-    def scene_size_text(self):
-        """The size the game renders at before upscaling (patches.py scaled_sizes), so a soft
-        image at 4K is explained: Balanced renders 3840x2160 at 2258x1270."""
-        try:
-            w, h = (int(v) for v in str(self.ini.get('output_res', '1920x1080')).lower().split('x'))
-        except ValueError:
-            return ''
-        scale = 1.0
-        if self.ini.get('upscaler', 'dlss') not in ('off', 'taa'):
-            try:
-                scale = core.PRESET_SCALE_VALUES[int(self.ini.get('preset', '0') or 0)]
-            except (ValueError, IndexError):
-                return ''
-        rw, rh = (max(2, round(v / scale / 2) * 2) for v in (w, h))
-        if scale == 1.0:
-            return f'Now: the game renders at the output size, {w} × {h}.'
-        return f'Now: the game renders at {rw} × {rh} and upscales it to {w} × {h}.'
 
     def live_field(self, field):
         if field['key'] == 'upscaler':
@@ -1230,19 +1209,6 @@ class LauncherBackend(QObject):
         profile_file.write_text(json.dumps(profile, indent=2), encoding='utf-8')
         self.refresh_addons()
 
-    def _mods_dir(self):
-        return Path(self.app.get('mods_dir') or core.PORT_DIR / 'mods')
-
-    def _choose_prompt_download(self, choice):
-        """The player's own download of a prompt pack: opens its Nexus page, then asks for the
-        file. '' when cancelled."""
-        _, page, title, creator = core.PROMPT_PACKS[choice]
-        webbrowser.open(page)
-        source, _ = QFileDialog.getOpenFileName(
-            None, f'Choose your {title} download (by {creator}, opened on Nexus Mods)',
-            str(Path.home() / 'Downloads'), 'Prompt mod download (*.zip *.7z *.rar common.tpf.dcx);;All files (*)')
-        return source
-
     @Slot(str)
     def setPrompt(self, choice):
         """Select the ready-to-use Xbox/Keyboard mods included in the installation."""
@@ -1581,22 +1547,6 @@ class LauncherBackend(QObject):
         if env and not self._launch_cancelled:
             self.play(env)
 
-    def _coop_progress(self, text):
-        self._coopProgress.emit(text)  # from the worker thread: queued to the UI thread
-
-    @Slot(str)
-    def _coop_show_progress(self, text):
-        self._coop_status = text
-        self.coopChanged.emit()
-
-    def _coop_ensure_packages(self, kinds=('client',)):
-        for kind in kinds:
-            coop.download(kind, progress=self._coop_progress)
-
-    def _coop_probe(self):
-        """The bb-probe.exe co-op runs: this launcher's (default) or BBSC's own BBport build."""
-        return self._coop_game_exe()
-
     def _coop_game_exe(self):
         for candidate in (core.PORT_DIR / 'bin' / 'bb-probe.exe', core.PORT_DIR / 'out' / 'bb-probe.exe'):
             if candidate.is_file():
@@ -1727,11 +1677,6 @@ class LauncherBackend(QObject):
             self.coopPlay()
         else:
             self.play()
-
-
-    @Slot()
-    def openShadNetRegistration(self):
-        webbrowser.open('https://shadps4.net/shadnet/register/')
 
 
     @Slot(str)

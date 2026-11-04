@@ -134,6 +134,7 @@ Item {
             Text { text: launcher.tr("Results"); color: Theme.text; font.family: Theme.serif; font.pixelSize: 36 }
             Text {
                 property var hits: launcher.settingsRevision < 0 ? [] : launcher.searchSettings(workspace.query)
+                width: parent.width; wrapMode: Text.Wrap
                 visible: hits.length === 0; text: launcher.tr("Nothing matches “") + workspace.query + "”."
                 color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 13
             }
@@ -151,7 +152,7 @@ Item {
             id: header
             visible: workspace.query === ""
             y: 44; width: parent.width; spacing: 6
-            Text { text: launcher.tr(workspace.category); color: Theme.text; font.family: Theme.serif; font.pixelSize: 42 }
+            Text { width: parent.width; wrapMode: Text.WordWrap; text: launcher.tr(workspace.category); color: Theme.text; font.family: Theme.serif; font.pixelSize: 42 }
             Text { width: parent.width; wrapMode: Text.WordWrap; text: workspace.current.detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 14 }
             Item { width: 1; height: 22 }
             // Sections as tabs: the selected one is underlined in crimson.

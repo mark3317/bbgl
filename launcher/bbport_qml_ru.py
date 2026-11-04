@@ -410,13 +410,13 @@ RU = {
     'Never die (health stops at 1 HP)': 'Бессмертие (здоровье не опускается ниже 1)',
     'Enemies do not see you (unless attacked)': 'Враги не видят вас (пока вы не атакуете)',
     'Enemies do not hear you': 'Враги не слышат вас',
-    'Rally never fades': 'Восстановление здоровья не угасает',
+    'Rally never fades': 'Регенерация без убывания',
     'Control the targeted enemy (R3; L3 to go back; not with the free camera)':
         'Управлять выбранным врагом (R3; L3 — вернуться; не со свободной камерой)',
     'No stamina use': 'Выносливость не тратится',
     'No stamina use out of combat (8 s after your last attack or hit)':
         'Выносливость не тратится вне боя (через 8 с после последней атаки или удара)',
-    'No Rally (hits do not give health back)': 'Без восстановления (удары не возвращают здоровье)',
+    'No Rally (hits do not give health back)': 'Без регенерации (удары не возвращают здоровье)',
     'Camera further from the character': 'Камера дальше от персонажа',
     'No camera auto-rotation while moving': 'Без автоповорота камеры при движении',
     'Run with less stick tilt (about 70%)': 'Бег при меньшем наклоне стика (около 70%)',
@@ -751,7 +751,10 @@ def _compiled():
     global _COMPILED
     if _COMPILED is None:
         _COMPILED = []
-        for english, russian in PATTERNS:
+        explicit_patterns = {pattern for pattern, _ in PATTERNS}
+        templates = PATTERNS + [(key, value) for key, value in RU.items()
+                                if "{}" in key and key not in explicit_patterns]
+        for english, russian in templates:
             regex = '^' + re.escape(english).replace(r'\{\}', '(.*?)') + '$'
             _COMPILED.append((re.compile(regex, re.S), russian))
     return _COMPILED
@@ -949,4 +952,48 @@ RU.update({
     'Starting three local players…': 'Запуск трёх локальных игроков…',
     'Starting three local players with existing profiles. No VPN is needed.': 'Запускаются три игры с существующими профилями. VPN не нужна.',
     'Uses the existing Player 1, 2 and 3 profiles and their saves. Close each game normally after the test.': 'Используются существующие профили Player 1, 2 и 3 и их сейвы. После теста закройте каждую игру штатным способом.',
+})
+
+# Current Party errors and graphics choices (Russian localization audit).
+RU.update({
+    'Native AA (×1.0)': 'Сглаживание (×1.0)',
+    'Quality (×1.5)': 'Качество (×1.5)',
+    'Balanced (×1.7)': 'Баланс (×1.7)',
+    'Performance (×2)': 'Производительность (×2)',
+    'Ultra Performance (×3)': 'Макс. производительность (×3)',
+    '2560 x 1080 (Ultrawide)': '2560 x 1080 (сверхширокий)',
+    '3440 x 1440 (Ultrawide)': '3440 x 1440 (сверхширокий)',
+    '5120 x 2160 (Ultrawide)': '5120 x 2160 (сверхширокий)',
+    '3840 x 1600 (Ultrawide)': '3840 x 1600 (сверхширокий)',
+    '1080 x 1920 (Portrait)': '1080 x 1920 (вертикальный)',
+    'Each player needs a separate network address.': 'Каждому игроку нужен отдельный сетевой адрес.',
+    'Tailscale is not connected.': 'Нет подключения к Tailscale.',
+    'The running game uses another group. Finish that session first.': 'Запущенная игра использует другую группу. Сначала завершите ту сессию.',
+    'Invalid peer response': 'Некорректный ответ другого участника',
+    'Peer identity changed. Refresh the connection.': 'Идентификатор участника изменился. Обновите подключение.',
+    'The previous group has not finished its session. Reconnect those players first.': 'Предыдущая группа ещё не завершила сессию. Сначала подключите её участников повторно.',
+    'Local players must use three separate saves folders.': 'Для трёх локальных игроков нужны отдельные папки сохранений.',
+    'The local player process has the wrong profile.': 'Локальный игрок запущен с неверным профилем.',
+    'Player {}: existing profile settings.json is missing.': 'Игрок {}: в профиле отсутствует settings.json.',
+    'Player {}: the existing saves folder is unavailable.': 'Игрок {}: папка сохранений недоступна.',
+    'Player {}: the configured game folder is unavailable.': 'Игрок {}: указанная папка игры недоступна.',
+    'Local test configuration is invalid; it was preserved.': 'Конфигурация локального теста некорректна. Она сохранена без изменений.',
+    'A local player port is already in use. Close the previous test games first.': 'Порт локального игрока уже занят. Сначала закройте игры предыдущего теста.',
+    'A three-player local test is already running.': 'Локальный тест на трёх игроков уже запущен.',
+    'Bundled co-op files are damaged. Re-extract the launcher release: {}': 'Встроенные файлы кооператива повреждены. Распакуйте лаунчер заново: {}',
+    'Unsafe archive path: {}': 'Небезопасный путь внутри архива: {}',
+    'Download URL must use HTTPS': 'Адрес загрузки должен использовать HTTPS',
+    'Unsupported game manifest': 'Неподдерживаемый формат описания файлов игры',
+    'Invalid or duplicate asset name': 'Некорректное или повторяющееся имя файла',
+    'Invalid game manifest sizes or checksum': 'В описании файлов игры указаны некорректные размеры или контрольная сумма',
+    'Installation folders cannot be symbolic links': 'Папки установки не могут быть символическими ссылками',
+    'Incomplete game archive': 'Архив игры неполон',
+    'Download cache cannot contain symbolic links': 'Кэш загрузки не может содержать символические ссылки',
+    'Archive size does not match manifest': 'Размер архива не совпадает с указанным в описании файлов',
+    'Duplicate or unsupported ZIP entry': 'Повторяющийся или неподдерживаемый элемент ZIP-архива',
+    'Download exceeds declared size': 'Объём загрузки превышает заявленный размер',
+    'bb-probe.exe is missing from this install.': 'В папке установки отсутствует bb-probe.exe.',
+    'an update is still being installed; try again in a minute': 'обновление ещё устанавливается; повторите попытку через минуту',
+    'Image effects': 'Эффекты изображения',
+    'Starting P2P co-op. Host: Beckoning Bell. Guest: Small Resonant Bell.': 'Запуск совместной игры. Хост: Зовущий Колокол. Гость: Малый звонкий колокол.',
 })

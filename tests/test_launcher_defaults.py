@@ -31,7 +31,7 @@ class LauncherDefaultsTests(unittest.TestCase):
             self.assertEqual(startup.choose_route(settings, args, False, True, True)['mode'], 'launcher')
 
     def test_information_has_localized_text_and_stable_notice_identity(self):
-        for language, phrase in [('8', 'Колокол охоты'), ('1', 'Hunt Bell')]:
+        for language, phrase in [('8', 'Зовущий Колокол'), ('1', 'Beckoning Bell')]:
             with tempfile.TemporaryDirectory() as folder:
                 path = bbsc_information.prepare(folder, language)
                 data = json.loads(Path(path).read_text())

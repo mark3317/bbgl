@@ -20,9 +20,8 @@ class SettingsNavigationTests(unittest.TestCase):
     def test_common_searches_open_the_relevant_section(self):
         expected = {
             'DLSS': ('Visuals', 'Upscaling', 'upscaler'),
-            'save folder': ('Game & Saves', 'Your data', 'user_dir'),
+            'save folder': ('Game & Saves', 'Game files', 'user_dir'),
             'button prompts': ('Controls', 'Button prompts', ''),
-            'Steam': ('System', 'Launch', ''),
         }
         for query, destination in expected.items():
             with self.subTest(query=query):

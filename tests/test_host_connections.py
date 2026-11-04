@@ -5,23 +5,24 @@ from types import SimpleNamespace
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'launcher'))
 import bbport_coop as coop
+import bbport_party as party
 class HostConnectionTests(unittest.TestCase):
  def networks(self):
   return [{'value':'radmin','text':'Radmin VPN','vpn':True,'addresses':['26.1.2.3'],'ranges':['26.0.0.0/8']},{'value':'lan','text':'Ethernet','vpn':False,'addresses':['192.168.1.5'],'ranges':['192.168.1.0/24']}]
  def test_auto_prefers_only_vpn_and_requires_choice_if_ambiguous(self):
   networks=self.networks()
-  self.assertEqual(coop.select_host_address(networks),('26.1.2.3','Radmin VPN'))
+  self.assertEqual(party.choose_network(networks),('26.1.2.3',networks[0]))
   networks.append(dict(networks[0],value='other',text='Other VPN'))
-  with self.assertRaisesRegex(coop.CoopError,'Several VPN'):coop.select_host_address(networks)
- def test_multiple_addresses_require_selection_and_stale_adapter_is_rejected(self):
+  with self.assertRaisesRegex(ValueError,'Several networks'):party.choose_network(networks)
+ def test_multiple_addresses_require_local_selection_and_absent_provider_is_rejected(self):
   networks=self.networks();networks[0]['addresses'].append('26.1.2.4')
-  with self.assertRaisesRegex(coop.CoopError,'Choose an address'):coop.select_host_address(networks,'radmin')
-  self.assertEqual(coop.select_host_address(networks,'radmin','26.1.2.4')[0],'26.1.2.4')
-  with self.assertRaisesRegex(coop.CoopError,'unavailable'):coop.select_host_address(networks,'removed')
- def test_custom_ipv4_rejects_invalid_and_special_addresses(self):
-  self.assertEqual(coop.select_host_address([],'custom',custom=' 203.0.113.10 ')[0],'203.0.113.10')
-  for address in ('','x','127.0.0.1','0.0.0.0','224.0.0.1','169.254.1.1','1.2.3.4;bad'):
-   with self.subTest(address=address),self.assertRaises(coop.CoopError):coop.select_host_address([],'custom',custom=address)
+  with self.assertRaisesRegex(ValueError,'Several networks'):party.choose_network(networks,'radmin')
+  self.assertEqual(party.choose_network(networks,'custom','26.1.2.4')[0],'26.1.2.4')
+  with self.assertRaisesRegex(ValueError,'not connected'):party.choose_network(networks,'tailscale')
+ def test_custom_ipv4_requires_an_active_local_address(self):
+  self.assertEqual(party.choose_network(self.networks(),'custom',' 26.1.2.3 ')[0],'26.1.2.3')
+  for address in ('','x','127.0.0.1','0.0.0.0','224.0.0.1','169.254.1.1','1.2.3.4;bad','203.0.113.10'):
+   with self.subTest(address=address),self.assertRaises(ValueError):party.choose_network(self.networks(),'custom',address)
  def test_discovery_filters_disconnected_bad_addresses_and_groups_ipv4(self):
   rows=[dict(id='vpn',name='Radmin VPN',description='Radmin',address=ip,prefix=8) for ip in ('26.1.2.3','26.1.2.4','127.0.0.1','169.254.1.1')]
   with patch.object(coop.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(rows))) as run:

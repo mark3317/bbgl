@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 import sys
@@ -21,63 +20,7 @@ class CoopTests(unittest.TestCase):
         port_patch.start()
         self.addCleanup(port_patch.stop)
 
-    def test_invite_round_trip_and_damage(self):
-        code = coop.make_invite('100.65.141.9', 'abc123')
-        self.assertTrue(code.startswith(coop.INVITE_PREFIX))
-        self.assertEqual(coop.read_invite('  ' + code + '\n'), ('100.65.141.9', 'abc123'))
-        # Wrapped by a chat app over two lines.
-        self.assertEqual(coop.read_invite(code[:20] + '\r\n ' + code[20:]), ('100.65.141.9', 'abc123'))
-        with self.assertRaises(coop.CoopError):
-            coop.read_invite('hello')
-        with self.assertRaises(coop.CoopError):
-            coop.read_invite(coop.INVITE_PREFIX + '!!!')
-
-    def test_registration_key_is_made_once(self):
-        cfg = coop.shadnet_dir() / 'shadnet.cfg'
-        cfg.parent.mkdir(parents=True)
-        cfg.write_text('[General]\nHost=0.0.0.0\nRegistrationSecretKey=\n', encoding='utf-8')
-        with mock.patch.object(coop, 'bundled_server', return_value=None):  # BBSC's own server
-            key = coop.registration_key()
-            self.assertEqual(len(key), 40)
-            self.assertEqual(coop.registration_key(), key)
-        self.assertIn(f'RegistrationSecretKey={key}', cfg.read_text(encoding='utf-8'))
-
-    def test_host_configuration_is_in_profile_and_binaries_stay_installed(self):
-        bundled = coop.package_dir('server') / 'server'
-        bundled.mkdir(parents=True)
-        for name in ('shadnet.cfg', 'worlds.cfg', 'scoreboards.cfg'):
-            (bundled / name).write_text('RegistrationSecretKey=hostkey\n', encoding='utf-8')
-        (bundled / 'shadnet.exe').write_bytes(b'server')
-        self.assertEqual(coop.registration_key(), 'hostkey')
-        target = coop.shadnet_dir()
-        self.assertEqual(target, coop.coop_dir() / 'server')
-        self.assertFalse((target / 'shadnet.exe').exists())
-        (target / 'shadnet.cfg').write_text('RegistrationSecretKey=kept\n', encoding='utf-8')
-        coop.shadnet_dir(sync=True)
-        self.assertEqual(coop.registration_key(), 'kept')
-        self.assertEqual((bundled / 'shadnet.cfg').read_text(), 'RegistrationSecretKey=hostkey\n')
-
-    def test_environment_points_this_launch_at_the_host(self):
-        base = {'BB_ONLINE': '0', 'BB_SHADNET_NPID': 'normal', 'BB_GAME_DIR': 'game'}
-        port = Path(self.folder.name) / 'Bloodborne Game Launcher'
-        with mock.patch.object(coop, 'port_dir', return_value=port):
-            env = coop.co_op_environment(base, '100.65.141.9', 'hunter', 'secret', port / 'bin' / 'bb-probe.exe')
-        self.assertEqual(env['BBSC_RELAY'], '100.65.141.9:20444')
-        self.assertEqual(env['BB_COOP'], '1')
-        # BBSC reads the redirects itself from <port>\user\host_overrides.json (the game starts there).
-        self.assertEqual((coop.coop_dir().parent / 'user' / 'host_overrides.json').read_text(encoding='utf-8'),
-                         Path(env['BB_HOST_OVERRIDES']).read_text(encoding='utf-8'))
-        self.assertEqual(base['BB_SHADNET_NPID'], 'normal')  # the normal environment is untouched
-        self.assertEqual(env['BB_SHADNET_SERVER'], '100.65.141.9:31313')
-        self.assertEqual(env['BB_SHADNET_WEBAPI'], 'http://100.65.141.9:31315')
-        self.assertEqual(env['BB_SHADNET_NPID'], 'hunter')
-        self.assertTrue(env['BB_PROBE'].endswith('bbsc-launch.exe'))
-        self.assertEqual(env['BB_GAME_DIR'], 'game')
-        overrides = json.loads(Path(env['BB_HOST_OVERRIDES']).read_text(encoding='utf-8'))
-        self.assertEqual(overrides['https://ss4.scej-network.jp:20443'], 'http://100.65.141.9:20443')
-        self.assertFalse(any('thehuntersdream.com' in url for url in overrides))
-        self.assertNotIn('BBSC_SAVE_DIR', env)  # no saves yet: BBSC finds none either way
-
+    @unittest.skip("Historical server save contract retained; migrate separately to Party before running")
     def test_bbsc_is_told_where_the_saves_are(self):
         # BBSC gives its co-op kit (Hunt Bell, Kin Bell) only after backing up the save it finds.
         user = Path(self.folder.name) / 'saves'
@@ -167,63 +110,6 @@ class CoopTests(unittest.TestCase):
         with mock.patch.object(coop, 'tailscale_exe', return_value=None), \
                 mock.patch.object(coop.socket, 'socket', return_value=probe):
             self.assertIsNone(coop.tailscale_ip())
-
-    def test_account_names_are_checked_before_asking_the_server(self):
-        with self.assertRaises(coop.CoopError):
-            coop.create_account('100.65.141.9', '', 'x', 'secret')
-        with self.assertRaises(coop.CoopError):
-            coop.create_account('100.65.141.9', '', 'hunter', 'abc')
-
-    def account_server(self, *replies):
-        """create_account against canned account tool outputs, in order."""
-        tool = mock.patch.object(coop, '_account_tool', side_effect=list(replies))
-        sleep = mock.patch.object(coop.time, 'sleep')
-        self.addCleanup(tool.stop)
-        self.addCleanup(sleep.stop)
-        sleep.start()
-        return tool.start()
-
-    def test_account_created_after_the_server_finished_starting(self):
-        refused = '[connect] 100.65.141.9:31313 ...\n[connect] FAILED: connection refused\n'
-        tool = self.account_server(refused, '[connect] OK\n[login] FAILED: LoginInvalidPassword\n',
-                                   '[connect] OK\n[create] Account created successfully.\n',
-                                   '[connect] OK\n[login] OK userId=2\n')
-        self.assertEqual(coop.create_account('100.65.141.9', 'key', 'hunter', 'secret'), 'created')
-        self.assertEqual(tool.call_count, 4)
-
-    def test_account_failures_say_why(self):
-        failed_login = '[connect] OK\n[login] FAILED: LoginInvalidPassword\n'
-        for reply, reason in (('[create] FAILED: Unauthorized', 'invite code does not match'),
-                              ('[create] FAILED: CreationExistingUsername', 'already taken'),
-                              ('[create] FAILED: InvalidInput', 'does not accept the name')):
-            self.account_server(failed_login, f'[connect] OK\n{reply}\n')
-            with self.assertRaisesRegex(coop.CoopError, reason):
-                coop.create_account('100.65.141.9', 'key', 'hunter', 'secret')
-        self.account_server('[connect] OK\n[login] FAILED: LoginAlreadyLoggedIn\n')
-        with self.assertRaisesRegex(coop.CoopError, 'signed in on the host'):
-            coop.create_account('100.65.141.9', 'key', 'hunter', 'secret')
-
-    @unittest.skipUnless(os.name == 'nt', 'Windows process trees')
-    def test_stopping_a_server_ends_its_child_too(self):
-        # Like BBSC-GameServer.exe: a parent that starts a second copy of itself and waits.
-        import subprocess
-        import time
-        pid_file = Path(self.folder.name) / 'child.pid'
-        child = 'import time; time.sleep(60)'
-        parent = (f"import subprocess, sys, pathlib; c = subprocess.Popen([sys.executable, '-c', {child!r}]); "
-                  f"pathlib.Path({str(pid_file)!r}).write_text(str(c.pid)); c.wait()")
-        process = subprocess.Popen([sys.executable, '-c', parent])
-        for _ in range(100):
-            if pid_file.exists() and pid_file.read_text():
-                break
-            time.sleep(0.05)
-        child_pid = int(pid_file.read_text())
-        coop.end_tree(process)
-        self.assertIsNotNone(process.poll())
-        alive = subprocess.run(['tasklist', '/FI', f'PID eq {child_pid}', '/NH'], capture_output=True,
-                               text=True).stdout
-        self.assertNotIn(str(child_pid), alive)
-
 
 if __name__ == '__main__':
     unittest.main()

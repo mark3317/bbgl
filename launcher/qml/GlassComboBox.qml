@@ -6,17 +6,19 @@ ComboBox {
     font.family: Theme.sans
     font.pixelSize: 13
     hoverEnabled: true
+    implicitHeight: Math.max(38, selectedText.implicitHeight + 12)
     background: Rectangle {
         radius: Theme.radius
         color: control.pressed || control.popup.visible ? Theme.surfaceHover : control.hovered ? "#181c21" : Theme.surface
         border.color: control.activeFocus || control.popup.visible ? Theme.accent : control.hovered ? Theme.lineStrong : Theme.line
     }
     contentItem: Text {
+        id: selectedText
         text: control.displayText
         color: Theme.text
         font: control.font
         verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+        wrapMode: Text.Wrap
         leftPadding: 14; rightPadding: 34
     }
     indicator: Canvas {
@@ -29,12 +31,13 @@ ComboBox {
         }
     }
     delegate: ItemDelegate {
-        width: control.width
-        height: 36
+        width: control.popup.availableWidth
+        height: Math.max(36, contentItem.implicitHeight + 12)
         text: modelData.text || ""
         highlighted: control.highlightedIndex === index
         contentItem: Text {
-            text: parent.text; leftPadding: 12; verticalAlignment: Text.AlignVCenter
+            text: parent.text; leftPadding: 12; rightPadding: 12; verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.Wrap
             color: index === control.currentIndex ? Theme.text : "#cfcac3"
             font.family: Theme.sans; font.pixelSize: 13
         }

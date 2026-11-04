@@ -490,7 +490,6 @@ def main():
         if party_log is not None: party_log.close()
         if party is not None: party.close()
         raise
-    started = []
     try:
         code = game_proc.wait()
         if party is not None:
@@ -504,8 +503,6 @@ def main():
         if party_log is not None: party_log.close()
         if party is not None:
             party.close()
-        for proc in started:
-            proc.terminate()
         if game_proc.poll() is None:
             game_proc.terminate()
 

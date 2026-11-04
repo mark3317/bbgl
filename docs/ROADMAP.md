@@ -14,6 +14,10 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
 (through #157), [droogie's bbhost](https://github.com/droogie/bbhost) and
 [Mrsuss60's Windows port](https://github.com/Mrsuss60/bloodborne_pc_windows_port).
 
+Аудит структуры и тестов 04.11: [отчёт](fixes/2026-11-04-full-project-audit.md),
+[каталог](TEST-CATALOG.md). Удалены подтверждённые остатки; отдельный открытый
+дефект local-three coordinator: WinError 5 при замене status JSON.
+
 ## Main work, in order
 
 1. **Seamless co-op / BBGL + BBSC-GL** — reviewed 4 November 2026.
@@ -21,8 +25,8 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
    game server/VPS is required. Offline / Co-op remain launch modes (T26 reverted).
    Latest source includes native player names, a bounded second wait for the same
    admission claim, opt-in diagnostics and personal quest reward prerequisites.
-   Names, claim recheck and quest reward guards still need build/deploy/gameplay
-   confirmation; earlier installations do not establish their runtime status.
+   Names, claim recheck and quest reward guards are included in the 4 November
+   PC build/deploy (BBSC 7b464e0); gameplay confirmation remains pending.
    Open: second guest admission / three-player world, host menu exit sometimes
    loading the own world, and broader progression/chalice coverage. Sequential
    admission was restored after the overlap experiment failed live testing.

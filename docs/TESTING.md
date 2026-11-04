@@ -1,5 +1,16 @@
 # Проверки BBGL и BBSC-GL
 
+[Каталог всех 230 тестовых/вспомогательных файлов](TEST-CATALOG.md) и
+[аудит актуальности](fixes/2026-11-04-full-project-audit.md). Каталог не является списком обязательного запуска.
+
+Unittest-файлы без `unittest.main()` запускать через `python -m unittest discover
+-s tests -p ИМЯ_ФАЙЛА.py` (один файл). Для UI использовать
+`out/qt-venv/Scripts/python.exe`. Native Python fixtures могут исполняться при
+импорте: общий discover недопустим. VPS/Blender/ELF сценарии — только явно выбранные.
+Исторические save/profile contracts с explicit skip требуют отдельной миграции.
+Local Party lifetime: открытый WinError 5 при замене exit-status JSON в тесте
+04.11; не считать весь test_local_party.py зелёным до устранения причины.
+
 ## Выбор проверок — 01.11.2026
 
 Выбирать тесты по изменённому поведению и его прямым зависимостям. Полный discover,
@@ -47,3 +58,7 @@
   BBSC: `tools/test_perf_policy.py` проверяет сохранение функциональных хуков;
   `party/test_logging.py` — отсутствие файлового I/O событий сервиса в релизе.
   Подробности переключателей: [LOGGING.md](LOGGING.md).
+
+- Русская локализация и переносы Qt: `out/qt-venv/Scripts/python.exe tests/test_localization.py`.
+  Не требует игры или профилей; геометрия offscreen не заменяет игровой контроль.
+  `test_menu_assets.FormatTests` пока имеет отдельный FAIL: устаревшее ожидание ROW_RESTART.

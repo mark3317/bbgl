@@ -44,9 +44,10 @@ class BundleTests(unittest.TestCase):
             self.assertEqual((target / 'bbsc/bbsc.dll').read_bytes(), b'new mod')
 
     def test_stable_updates_ignore_preview_and_upstream_tags(self):
-        for tag in ('qml-launcher-preview-99', 'v1.0.1-rc1', 'v1.0.0', 'v0.9.9'):
-            self.assertFalse(core.release_is_newer(tag))
-        self.assertTrue(core.release_is_newer('v1.0.1'))
+        with patch.object(core, 'VERSION', '1.0.0'):
+            for tag in ('qml-launcher-preview-99', 'v1.0.1-rc1', 'v1.0.0', 'v0.9.9'):
+                self.assertFalse(core.release_is_newer(tag))
+            self.assertTrue(core.release_is_newer('v1.0.1'))
         self.assertIn('/mark3317/bbgl/', core.RELEASES_API)
 
     def test_settings_reach_mod_environment_and_cheat_is_available(self):

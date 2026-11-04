@@ -83,6 +83,7 @@ class ProfileLayoutTests(unittest.TestCase):
                 self.assertEqual((root / 'settings.json').read_text(), 'new')
                 self.assertEqual((local / 'bbport-launcher/settings.json').read_text(), 'local')
 
+    @unittest.skip("Historical standalone-server profile contract; no Host in Party launcher")
     def test_host_keeps_both_servers_database_and_logs_in_profile(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {'APPDATA': temp, 'LOCALAPPDATA': temp}):
             port = Path(temp) / 'install'

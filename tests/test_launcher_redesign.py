@@ -5,7 +5,6 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 import test_setup_wizard as wizard_tests
 import test_game_download as download_tests
 import bbport_launcher_backend as backend_module
-import bbport_coop as coop
 import bbport_game_download as download
 
 class RedesignTests(unittest.TestCase):
@@ -18,7 +17,7 @@ class RedesignTests(unittest.TestCase):
         self.assertEqual(backend.app['player_name'],'OldHunter')
         backend.setValue('coop_name','NewHunter')
         self.assertEqual(backend.app['player_name'],'NewHunter')
-        self.assertEqual(backend._coop_account()[0],'NewHunter')
+        self.assertEqual(backend.app['coop_name'],'NewHunter')
 
     def test_setup_name_follows_save_folder_until_manually_edited(self):
         backend = backend_module.LauncherBackend()
@@ -44,23 +43,6 @@ class RedesignTests(unittest.TestCase):
         backend.setValue('user_dir', str(self.root / 'OtherSave'))
         self.assertEqual(backend.app['coop_name'], 'ExistingAccount')
         self.assertEqual(backend.app['player_name'], 'ExistingHunter')
-
-    def test_host_failure_reports_original_error_without_tailscale_requirement(self):
-        backend = backend_module.LauncherBackend()
-        backend.app.update(coop_name='Hunter',coop_password='test-only')
-        backend._coop_run=lambda message,work: work()
-        with patch.object(backend,'_coop_ensure_packages'), patch.object(coop,'select_host_address',return_value=('192.168.1.2','LAN')), patch.object(coop,'network_candidates',return_value=[]), patch.object(coop,'registration_key',return_value='fixture'), patch.object(coop,'tailscale_exe',return_value=None), patch.object(backend._coop_host,'start',side_effect=coop.CoopError('Could not start')), patch.object(backend._coop_host,'stop') as stop:
-            with self.assertRaisesRegex(coop.CoopError,'Could not start'):
-                backend.coopStartHosting()
-            stop.assert_called_once()
-
-    def test_host_mode_cannot_silently_join_old_invite(self):
-        backend = backend_module.LauncherBackend()
-        backend.app.update(coop_name='Hunter',coop_password='test-only',coop_role='host',coop_invite='old-invite')
-        self.assertFalse(backend._coop_ready())
-        with patch.object(coop,'read_invite') as read:
-            backend.coopPlay()
-            read.assert_not_called()
 
 class SelectedDownloadTests(unittest.TestCase):
     setUp = download_tests.GameDownloadTests.setUp

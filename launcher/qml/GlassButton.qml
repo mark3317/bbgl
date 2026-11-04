@@ -20,7 +20,12 @@ Button {
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
+        wrapMode: Text.Wrap
+        maximumLineCount: 2
     }
+    ToolTip.visible: hovered && contentItem.truncated
+    ToolTip.text: text
+    ToolTip.delay: 500
     background: Rectangle {
         radius: Theme.radius
         color: button.primary ? (!button.enabled ? Theme.accentSoft : button.down ? "#206574" : button.hovered ? Theme.accentHover : Theme.accent)

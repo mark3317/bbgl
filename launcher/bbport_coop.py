@@ -49,13 +49,6 @@ def installed(kind):
                                                             'shadnet.cfg'))
 
 
-def installed_version(kind):
-    try:
-        return str(json.loads((package_dir(kind) / 'bundle.json').read_text(encoding='utf-8'))['version'])
-    except (OSError, ValueError, KeyError, TypeError):
-        return ''
-
-
 def download(kind, progress=None):
     """Compatibility entry point: validate installed binaries, never copy them to the profile."""
     from bbport_bundle import verify
@@ -126,17 +119,6 @@ def local_ip():
             return None
 
 
-def host_address():
-    """(address, network name): Tailscale when it is connected, else the home network."""
-    ip = tailscale_ip()
-    if ip:
-        return ip, 'Tailscale'
-    ip = local_ip()
-    if ip:
-        return ip, 'your home network only (Tailscale is not connected)'
-    return None, None
-
-
 def network_candidates():
     """Active IPv4 adapters; discovery does not claim remote reachability."""
     script = """Get-NetAdapter | Where-Object Status -eq 'Up' | ForEach-Object {
@@ -175,38 +157,6 @@ def network_candidates():
         if subnet not in group['ranges']:
             group['ranges'].append(subnet)
     return sorted(groups.values(), key=lambda item: (not item['vpn'], item['text'].lower()))
-
-
-def select_host_address(networks, connection='auto', selected='', custom=''):
-    if connection == 'custom':
-        address = custom.strip()
-        try:
-            ip = ipaddress.IPv4Address(address)
-            if ip.is_unspecified or ip.is_loopback or ip.is_multicast or ip.is_link_local:
-                raise ValueError()
-        except ValueError:
-            raise CoopError('Enter a valid IPv4 address for friends.') from None
-        return address, 'Custom address'
-    if connection == 'auto':
-        vpns = [item for item in networks if item['vpn']]
-        if len(vpns) > 1:
-            raise CoopError('Several VPN connections found. Choose the network your friends use.')
-        choices = vpns or networks
-        if not choices:
-            raise CoopError('No active IPv4 connection found. Refresh the connection list.')
-        if len(choices) > 1:
-            raise CoopError('Several connections found. Choose the network your friends use.')
-        network = choices[0]
-    else:
-        network = next((item for item in networks if item['value'] == connection), None)
-        if not network:
-            raise CoopError('The selected connection is unavailable. Refresh the connection list.')
-    addresses = network['addresses']
-    if selected in addresses:
-        return selected, network['text']
-    if len(addresses) != 1:
-        raise CoopError('Choose an address for the selected connection.')
-    return addresses[0], network['text']
 
 
 # --- One-time setup (one administrator prompt) ---------------------------------------------------

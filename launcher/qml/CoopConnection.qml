@@ -18,7 +18,7 @@ Column {
         Text { width: parent.width * 0.35; anchors.verticalCenter: parent.verticalCenter; text: launcher.tr("Connection"); color: Theme.text; font.family: Theme.sans; font.pixelSize: 14 }
         GlassComboBox {
             objectName: "coopNetworkPicker"
-            width: parent.width * 0.65 - 16; height: 38
+            width: parent.width * 0.65 - 16
             enabled: !launcher.running && !launcher.coopBusy
             model: launcher.coopConnections; textRole: "text"; valueRole: "value"
             currentIndex: Math.max(0, indexOfValue(launcher.coopConnection))

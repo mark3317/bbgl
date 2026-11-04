@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds out/coop-server/: the shadNet server seamless co-op hosts run (launcher/bbport_coop.py),
+# Optional legacy server tooling; not called by the mainline embedded-Party package.
+# Builds out/coop-server/ for explicit server compatibility work,
 # with the DLLs and Qt plugins it needs. Run from an MSYS2 CLANG64 shell; needs the packages
 # mingw-w64-clang-x86_64-{qt6-base,qt6-httpserver,qt6-websockets,protobuf}.
 #

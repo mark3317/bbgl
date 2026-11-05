@@ -1,3 +1,7 @@
+> Native enemy requirement05.11: custom enemy snapshots/HP/death/position seeding removed
+> from source. Native late-arrival initial state remains OPEN; player FirstSync readiness
+> alone does not prove NPC synchronization. No build/deploy while user continues testing.
+
 > Native travel follow-up05.11: source25405ed fixes actual EMEVD warp entry/EDI ABI,
 > restores original zero-argument altar78/79 and logs selection/rejection/native warp.
 > Targeted fixtures/original native call graph PASS; DLL build/delta exit0; two isolated

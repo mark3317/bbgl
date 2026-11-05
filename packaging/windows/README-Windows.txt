@@ -1,17 +1,24 @@
-Bloodborne Game Launcher 1.1.0 — mark3317
+Bloodborne Game Launcher 1.2.0 — mark3317
 
-Start Bloodborne.exe and select your own Bloodborne 1.09 game folder.
-For P2P co-op, open the launcher on each PC in the same VPN or LAN.
-Choose Automatic, Tailscale, Radmin or Custom; check the connection, then Play.
-Custom accepts your local adapter IPv4 and optional participant IPv4 addresses.
-Up to five players; start all participants before ringing the bells. No server or invite code.
-BBSC-GL, Xbox prompts and PCBButtons are bundled; no separate mod download is needed.
-Settings -> Mods & Patches -> Gameplay patches contains one-hit kill and other cheats.
-Read README.md (English) or README.ru.md (Russian) for setup and known limitations.
+Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
+For P2P co-op, connect every PC to the same VPN or LAN.
+Choose Local network, Tailscale or Radmin; check connectivity, then Play.
+Players may join later using the game bells. All players need the same BBGL release.
+No separate server, account, mod download or invite code is required for this path.
+A complete main-story co-op playthrough and the transition to NG+ have been tested in game.
+Chalice co-op works, including restored native random generation for Root Chalices.
+Additional rites, unusual reward cases and larger-party combinations need broader coverage.
+
+BBSC-GL and Xbox/keyboard prompts are bundled. Prompts are selected separately from gameplay mods.
+The optional Diamond Sword mod is bundled and disabled by default (10,000 Blood Echoes in game).
+Detailed logging, profiling, research and cheats are disabled by default.
+Existing player settings are preserved. Each game launch has its own run_YYYYMMDD_HHMMSS.log.
+
+Profile, settings and BBSC journals: %LOCALAPPDATA%\Bloodborne Game Launcher.
+Default saves: profile/user. Shader cache: profile/cache. User mods: mods inside the installation.
+Use the profile-folder button in the launcher. Custom save folders stay where selected.
+Keep your profile and user mods when updating; never distribute your working installation as a release.
+Game files and saves are not included in the ZIP.
+
+See README.md, README.ru.md and docs/release-1.2.0.md.
 Updates: https://github.com/mark3317/bbgl/releases
-
-BBSC-GL runs from coop/client; its distributed session adapter runs inside the game launcher.
-Settings, graphics, mod selection, saves and BBSC-GL journals: %LOCALAPPDATA%\Bloodborne Game Launcher.
-Mod files: mods inside the launcher folder.
-Default saves: %LOCALAPPDATA%\Bloodborne Game Launcher\user. Shader cache: %LOCALAPPDATA%\Bloodborne Game Launcher\cache. No separate BBSC-GL preparation.
-Ready-made Xbox/Keyboard mods are in the launcher mods folder; switching requires no extraction.

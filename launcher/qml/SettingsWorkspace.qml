@@ -98,16 +98,17 @@ Item {
                 Repeater {
                     model: workspace.categories
                     delegate: Rectangle {
-                        width: parent.width; height: 58; radius: Theme.radius
+                        width: parent.width; height: Math.max(58, categoryLabels.implicitHeight + 12); radius: Theme.radius
                         property bool active: workspace.query === "" && workspace.category === modelData.name
                         color: active || hit.containsMouse ? "#16191d" : "transparent"
                         border.color: active ? Theme.accent : hit.containsMouse ? Theme.line : "transparent"
                         border.width: active ? 1.5 : 1
                         NavIcon { x: 16; anchors.verticalCenter: parent.verticalCenter; width: 22; height: 22; kind: modelData.icon; strokeColor: active ? Theme.text : "#bdb8b0" }
                         Column {
+                            id: categoryLabels
                             x: 54; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 70; spacing: 2
                             Text { width: parent.width; text: launcher.tr(modelData.name); color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; wrapMode: Text.WordWrap }
-                            Text { width: parent.width; text: modelData.detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; elide: Text.ElideRight }
+                            Text { width: parent.width; text: modelData.detail; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap }
                         }
                         MouseArea { id: hit; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: workspace.openAt(modelData.name, "", "") }
                     }

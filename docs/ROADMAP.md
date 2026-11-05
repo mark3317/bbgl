@@ -1,3 +1,7 @@
+> Подтверждение пользователя 05.11.2026: основной сюжет полностью пройден и проверен в кооперативе, переход в NG+ работает. Чаши работают совместно, штатная случайная генерация корневых чаш возвращена. Прежние общие статусы финала ниже исторические; редкие сценарии наград/обрядов/составов группы учитываются отдельно.
+
+> Подготовка BBGL 1.2.0 (05.11.2026): [описание релиза](release-1.2.0.md). Текущий путь — LAN/VPN P2P с поздним подключением; отдельный сервер не нужен. Исторические версии/пути ниже не являются текущими инструкциями. Статусы сборки и игровых проверок см. в [отчёте подготовки](fixes/2026-11-05-release-1.2.0-preparation.md).
+
 ## Historical deployment — 2026-11-02
 
 Bundled `e72801d` / pin `3f079b9`, installed PC and laptop at 02:27 MSK, build/copy exit=0. Stop member drain, chalice packet routing and pre-load readiness fixed; live validation pending; initial sign/claim cadence remains open. See `mods-src/BBSC/docs/fixes/2026-11-02-stop-routing-fix.md`.

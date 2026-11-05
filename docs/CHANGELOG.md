@@ -1,4 +1,6 @@
-# Changelog
+# Historical upstream changelog
+
+Current BBGL releases: [CHANGELOG.md](../CHANGELOG.md). The versions and server instructions below describe the upstream port, not the current BBGL package.
 
 Windows releases of this fork, newest first. Each is on the
 [releases page](https://github.com/Jgamrot/bloodborne_pc/releases) as `bbport-windows.zip`.

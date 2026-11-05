@@ -1,3 +1,8 @@
+> Native travel follow-up05.11: source25405ed fixes actual EMEVD warp entry/EDI ABI,
+> restores original zero-argument altar78/79 and logs selection/rejection/native warp.
+> Targeted fixtures/original native call graph PASS; DLL build/delta exit0; two isolated
+> profiles started20:50 MSK, hooks/relay ready. Gameplay confirmation remains OPEN.
+
 > Native travel rework05.11: source420c200 restores original local EMEVD
 > animations/waits/stage requests and native FirstSync admission before map
 > events. Removed direct summon-coordinate loading, manual respawn writes and

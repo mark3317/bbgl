@@ -30,8 +30,9 @@ class Backend(ui.LauncherBackend):
         elapsed=time.monotonic()-self.began
         assert elapsed<12, elapsed
         assert self.updates<150, self.updates
-        assert 'final output' in (root/'user/last_run.log').read_text()
-        assert 'P2P sample 0:' in (root/'user/last_run.log').read_text()
+        log=next((root/'user').glob('run_*.log')).read_text()
+        assert 'final output' in log
+        assert 'P2P sample 0:' in log
         (root/'finished').write_text(f'PASS elapsed={elapsed:.2f}s UI_updates={self.updates}')
 ui.LauncherBackend=Backend
 sys.exit(ui.run_ui())

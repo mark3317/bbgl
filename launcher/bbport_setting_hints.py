@@ -72,7 +72,8 @@ pc_boss_rematches|Allows rematches with defeated bosses at their lamps. Experime
 ui_language|Sets the language of the launcher interface.|Язык интерфейса лаунчера.
 draw_pipe|Controls parallel processing of draw commands.|Управляет параллельной обработкой команд отрисовки.
 readbacks|Controls how GPU results are read by the game.|Режим чтения результатов работы видеокарты игрой.
-extra_env|Additional launch parameters for advanced configuration.|Дополнительные параметры запуска для ручной настройки.
+extra_env|Separate NAME=value pairs with spaces.|Разделяйте пары ИМЯ=значение пробелами.
+gpu_logs|Writes a large amount of data: hundreds of megabytes or more per session. May reduce performance. Enable only to diagnose graphics problems.|Записывает много данных: сотни мегабайт и больше за сеанс. Может снижать производительность. Включайте только для диагностики графики.
 frame_stats|Records detailed frame timing statistics.|Записывает подробную статистику времени отрисовки кадров.
 gpu_profile|Enables detailed GPU performance measurements.|Включает подробные замеры производительности видеокарты.
 vk_validation|Enables Vulkan diagnostic checks. May reduce performance.|Включает диагностику Vulkan. Может снижать производительность.

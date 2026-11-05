@@ -17,9 +17,6 @@ import subprocess
 import sys
 
 PORT = Path(__file__).resolve().parent
-# The keyboard key images (PCBButtons from Nexus Mods), as the launcher adds them to the mods
-# folder (launcher KEYBOARD_PROMPTS).
-KEYBOARD_PROMPTS = 'Keyboard Prompts (PCBButtons)'
 
 
 def online_overrides(env, user_dir):
@@ -40,7 +37,7 @@ def fail(message):
 # missing its core files now gets a clear message instead of crashing".)
 START_SCRIPTS = ('game_check.py', 'enhancements.py', 'patches.py', 'aspect_ratio.py', 'mods.py',
                  'language_files.py', 'hud_layout.py', 'content_profile.py', 'link_libc.py', 'link_modules.py',
-                 'prepare.py', 'shader_code.py', 'quiet_output.py')
+                 'prepare.py', 'shader_code.py', 'quiet_output.py', 'prompt_icons.py')
 RELEASES = 'https://github.com/mark3317/bbgl/releases/latest'
 # Text languages (PS4 system language ids) the game shows without Unlock Game Region: English
 # (US) and Russian (GitHub issue #58: Russian text without it).
@@ -292,26 +289,24 @@ def main():
                    '--voice', voice, optional=True)
         if (language_layer / 'dvdroot_ps4').is_dir():
             generated.append(str(language_layer))
+    from prompt_icons import choice as prompt_choice, layer as prompt_layer
+    buttons = prompt_choice(data)
+    icons = prompt_layer(PORT, buttons)
+    if icons:
+        generated.append(str(icons))
     game = Path(run_script('mods.py', game, '--out', out,
                            '--mods-dir', env.get('BB_MODS_DIR', data / 'mods'),
                            '--config', env.get('BB_MODS_CONFIG', data / 'mods.json'),
                            '--enabled', env.get('BB_MODS_ENABLED', '1'),
+                           *(('--bbsc-runtime', PORT / 'coop' / 'party')
+                             if env.get('BB_COOP') == '1' else ()),
+                           '--button-icons', (icons / 'menu/common.tpf.dcx' if icons else
+                                              game / 'dvdroot_ps4/menu/common.tpf.dcx'),
                            *(arg for folder in generated for arg in ('--generated', folder)),
                            capture=True).strip())
     env['BB_MOD_FILES'] = str((out / 'mod-files.tsv').resolve())
-    # Keyboard prompts: whether the key images are among the mods in use, as the launcher's
-    # Controller page or the overlay's Mods tab left mods.json (read again on an in-game restart).
-    # src/key_prompts.c names the bound keys in text when the images do not match the bindings.
-    keyboard = False
-    if env.get('BB_MODS_ENABLED', '1') == '1':
-        sys.path.insert(0, str(PORT / 'scripts'))
-        import mods as mod_list
-        try:
-            keyboard = KEYBOARD_PROMPTS in mod_list.selected(Path(env.get('BB_MODS_DIR', data / 'mods')),
-                                                           Path(env.get('BB_MODS_CONFIG', data / 'mods.json')))
-        except (OSError, ValueError):
-            pass
-    env['BB_BUTTON_PROMPTS'] = 'Keyboard' if keyboard else ''
+    keyboard = buttons == 'Keyboard'
+    env['BB_BUTTON_PROMPTS'] = buttons
     env['BB_KEY_PROMPT_IMAGES'] = '1' if keyboard else '0'
     run_script('prepare.py', game, '--out', out)
     sys.path.insert(0, str(PORT / 'scripts'))

@@ -32,13 +32,22 @@ class GraphicsPresetTests(unittest.TestCase):
                 self.assertIn(values['model_lod'], [v for v, _ in core.LODS])
                 self.assertIn(values['fps_mode'], [v for v, _ in core.FPS_MODES])
 
-    def test_shipped_defaults_are_balanced_and_overrides_are_custom(self):
+    def test_shipped_defaults_are_quality_and_overrides_are_custom(self):
         ini, app = self.defaults()
-        self.assertEqual(core.graphics_preset_of(ini, app), 'balanced')
+        self.assertEqual(core.graphics_preset_of(ini, app), 'high')
         core.apply_graphics_preset('ultra', ini, app)
         self.assertEqual(core.graphics_preset_of(ini, app), 'ultra')
         ini['effect_ssr'] = '0'
         self.assertEqual(core.graphics_preset_of(ini, app), 'custom')
+
+    def test_legacy_balanced_identity_keeps_values_and_maps_to_quality(self):
+        ini, app = self.defaults()
+        app['graphics_preset'] = 'balanced'
+        original = (dict(ini), dict(app))
+        self.assertEqual(core.graphics_preset_of(ini, app), 'high')
+        self.assertEqual((ini, app), original)
+        self.assertNotIn('balanced', core.GRAPHICS_PRESETS)
+        self.assertNotIn('balanced', core.GRAPHICS_PRESET_INFO)
 
     def test_preset_disables_upscaler_and_preserves_output_and_look(self):
         ini, app = self.defaults()
@@ -88,7 +97,7 @@ class GraphicsPresetTests(unittest.TestCase):
         cases = {
             'NVIDIA GeForce RTX 4060 Laptop GPU, discrete, 7956 MiB': 'high',
             'NVIDIA GeForce RTX 4090, discrete, 24564 MiB': 'ultra',
-            'NVIDIA GeForce GTX 1060 6GB, discrete, 6144 MiB': 'balanced',
+            'NVIDIA GeForce GTX 1060 6GB, discrete, 6144 MiB': 'high',
             'AMD Radeon RX 560, discrete, 2048 MiB': 'low',
             'AMD Custom GPU 0405 (RADV VANGOGH), integrated or other, 1024 MiB': 'low',
             'Graphics card check unavailable': None,

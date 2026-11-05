@@ -39,15 +39,14 @@ def configuration(local_appdata):
     members = [{'id': f'LocalPlayer{i}', 'host': '127.0.0.1', 'port': 37609+i,
                 'p2p': 3657+i} for i in range(1, 4)]
     path = Path(local_appdata) / PROFILE / 'coop/local-test/config.json'
-    if path.exists():
-        cfg = json.loads(path.read_text(encoding='utf-8'))
-        if (cfg.get('members') != members or cfg.get('version') != 1 or
-                len(bytes.fromhex(cfg['secret'])) != 32 or len(cfg['group']) != 32):
-            raise ValueError('Local test configuration is invalid; it was preserved.')
-    else:
+    if not path.exists():
         cfg = {'version': 1, 'epoch': 1, 'group': secrets.token_hex(16),
                'secret': secrets.token_hex(32), 'members': members}
-        write_json(path, cfg)
+        write_json(path, cfg, create_only=True)
+    cfg = json.loads(path.read_text(encoding='utf-8'))
+    if (cfg.get('members') != members or cfg.get('version') != 1 or
+            len(bytes.fromhex(cfg['secret'])) != 32 or len(cfg['group']) != 32):
+        raise ValueError('Local test configuration is invalid; it was preserved.')
     return cfg, path
 
 
@@ -87,13 +86,13 @@ def launch_environment(bbgl, entry, cfg_path):
         raise ValueError('The local player process has the wrong profile.')
     settings = bbgl.app_settings(entry['settings'])
     settings.update(game_dir=str(entry['game']), user_dir=str(entry['user']),
-                    fps_mode='60', frame_cap='60', fullscreen=False)
+                    fullscreen=False)
     env = bbgl.game_environment(settings)
     env.update(BB_PARTY_CONFIG=str(cfg_path), BB_PARTY_MEMBER=f"LocalPlayer{entry['index']}",
                BBGL_PROFILE_DIR=str(profile), BB_DATA_DIR=str(profile),
                BB_CONFIG=str(profile / 'bbport.ini'), BB_USER_DIR=str(entry['user']),
                BB_MODS_CONFIG=str(profile / 'mods.json'), BB_PATCHES_CONFIG=str(profile / 'patches.json'),
-               BB_FPS='60', BB_FPS_LIMIT='60', BB_FULLSCREEN='0',
+               BB_FULLSCREEN='0',
                BB_WINDOW_SIZE='1280x720', BB_OUTPUT_RES='1280x720', BB_COOP='1', BB_TIMEOUT='0')
     patches = [name.strip() for name in env.get('BB_PATCHES', '').split(';') if name.strip()]
     if 'Skip Intro' not in patches:
@@ -124,7 +123,7 @@ def run_three(port, local_appdata=None, popen=subprocess.Popen):
         run = cfg_path.parent / 'runs' / stamp
         write_json(run / 'coordinator.json', {'heartbeat': time.time()})
         metadata = {'started_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                    'group': cfg['group'], 'fps': 60, 'players': [], 'status': 'starting'}
+                    'group': cfg['group'], 'players': [], 'status': 'starting'}
         processes = []
         for entry in entries:
             log = run / f"player-{entry['index']}-runner.log"
@@ -139,7 +138,9 @@ def run_three(port, local_appdata=None, popen=subprocess.Popen):
                              creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             processes.append(proc)
             metadata['players'].append({'index': entry['index'], 'pid': proc.pid,
-                                        'profile': str(entry['profile']), 'user_dir': str(entry['user'])})
+                                        'profile': str(entry['profile']), 'user_dir': str(entry['user']),
+                                        'fps_mode': entry['settings'].get('fps_mode', '120'),
+                                        'frame_cap': entry['settings'].get('frame_cap', '')})
             write_json(run / 'run.json', metadata)
             time.sleep(.7)
         metadata['status'] = 'runners started; gameplay pending'

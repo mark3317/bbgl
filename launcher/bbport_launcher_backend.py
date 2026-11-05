@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QFileDialog as _QFileDialog, QMessageBox as _QMess
 from bbport_setting_hints import HINTS
 import bbport_coop as coop
 import bbport_party as party
+import bbport_mod_share as mod_share
 import bbport_local_test as local_test
 import bbport_qml_ru
 import bbport_launcher_win as core
@@ -188,7 +189,8 @@ FIELDS = {
     ],
     'Diagnostics': [
         row('diagnostic_logs', 'Detailed diagnostic logs', 'toggle',
-            hint='Collect network packets, mod timeline and performance measurements in last_run.log. Enable only to diagnose a problem; may reduce performance.'),
+            hint='Record co-op events, mod warnings and errors in the game log. GPU errors are included.'),
+        row('gpu_logs', 'Detailed GPU logs', 'toggle'),
         row('frame_stats', 'Frame statistics', 'toggle'),
         row('gpu_profile', 'GPU profiling', 'toggle'),
         row('vk_validation', 'Vulkan validation', 'toggle'),
@@ -218,7 +220,6 @@ SETTINGS_SECTIONS = {
     'Co-op': [
         ('Seamless co-op', ['coop_name']),
         ('Co-op gameplay', ['bbsc_' + item['id'] for item in core.COOP_SETTINGS]),
-        ('Connection', []),
     ],
     'Mods & Patches': [
         ('Installed mods', ['mods_enabled', 'mods_dir', 'patches_dir']),
@@ -227,7 +228,7 @@ SETTINGS_SECTIONS = {
     ],
     'System': [
         ('System', ['ui_language']),
-        ('Advanced system', ['test_profile_dir', 'draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'diagnostic_logs', 'frame_stats', 'gpu_profile', 'vk_validation']),
+        ('Advanced system', ['test_profile_dir', 'draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'diagnostic_logs', 'gpu_logs', 'frame_stats', 'gpu_profile', 'vk_validation']),
         ('Logs', []),
     ],
 }
@@ -247,7 +248,7 @@ SEARCH_ACTIONS = [
     ('Game & Saves', 'Game files', 'Download game', 'game files setup'),
     ('Game & Saves', 'Game files', 'Import trophy keys', 'keys.json trophies'),
     ('Game & Saves', 'Game files', 'Open saves folder', 'save path'),
-    ('Mods & Patches', 'Installed mods', 'Refresh mods', 'load order'),
+    ('Mods & Patches', 'Installed mods', 'Mods on the network', 'load order'),
     ('System', 'System', 'Desktop shortcut', 'start menu'),
     ('System', 'System', 'Open launcher folder', 'folder'),
     ('System', 'Logs', 'Copy log', 'activity diagnostics'),
@@ -307,12 +308,19 @@ class LauncherBackend(QObject):
     _gameDownloadProgress = Signal(float, str)
     coopChanged = Signal()
     coopNetworksChanged = Signal()
-    _coopNetworksDone = Signal(list)
+    _coopNetworksDone = Signal(list, list)
+    _vpnInstallDone = Signal(str)
+    _vpnProgress = Signal(str)
     _coopDone = Signal(str)
+    _partyPresenceDone = Signal(str)
     playModeChanged = Signal()
     gameStarted = Signal()
     gameFinished = Signal(int, bool)  # exit code, whether the game got as far as running
     presetApplied = Signal()
+    networkModsChanged = Signal()
+    modSyncWarning = Signal()
+    _networkModsDone = Signal(list, str, int)
+    _modDownloadDone = Signal(str, list)
 
     def __init__(self, route=None):
         super().__init__()
@@ -340,6 +348,13 @@ class LauncherBackend(QObject):
         self._notice = 'Ready to hunt.'
         self._mods = []
         self._patches = []
+        self._network_mods = []
+        self._mods_polling = False
+        self._mod_catalog_revision = 0
+        self._mods_downloading = False
+        self._mod_share = mod_share.Share(Path(self.app.get('mods_dir') or core.PORT_DIR / 'mods'))
+        self._networkModsDone.connect(self._receive_network_mods)
+        self._modDownloadDone.connect(self._receive_mod_download)
         # A newer release found earlier is shown at once.
         self._update = core.remembered_update() if self.app.get('check_updates') else None
         self._settings_revision = 0
@@ -360,6 +375,18 @@ class LauncherBackend(QObject):
         self.setupFailed.connect(self._fail_game_setup)
         # Seamless co-op (bbport_coop): the servers this launcher hosts, and the last message.
         self._party_discovery = None
+        self._party_lock = threading.RLock()
+        self._party_polling = False
+        self._party_stopping = False
+        self._partyPresenceDone.connect(self._party_presence_finished)
+        self._party_timer = QTimer(self)
+        self._party_timer.setInterval(3000)
+        self._party_timer.timeout.connect(self._poll_party_presence)
+        self._party_timer.start()
+        self._party_network_timer = QTimer(self)
+        self._party_network_timer.setInterval(15000)
+        self._party_network_timer.timeout.connect(self.coopRefreshNetworks)
+        self._party_network_timer.start()
         self._local_test_process = None
         self._local_test_timer = QTimer(self)
         self._local_test_timer.setInterval(1000)
@@ -368,14 +395,23 @@ class LauncherBackend(QObject):
         self._coop_busy = False
         self._coop_launch_pending = False
         self._coop_networks = []
+        self._coop_vpns = []
+        self._coop_inventory_ready = False
+        self._vpn_installing = False
+        self._vpn_status = ''
+        self._vpnInstallDone.connect(self._vpn_install_finished)
+        self._vpnProgress.connect(self._vpn_progress)
         self._coop_networks_loading = False
         self._coopNetworksDone.connect(self._coop_networks_finished)
         self._coop_status = ''
-        self._coop_firewall_error = False
         self._launch_cancelled = False
         self._coop_launch_env = None
         self._coopDone.connect(self._coop_finished)
         self.refresh_addons()
+        self._addons_timer = QTimer(self)
+        self._addons_timer.setInterval(3000)
+        self._addons_timer.timeout.connect(self._poll_mods)
+        self._addons_timer.start()
         if self._route['mode'] != 'direct':
             self.start_background_checks()
 
@@ -634,7 +670,7 @@ class LauncherBackend(QObject):
 
     @Slot(str, result=str)
     def presetDescription(self, name):
-        return T({'low': 'Reduced effects, 60 FPS.', 'balanced': 'Standard effects, 120 FPS.', 'high': 'High quality, 120 FPS.', 'ultra': 'Maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
+        return T({'low': 'Reduced effects, 60 FPS.', 'high': 'High quality, 120 FPS.', 'ultra': 'Maximum detail and reflections, 120 FPS.'}.get(name, 'Custom graphics settings.'))
 
     @Property(int, notify=presetApplied)
     def settingsRevision(self):
@@ -681,7 +717,8 @@ class LauncherBackend(QObject):
 
     @staticmethod
     def _is_prompt_mod(name):
-        return ('xbox' in name.lower() and 'prompt' in name.lower()) or name == core.KEYBOARD_PROMPTS
+        from prompt_icons import is_prompt
+        return is_prompt(name)
 
     @Property('QVariantList', notify=changed)
     def contentMods(self):
@@ -689,16 +726,44 @@ class LauncherBackend(QObject):
         return [m for m in self._mods if not self._is_prompt_mod(m['name'])]
 
     @Property('QVariantList', notify=changed)
+    def modTableRows(self):
+        rows = [dict(m, status='', peer='') for m in self.contentMods]
+        installed = {m['name'].casefold() for m in self._mods}
+        seen = set()
+        for remote in self._network_mods:
+            key = (remote['name'].casefold(), remote.get('digest'))
+            if (not remote['name'] or self._is_prompt_mod(remote['name']) or key in seen):
+                continue
+            if remote['name'].casefold() not in installed or remote['status'] == 'conflict':
+                rows.append(dict(remote, enabled=False))
+                seen.add(key)
+        return rows
+
+    def _mods_unsynchronized(self):
+        local = [m['name'].casefold() for m in self._mods
+                 if not self._is_prompt_mod(m['name'])
+                 and m['enabled'] and self.app.get('mods_enabled', True)]
+        peers = {}
+        for row in self._network_mods:
+            peers.setdefault(row['peer'], [])
+            if not self._is_prompt_mod(row['name']):
+                peers[row['peer']].append(row)
+        for rows in peers.values():
+            active = [r for r in rows if r.get('enabled', False)]
+            if any(r['status'] in ('missing', 'conflict') for r in rows):
+                return True
+            if local != [r['name'].casefold() for r in active]:
+                return True
+        return False
+
+    @Property('QVariantList', notify=changed)
     def patches(self):
         return self._patches
 
     @Property(str, notify=changed)
     def promptChoice(self):
-        """From the mods in use, so a choice made in the game's overlay shows here too."""
-        enabled = {m['name'] for m in self._mods if self._is_prompt_mod(m['name']) and m['enabled']}
-        if core.KEYBOARD_PROMPTS in enabled:
-            return 'Keyboard'
-        return 'Xbox' if enabled else 'PlayStation'
+        from prompt_icons import choice
+        return choice(core.DATA_DIR)
 
     @Property(str, notify=changed)
     @translated
@@ -790,8 +855,9 @@ class LauncherBackend(QObject):
     def value(self, key):
         if key == 'test_profile_dir':
             return str(self.app.get(key) or core.DATA_DIR)
-        if key == 'user_dir':
-            return str(self.app.get(key) or core.DATA_DIR / 'user')
+        if key in ('user_dir', 'mods_dir', 'patches_dir'):
+            default = core.PORT_DIR / 'mods' if key == 'mods_dir' else core.DATA_DIR / ('patches' if key == 'patches_dir' else 'user')
+            return str(self.app.get(key) or default)
         if key == 'coop_name':
             return self.app.get(key) or self.app.get('player_name', '')
         return self.ini.get(key, '') if key in core.INI_DEFAULTS else self.app.get(key, '')
@@ -854,10 +920,14 @@ class LauncherBackend(QObject):
 
     @Slot(str, 'QVariant')
     def setValue(self, key, value):
+        if self._mods_downloading and key in ('mods_dir', 'mods_enabled'):
+            return
         if key in ('coop_connection', 'coop_host_address', 'coop_custom_address', 'coop_peer_addresses', 'coop_name'):
             if self.running or self._coop_busy:
                 return
             if key == 'coop_connection':
+                if value not in {item['value'] for item in self.coopConnections}:
+                    return
                 self.app['coop_host_address'] = ''
         if key in ('upscaler', 'frame_gen') and str(value) == 'dlss' and not self._dlss_supported:
             return
@@ -896,9 +966,10 @@ class LauncherBackend(QObject):
         self._write()
         if key in ('coop_connection', 'coop_host_address', 'coop_custom_address', 'coop_peer_addresses', 'coop_name'):
             self._party_ready = False
-            if self._party_discovery:
-                self._party_discovery.close()
-                self._party_discovery = None
+            with self._party_lock:
+                if self._party_discovery:
+                    self._party_discovery.close()
+                    self._party_discovery = None
             self.coopNetworksChanged.emit()
             self.coopCheckConnection()
         if key == 'bbsc_scaling':
@@ -1003,6 +1074,9 @@ class LauncherBackend(QObject):
 
     @Slot()
     def play(self, env=None):
+        if self._mods_downloading:
+            self._set_notice(T('Wait for mod synchronization to finish.'))
+            return
         if self._setup_running:
             self._set_notice('Wait for the game files to finish installing.')
             return
@@ -1144,15 +1218,20 @@ class LauncherBackend(QObject):
 
     @Slot()
     def refresh_addons(self):
-        from mods import discover
+        previous = (self._mods, self._patches)
+        from mods import discover, disabled_mods
         from patches import external_patches
         folder = Path(self.app.get('mods_dir') or core.PORT_DIR / 'mods')
         profile = core.load_json(core.DATA_DIR / 'mods.json', {})
-        disabled = set(profile.get('disabled', []))
+        disabled = disabled_mods(profile)
         names = discover(folder)
         order = [n for n in profile.get('order', []) if n in names]
         order += [n for n in sorted(names) if n not in order]
         self._mods = [{'name': n, 'enabled': n not in disabled} for n in order]
+        if self._mod_share.folder != folder:
+            self._mod_share = mod_share.Share(folder)
+        self._mod_share.selection = (list(order), {n for n in order if n not in disabled}
+                                    if self.app.get('mods_enabled', True) else set())
         patch_profile = core.load_json(core.DATA_DIR / 'patches.json', {})
         patch_folder = Path(self.app.get('patches_dir') or core.DATA_DIR / 'patches')
         found = external_patches(patch_folder, core.PATCH_VERSION)
@@ -1162,17 +1241,150 @@ class LauncherBackend(QObject):
                           'enabled': name in enabled or (name not in denied and
                                        meta.get('isEnabled', 'false').lower() == 'true')}
                          for name, _path, meta in found]
-        self.changed.emit()
+        if previous != (self._mods, self._patches):
+            self.changed.emit()
+
+    @Property('QVariantList', notify=networkModsChanged)
+    def networkMods(self):
+        return self._network_mods
+
+    @Property(bool, notify=networkModsChanged)
+    def modsDownloading(self):
+        return self._mods_downloading
+
+    def _poll_mods(self):
+        if self._party_stopping or self._mods_polling or self._mods_downloading:
+            return
+        self.refresh_addons()
+        discovery = self._party_discovery
+        if not discovery:
+            if self._network_mods:
+                self._network_mods = []
+                self.networkModsChanged.emit()
+                self.changed.emit()
+            return
+        discovery.mod_share = self._mod_share
+        share = self._mod_share
+        revision = self._mod_catalog_revision
+        self._mods_polling = True
+        def poll():
+            rows = []
+            try:
+                local = {r['name'].casefold(): r for r in share.catalog()}
+                for peer in discovery.offers():
+                    if peer['id'] == discovery.offer['id']:
+                        continue
+                    try:
+                        remote = mod_share.catalog(discovery, peer)
+                        if not remote:
+                            rows.append(dict(name='', peer=peer['id'], player=peer.get('name', peer['id']),
+                                             status='empty', size=0))
+                        for row in remote:
+                            installed = local.get(row['name'].casefold())
+                            row = dict(row, peer=peer['id'], player=peer.get('name', peer['id']),
+                                       status='missing' if installed is None else
+                                       'same' if installed['digest'] == row['digest'] else 'conflict')
+                            rows.append(row)
+                    except (OSError, ValueError, KeyError, TypeError):
+                        continue
+                self._networkModsDone.emit(rows, '', revision)
+            except Exception as error:
+                self._networkModsDone.emit([], str(error), revision)
+        threading.Thread(target=poll, daemon=True).start()
+
+    @Slot(list, str, int)
+    def _receive_network_mods(self, rows, error, revision):
+        self._mods_polling = False
+        if revision != self._mod_catalog_revision:
+            return  # A pre-download comparison must not restore stale missing/conflict rows.
+        if rows != self._network_mods:
+            self._network_mods = rows
+            self.networkModsChanged.emit()
+            self.changed.emit()
+
+    @Slot(str, str)
+    def downloadNetworkMod(self, peer_id, name):
+        self._download_mods(peer_id, name)
+
+    @Slot(str)
+    def syncNetworkMods(self, peer_id):
+        self._download_mods(peer_id, None)
+
+    def _download_mods(self, peer_id, name):
+        if (self.running or self._coop_busy or self._coop_launch_pending or
+                self._mods_downloading or not self._party_discovery):
+            return
+        discovery, share = self._party_discovery, self._mod_share
+        peer = next((p for p in discovery.offers() if p['id'] == peer_id), None)
+        if not peer or peer_id == discovery.offer['id']:
+            return
+        self._mods_downloading = True
+        self._mod_catalog_revision += 1
+        self.networkModsChanged.emit()
+        def work():
+            try:
+                remote = mod_share.catalog(discovery, peer)
+                chosen = [r for r in remote if name is None or r['name'] == name]
+                if not chosen and name is not None:
+                    raise ValueError(T('Mod no longer available'))
+                local = {r['name'].casefold(): r for r in share.catalog()}
+                for row in chosen:
+                    existing = local.get(row['name'].casefold())
+                    if existing and existing['digest'] != row['digest']:
+                        raise ValueError(T('Different mod contents:') + ' ' + row['name'])
+                for row in chosen:
+                    if row['name'].casefold() in local:
+                        continue
+                    # Persist disabled before publication: automatic discovery never enables
+                    # a partial transfer or a newly received mod without an explicit sync.
+                    profile_file = core.DATA_DIR / 'mods.json'
+                    profile = core.load_json(profile_file, {})
+                    profile['disabled'] = list(dict.fromkeys(profile.get('disabled', []) + [row['name']]))
+                    party.write_json(profile_file, profile)
+                    mod_share.download(discovery, peer, row, share.folder)
+                if name is None:
+                    profile_file = core.DATA_DIR / 'mods.json'
+                    profile = core.load_json(profile_file, {})
+                    names = {r['name'].casefold(): r['name'] for r in share.catalog()}
+                    order = [names[r['name'].casefold()] for r in remote]
+                    enabled = {names[r['name'].casefold()] for r in remote if r.get('enabled', False)}
+                    profile['order'] = order + [n for n in names.values() if n not in order]
+                    profile['disabled'] = [n for n in names.values() if n not in enabled]
+                    party.write_json(profile_file, profile)
+                self._modDownloadDone.emit('Mod synchronization complete.' if name is None else 'Mod downloaded (disabled).', share.catalog())
+            except Exception as error:
+                self._modDownloadDone.emit(T('Mod download failed:') + ' ' + T(str(error)), [])
+        threading.Thread(target=work, daemon=True).start()
+
+    @Slot(str, list)
+    def _receive_mod_download(self, message, catalog):
+        self._mods_downloading = False
+        if message == 'Mod synchronization complete.':
+            self.app['mods_enabled'] = True
+            self._write()
+        self.refresh_addons()
+        if catalog:
+            local = {r['name'].casefold(): r for r in catalog}
+            self._network_mods = [dict(row, status=(
+                'missing' if row['name'].casefold() not in local else
+                'same' if local[row['name'].casefold()]['digest'] == row.get('digest') else 'conflict'
+            )) if row['name'] else row for row in self._network_mods]
+            self.changed.emit()
+        self.networkModsChanged.emit()
+        self._set_notice(T(message))
+        self._poll_mods()
 
     @Slot(str, bool)
     def setMod(self, name, enabled):
+        if self._mods_downloading:
+            return
         profile_file = core.DATA_DIR / 'mods.json'
         profile_file.parent.mkdir(parents=True, exist_ok=True)
         profile = core.load_json(profile_file, {})
         names = [m['name'] for m in self._mods]
         if name not in names:
             return
-        disabled = set(profile.get('disabled', []))
+        disabled = set(profile.get('disabled', [])) | {m['name'] for m in self._mods if not m['enabled']}
         (disabled.discard if enabled else disabled.add)(name)
         profile.update({'order': names, 'disabled': sorted(disabled)})
         profile_file.write_text(json.dumps(profile, indent=2), encoding='utf-8')
@@ -1181,18 +1393,23 @@ class LauncherBackend(QObject):
 
     @Slot(str, int)
     def moveMod(self, name, step):
+        if self._mods_downloading:
+            return
         names = [m['name'] for m in self._mods]
         if name not in names:
             return
-        index = names.index(name)
-        other = index + step
-        if not 0 <= other < len(names):
+        visible = [n for n in names if self._is_prompt_mod(n) == self._is_prompt_mod(name)]
+        position = visible.index(name) + step
+        if not 0 <= position < len(visible):
             return
+        index = names.index(name)
+        other = names.index(visible[position])
         names[index], names[other] = names[other], names[index]
         profile_file = core.DATA_DIR / 'mods.json'
         profile_file.parent.mkdir(parents=True, exist_ok=True)
         profile = core.load_json(profile_file, {})
         profile['order'] = names
+        profile['disabled'] = sorted(set(profile.get('disabled', [])) | {m['name'] for m in self._mods if not m['enabled']})
         profile_file.write_text(json.dumps(profile, indent=2), encoding='utf-8')
         self.refresh_addons()
 
@@ -1211,25 +1428,17 @@ class LauncherBackend(QObject):
 
     @Slot(str)
     def setPrompt(self, choice):
-        """Select the ready-to-use Xbox/Keyboard mods included in the installation."""
+        if self._mods_downloading:
+            return
+        """Select built-in button images independently of user mods."""
         if choice not in ('Xbox', 'PlayStation', 'Keyboard'):
             return
-        names = [m['name'] for m in self._mods if self._is_prompt_mod(m['name'])]
-        xbox = [n for n in names if n != core.KEYBOARD_PROMPTS]
-        profile_file = core.DATA_DIR / 'mods.json'
-        profile_file.parent.mkdir(parents=True, exist_ok=True)
-        profile = core.load_json(profile_file, {})
-        disabled, enabled = set(profile.get('disabled', [])), set(profile.get('enabled', []))
-        chosen = {'Xbox': xbox[:1], 'Keyboard': [core.KEYBOARD_PROMPTS]}.get(choice, [])
-        for name in names:
-            (disabled.discard if name in chosen else disabled.add)(name)
-            (enabled.add if name in chosen else enabled.discard)(name)
-        profile.update({'enabled': sorted(enabled), 'disabled': sorted(disabled)})
-        profile_file.write_text(json.dumps(profile, indent=2), encoding='utf-8')
+        party.write_json(core.DATA_DIR / 'button-prompts.json', {'choice': choice})
         if choice == 'Keyboard':  # the keys the images show
             core.save_ini(core.KEYBOARD_PROMPT_LAYOUT, self.ini_lines)
             self.ini, self.ini_lines = core.load_ini()
         self.refresh_addons()
+        self.changed.emit()
 
     @Property(bool, notify=changed)
     def fsrReady(self):
@@ -1435,11 +1644,8 @@ class LauncherBackend(QObject):
     @Property(str, notify=playModeChanged)
     @translated
     def coopStatus(self):
-        return self._coop_status or 'Choose a connection and check the players in your network.'
+        return self._coop_status or 'Finding players automatically…'
 
-    @Property(bool, notify=coopChanged)
-    def coopFirewallError(self):
-        return self._coop_firewall_error
 
     @Property(bool, notify=coopChanged)
     def coopBusy(self):
@@ -1456,11 +1662,63 @@ class LauncherBackend(QObject):
     @Property('QVariantList', notify=coopNetworksChanged)
     def coopConnections(self):
         return [{'text': T(label), 'value': key} for key, label in
-                [('auto', 'Automatically'), ('tailscale', 'Tailscale'), ('radmin', 'Radmin'), ('custom', 'Custom network')]]
+                [('lan', 'Local network'), ('radmin', 'Radmin VPN'), ('tailscale', 'Tailscale')]
+                if key == 'lan' or key in self._coop_vpns]
 
     @Property(str, notify=coopNetworksChanged)
     def coopConnection(self):
-        return self.app.get('coop_connection', 'auto')
+        selected = self.app.get('coop_connection', 'lan')
+        return selected if selected == 'lan' or selected in self._coop_vpns else 'lan'
+
+    @Property('QVariantList', notify=coopNetworksChanged)
+    def coopMissingVpns(self):
+        if not self._coop_inventory_ready:
+            return []
+        return [{'value': key, 'text': label} for key, label in
+                [('radmin', 'Radmin VPN'), ('tailscale', 'Tailscale')] if key not in self._coop_vpns]
+
+    @Property(bool, notify=coopChanged)
+    def vpnInstalling(self):
+        return self._vpn_installing
+
+    @Property(str, notify=coopChanged)
+    def vpnInstallStatus(self):
+        return self._vpn_status
+
+    @Slot(str)
+    def _vpn_progress(self, message):
+        self._vpn_status = message
+        self.coopChanged.emit()
+
+    @Slot(str)
+    def coopInstallVpn(self, provider):
+        if (provider not in ('radmin', 'tailscale') or provider in self._coop_vpns
+                or self._vpn_installing or self.running or self._coop_busy):
+            return
+        self._vpn_installing = True
+        label = 'Radmin VPN' if provider == 'radmin' else 'Tailscale'
+        self._vpn_progress(T('Downloading {}…').format(label))
+        def install():
+            try:
+                last_percent = -1
+                def progress(size, total):
+                    nonlocal last_percent
+                    percent = int(size * 100 / total) if total else -1
+                    if percent != last_percent:
+                        last_percent = percent
+                        self._vpnProgress.emit(T('Downloading {}…').format(label) + f' {percent}%')
+                coop.install_vpn(provider, progress)
+                message = T('Installer opened. Complete installation, then connect to your VPN network.')
+            except Exception as error:
+                message = T('VPN installation failed:') + ' ' + T(str(error))
+            self._vpnInstallDone.emit(message)
+        threading.Thread(target=install, daemon=True).start()
+
+    @Slot(str)
+    def _vpn_install_finished(self, message):
+        self._vpn_installing = False
+        self._vpn_progress(message)
+        self.coopRefreshNetworks()
 
     @Property(str, notify=coopNetworksChanged)
     def coopHostAddress(self):
@@ -1468,7 +1726,7 @@ class LauncherBackend(QObject):
 
     @Property(bool, notify=coopNetworksChanged)
     def coopNetworksLoading(self):
-        return self._coop_networks_loading
+        return self._coop_networks_loading or not self._coop_inventory_ready
 
     @Slot()
     def coopRefreshNetworks(self):
@@ -1477,21 +1735,24 @@ class LauncherBackend(QObject):
         self._coop_networks_loading = True
         self.coopNetworksChanged.emit()
         def discover():
-            self._coopNetworksDone.emit(coop.network_candidates())
+            self._coopNetworksDone.emit(coop.network_candidates(), coop.installed_vpns())
         threading.Thread(target=discover, daemon=True).start()
 
-    @Slot(list)
-    def _coop_networks_finished(self, networks):
+    @Slot(list, list)
+    def _coop_networks_finished(self, networks, vpns):
         self._coop_networks = networks
+        self._coop_vpns = vpns
+        self._coop_inventory_ready = True
+        selected = self.app.get('coop_connection', 'lan')
+        if selected != 'lan' and selected not in vpns and not (self.running or self._coop_busy):
+            self.app['coop_connection'] = 'lan'
         self._coop_networks_loading = False
         self.coopNetworksChanged.emit()
         self.coopCheckConnection()
 
     def _prepare_party(self):
-        address, network = party.choose_network(self._coop_networks, self.coopConnection,
-                                               self.app.get('coop_custom_address', ''))
-        targets = party.candidate_addresses(network, coop.tailscale_exe(),
-                                            self.app.get('coop_peer_addresses', ''))
+        address, network = party.choose_network(self._coop_networks, self.coopConnection)
+        targets = party.candidate_addresses(network, coop.tailscale_exe())
         from bbport_paths import profile_dir
         if self._party_discovery and self._party_discovery.address != address:
             self._party_discovery.close()
@@ -1500,18 +1761,38 @@ class LauncherBackend(QObject):
             self._party_discovery = party.Discovery(profile_dir(), address, targets,
                                                     str(self.value('coop_name')))
         self._party_discovery.targets = targets
-        time.sleep(2.2)
-        cfg, _ = self._party_discovery.check()
-        self._party_ready = True
+        self._party_discovery.mod_share = self._mod_share
+        self._party_discovery.publish_runtime_peers()
         names = ', '.join(p.get('name') or p['host'] for p in self._party_discovery.offers())
-        return f"{T('Connection checked: TCP and UDP between all players.')} {len(cfg['members'])}/5: {names}"
+        return f"{T('Players online:')} {len(self._party_discovery.offers())}/5: {names}"
 
     @Slot()
     def coopCheckConnection(self):
-        if self.running or self._coop_busy or self._coop_networks_loading:
+        self._poll_party_presence()
+
+    def _poll_party_presence(self):
+        # Presence never occupies the launch/UI busy state.
+        if self._party_stopping or self._party_polling or self._coop_networks_loading:
             return
-        self._party_ready = False
-        self._coop_run('Finding players and checking the connection…', self._prepare_party)
+        self._party_polling = True
+        def poll():
+            try:
+                with self._party_lock:
+                    if self._party_stopping:
+                        return
+                    message = self._prepare_party()
+            except Exception as error:
+                message = f"{T('Player search unavailable:')} {T(str(error))}"
+            finally:
+                self._partyPresenceDone.emit(locals().get('message', ''))
+        threading.Thread(target=poll, daemon=True).start()
+
+    @Slot(str)
+    def _party_presence_finished(self, message):
+        self._party_polling = False
+        if not self._coop_busy and not self._party_stopping:
+            self._coop_status = message
+            self.coopChanged.emit()
 
     def _coop_run(self, message, work):
         if self._coop_busy:
@@ -1521,12 +1802,10 @@ class LauncherBackend(QObject):
         self.coopChanged.emit()
 
         def run():
-            self._coop_firewall_error = False
             try:
                 result = work()
             except (coop.CoopError, OSError, ValueError) as error:
                 self._party_ready = False
-                self._coop_firewall_error = any(word in str(error).casefold() for word in ('firewall', 'брандмауэр', 'access denied', 'blocked'))
                 result = f'Co-op: {T(str(error))}'
             except Exception as error:  # report, never crash the UI
                 self._party_ready = False
@@ -1547,27 +1826,11 @@ class LauncherBackend(QObject):
         if env and not self._launch_cancelled:
             self.play(env)
 
-    def _coop_game_exe(self):
-        for candidate in (core.PORT_DIR / 'bin' / 'bb-probe.exe', core.PORT_DIR / 'out' / 'bb-probe.exe'):
-            if candidate.is_file():
-                return candidate
-        raise coop.CoopError('bb-probe.exe is missing from this install.')
 
     @Slot()
     def openCoopHelp(self):
         webbrowser.open('https://www.radmin-vpn.com/help/index.html')
 
-    @Slot()
-    def coopConfigureFirewall(self):
-        if self.process or self._coop_busy:
-            return
-        def work():
-            _, network = party.choose_network(self._coop_networks, self.coopConnection,
-                                              self.app.get('coop_custom_address', ''))
-            ranges = tuple(network['ranges']) + ('LocalSubnet',)
-            coop.run_setup(self._coop_game_exe(), remote_ranges=ranges)
-            return 'Firewall configured. Check the connection again.'
-        self._coop_run('Configuring firewall: approve the Windows administrator prompt…', work)
 
     @Property(bool, notify=coopChanged)
     def coopLocalRunning(self):
@@ -1598,24 +1861,33 @@ class LauncherBackend(QObject):
 
     @Slot()
     def coopPlay(self):
+        if self._mods_downloading:
+            return
         if self.process or self._coop_busy:
             return
         self._write()
         def work():
             if not coop.installed('client'):
                 raise coop.CoopError('Bundled BBSC-GL files are missing. Re-extract the launcher release.')
-            if not self._party_discovery:
+            with self._party_lock:
+                if not self._coop_networks:
+                    self._coop_networks = coop.network_candidates()
                 self._prepare_party()
-            self._coop_launch_env = party.launch_environment(core.game_environment(self.app),
-                                                             self._party_discovery)
+                self._coop_launch_env = party.launch_environment(core.game_environment(self.app),
+                                                                 self._party_discovery)
             return 'Starting P2P co-op. Host: Beckoning Bell. Guest: Small Resonant Bell.'
         self._coop_launch_pending = True
-        self._coop_run('Checking the connection before launch…', work)
+        self._coop_run('Starting co-op…', work)
 
     def shutdown_coop(self):
-        if self._party_discovery:
-            self._party_discovery.close()
-            self._party_discovery = None
+        self._party_stopping = True
+        self._party_timer.stop()
+        self._party_network_timer.stop()
+        self._addons_timer.stop()
+        with self._party_lock:
+            if self._party_discovery:
+                self._party_discovery.close()
+                self._party_discovery = None
 
 
     # --- Play mode: offline or seamless co-op ----------------
@@ -1637,9 +1909,6 @@ class LauncherBackend(QObject):
 
     @Property(bool, notify=playModeChanged)
     def playModeBlocked(self):
-        mode = self.playMode
-        if mode == 'coop':
-            return not self._coop_ready()
         return False
 
     @Property(str, notify=playModeChanged)
@@ -1670,18 +1939,30 @@ class LauncherBackend(QObject):
     @Slot()
     def playSelected(self):
         """PLAY: the selected mode."""
-        if self._coop_busy:
+        if self._coop_busy or self._mods_downloading:
             return
         self._launch_cancelled = False
         if self.playMode == 'coop':
-            self.coopPlay()
+            self.refresh_addons()
+            if self._mods_unsynchronized():
+                self.modSyncWarning.emit()
+            else:
+                self.coopPlay()
         else:
             self.play()
+
+    @Slot()
+    def playUnsynchronized(self):
+        if self.playMode == 'coop' and not self.running and not self._coop_busy:
+            self._launch_cancelled = False
+            self.coopPlay()
 
 
     @Slot(str)
     def action(self, name):
-        if name == 'openTestProfile':
+        if name == 'openProfile':
+            os.startfile(str(core.DATA_DIR))
+        elif name == 'openTestProfile':
             self.open_test_profile()
         elif name == 'openGame':
             self.openFolder('game_dir')

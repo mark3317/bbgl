@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $tokens = $null; $errors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot '../tools/coop-dev/coopdev.ps1'), [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw $errors[0] }
-$names = 'ProfileDir', 'SettingsFile', 'Settings', 'UserDir', 'DataPkg', 'ClientPkg', 'ActiveSave'
+$names = 'ProfileDir', 'SettingsFile', 'Settings', 'UserDir', 'DataPkg', 'ClientPkg', 'ActiveSave', 'LatestGameLog'
 $ast.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst]}, $true) |
     Where-Object { $_.Name -in $names } | ForEach-Object { Invoke-Expression $_.Extent.Text }
 $originalLocal = $env:LOCALAPPDATA; $originalRoaming = $env:APPDATA
@@ -34,7 +34,12 @@ try {
     AssertEqual ((ActiveSave).FullName) ([IO.Path]::GetFullPath($save))
     AssertEqual (SettingsFile) (Join-Path $current 'settings.json')
     AssertEqual (DataPkg) (Join-Path $current 'coop')
-    'PASS: current/legacy precedence, empty current profile, default/selected user_dir, save discovery'
+    Set-Content (Join-Path $selected 'last_run.log') 'legacy'
+    $newLog=Join-Path $selected 'run_20261104_204500.log'
+    Set-Content $newLog 'new'
+    (Get-Item (Join-Path $selected 'last_run.log')).LastWriteTimeUtc=[DateTime]::UtcNow.AddMinutes(-1)
+    AssertEqual ((LatestGameLog).FullName) ([IO.Path]::GetFullPath($newLog))
+    'PASS: profile paths, save discovery and latest timestamped run log'
 } finally {
     $env:LOCALAPPDATA = $originalLocal; $env:APPDATA = $originalRoaming
 }

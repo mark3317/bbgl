@@ -1274,6 +1274,9 @@ static int shader_progress = -1;
 void DrawWindows(float display_height) {
     if (shader_progress >= 0) {
         const ImVec2 size = ImGui::GetIO().DisplaySize;
+        // Remain opaque during the short handoff from warm-up to game output.
+        ImGui::GetForegroundDrawList()->AddRectFilled(ImVec2(0, 0), size,
+                                                     IM_COL32(0, 0, 0, 255));
         // A fine ivory rule across the bottom, matching the game's pale text.
         // Draw directly: no panel, label, percentage, padding or rounded corners.
         const float scale = std::max(size.y / 1080.0f, 0.75f);

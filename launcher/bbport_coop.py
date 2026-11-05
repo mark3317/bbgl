@@ -6,21 +6,19 @@ import ipaddress
 import json
 import os
 from pathlib import Path
-import secrets
 import shutil
 import socket
 import subprocess
 import sys
 import time
+import tempfile
+import urllib.request
+import urllib.parse
+import re
 
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 # Tailscale's own address on every tailnet: a route to it goes out through the Tailscale adapter.
 TAILSCALE_DNS = '100.100.100.100'
-# Private-network Party control/discovery and native gameplay firewall rules.
-FIREWALL_RANGES = ('100.64.0.0/10', 'LocalSubnet')
-FIREWALL_PORTS = (('party control', 'TCP', 37600), ('discovery', 'TCP', 37601),
-                  ('discovery UDP', 'UDP', 37601), ('native gameplay', 'UDP', 37658))
-RULE_PREFIX = 'Bloodborne co-op'
 
 
 class CoopError(Exception):
@@ -59,6 +57,90 @@ def download(kind, progress=None):
 
 
 # --- Network ---------------------------------------------------------------------------------------
+
+def installed_vpns():
+    """Installed programs, including stopped/disconnected VPNs."""
+    found = set()
+    if tailscale_exe():
+        found.add('tailscale')
+    for variable in ('ProgramW6432', 'ProgramFiles', 'ProgramFiles(x86)'):
+        folder = os.environ.get(variable)
+        if folder and (Path(folder) / 'Radmin VPN' / 'RvRvpnGui.exe').is_file():
+            found.add('radmin')
+    if sys.platform == 'win32':
+        import winreg
+        for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+            for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
+                try:
+                    with winreg.OpenKey(hive, r'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                                        0, winreg.KEY_READ | view) as root:
+                        for i in range(winreg.QueryInfoKey(root)[0]):
+                            try:
+                                with winreg.OpenKey(root, winreg.EnumKey(root, i)) as entry:
+                                    name = winreg.QueryValueEx(entry, 'DisplayName')[0].casefold()
+                                    if name == 'radmin vpn':
+                                        found.add('radmin')
+                                    elif name == 'tailscale':
+                                        found.add('tailscale')
+                            except OSError:
+                                continue
+                except OSError:
+                    continue
+    return sorted(found)
+
+
+def _vpn_installer_url(provider):
+    # Resolve current versions from the publishers, rather than pinning old installers.
+    page, pattern, base = {
+        'radmin': ('https://www.radmin-vpn.com/',
+                   r'https://download\.radmin-vpn\.com/download/files/Radmin_VPN_[\d.]+\.exe', ''),
+        'tailscale': ('https://pkgs.tailscale.com/stable/',
+                     r'href="(tailscale-setup-[\d.]+\.exe)"', 'https://pkgs.tailscale.com/stable/'),
+    }[provider]
+    request = urllib.request.Request(page, headers={'User-Agent': 'Mozilla/5.0 BBGL/1.1'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        html = response.read(4 * 1024 * 1024).decode('utf-8')
+    match = re.search(pattern, html)
+    if not match:
+        raise CoopError('Could not find the VPN installer on the official website.')
+    return base + (match.group(1) if base else match.group(0))
+
+
+def install_vpn(provider, progress=None):
+    """Download into a private folder and open the normal Windows installer."""
+    if provider not in ('radmin', 'tailscale'):
+        raise ValueError('Unknown VPN provider')
+    url = _vpn_installer_url(provider)
+    folder = Path(tempfile.mkdtemp(prefix='bbgl-vpn-'))
+    target = folder / (provider + '-setup.exe')
+    partial = target.with_suffix('.part')
+    try:
+        request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 BBGL/1.1'})
+        with urllib.request.urlopen(request, timeout=30) as response, partial.open('wb') as output:
+            if urllib.parse.urlparse(response.geturl()).scheme != 'https':
+                raise CoopError('Download URL must use HTTPS')
+            expected = int(response.headers.get('Content-Length', 0))
+            size = 0
+            while block := response.read(256 * 1024):
+                size += len(block)
+                if size > 200 * 1024 * 1024:
+                    raise CoopError('VPN installer is too large.')
+                output.write(block)
+                if progress:
+                    progress(size, expected)
+        if size < 2 or (expected and size != expected):
+            raise CoopError('VPN installer download is incomplete.')
+        with partial.open('rb') as stream:
+            if stream.read(2) != b'MZ':
+                raise CoopError('The VPN download is not a Windows installer.')
+        partial.replace(target)
+        os.startfile(str(target))
+    except Exception:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+    # ShellExecute returns before Windows finishes reading the file.
+    return target
+
 
 def tailscale_exe():
     """tailscale.exe: on PATH (the installer adds it, wherever it was installed), else the default folder."""
@@ -160,121 +242,6 @@ def network_candidates():
 
 
 # --- One-time setup (one administrator prompt) ---------------------------------------------------
-
-def _quoted(text):
-    """A PowerShell single-quoted string: a path with an apostrophe (C:\\Users\\O'Neil) broke the
-    script, and the setup then never finished."""
-    return "'" + str(text).replace("'", "''") + "'"
-
-
-def _firewall_script(game_exe, remote_ranges=None):
-    validated = [('Any' if r == 'Any' else 'LocalSubnet' if r == 'LocalSubnet' else
-                  str(ipaddress.IPv4Network(r, strict=False))) for r in
-                 (FIREWALL_RANGES if remote_ranges is None else remote_ranges)]
-    ranges = ','.join(f"'{r}'" for r in validated)
-    lines = ['$ErrorActionPreference = "Stop"', f'$ranges = @({ranges})']
-    for label, protocol, port in FIREWALL_PORTS:
-        rule = f'{RULE_PREFIX} {label} {port}'
-        lines.append(f"Remove-NetFirewallRule -DisplayName '{rule}' -ErrorAction SilentlyContinue")
-        lines.append(f"New-NetFirewallRule -DisplayName '{rule}' -Direction Inbound -Protocol {protocol} "
-                     f"-LocalPort {port} -RemoteAddress $ranges -Action Allow | Out-Null")
-    rule = f'{RULE_PREFIX} game'
-    lines.append(f"Remove-NetFirewallRule -DisplayName '{rule}' -ErrorAction SilentlyContinue")
-    lines.append(f"New-NetFirewallRule -DisplayName '{rule}' -Direction Inbound -Program {_quoted(game_exe)} "
-                 "-Action Allow | Out-Null")
-    return '\r\n'.join(lines) + '\r\n'
-
-
-def setup_done(game_exe):
-    command = (f"$r = Get-NetFirewallRule -DisplayName '{RULE_PREFIX} game' -ErrorAction SilentlyContinue; "
-               f"if ($r -and (($r | Get-NetFirewallApplicationFilter).Program -eq {_quoted(game_exe)})) {{ exit 0 }} else {{ exit 1 }}")
-    try:
-        return subprocess.run(['powershell', '-NoProfile', '-Command', command], timeout=30,
-                              creationflags=NO_WINDOW).returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
-def run_setup(game_exe, remote_ranges=None):
-    """Firewall rules for the selected private network and native gameplay.
-    Windows asks the player once for administrator rights."""
-    script = coop_dir() / 'setup-firewall.ps1'
-    result_file = coop_dir() / 'firewall-setup-result.json'
-    request = secrets.token_hex(16)
-    coop_dir().mkdir(parents=True, exist_ok=True)
-    # Verify in the elevated process as well: a normal Windows 10 process may
-    # not be able to read NetSecurity's CIM rules after successful elevation.
-    names = [f'{RULE_PREFIX} {label} {port}' for label, _, port in FIREWALL_PORTS]
-    names.append(f'{RULE_PREFIX} game')
-    verify = '\n'.join(
-        f"$r = Get-NetFirewallRule -DisplayName {_quoted(name)} -ErrorAction Stop; "
-        f"if (-not ($r | Where-Object {{ $_.Enabled -eq 'True' -and $_.Action -eq 'Allow' }})) "
-        f"{{ throw {_quoted('Firewall rule is not enabled: ' + name)} }}"
-        for name in names)
-    body = (
-        '$ErrorActionPreference = "Stop"\n'
-        f"$result = @{{ok=$false; error=''; request='{request}'}}\n"
-        'try {\n' + _firewall_script(game_exe, remote_ranges) + verify + '\n'
-        f"$r = Get-NetFirewallRule -DisplayName {_quoted(names[-1])} -ErrorAction Stop\n"
-        f"if (($r | Get-NetFirewallApplicationFilter).Program -ne {_quoted(game_exe)}) "
-        "{ throw 'Firewall game path verification failed.' }\n"
-        '$result.ok = $true\n'
-        '} catch { $result.error = ($_ | Out-String) }\n'
-        'finally { $result | ConvertTo-Json -Compress | '
-        f'Set-Content -LiteralPath {_quoted(result_file)} -Encoding UTF8 }}\n'
-        'if (-not $result.ok) { exit 1 }\n')
-    with script.open('w', encoding='utf-8-sig', newline='') as output:
-        output.write(body)
-    if not run_as_administrator('powershell.exe', f'-NoProfile -ExecutionPolicy Bypass -File "{script}"'):
-        raise CoopError('Co-op needs a Yes on the Windows administrator prompt (firewall rules); '
-                        'the answer was No. Try Configure firewall again, or continue without it.')
-    try:
-        result = json.loads(result_file.read_text(encoding='utf-8-sig'))
-    except (OSError, ValueError) as error:
-        raise CoopError(f'Firewall setup did not return a result. See {script}.') from error
-    if not isinstance(result, dict) or result.get('request') != request:
-        raise CoopError(f'Firewall setup did not return a result. See {script}.')
-    if result.get('ok') is not True:
-        raise CoopError(f"Firewall setup failed: {result.get('error') or 'Unknown Windows error'}")
-
-
-def run_as_administrator(program, parameters, verb='runas'):
-    """Runs program with administrator rights, hidden, and waits for it. False when the player
-    said No. The launcher asks Windows itself: a prompt requested by a process in the background
-    (it was a hidden PowerShell's Start-Process -Verb RunAs) opens only as a flashing taskbar
-    button, and players saw no prompt at all (#49). Asked by the launcher, whose window is in
-    front after the click, it opens over it."""
-    import ctypes
-    from ctypes import wintypes
-
-    class ShellExecuteInfo(ctypes.Structure):
-        _fields_ = [('cbSize', wintypes.DWORD), ('fMask', ctypes.c_ulong), ('hwnd', wintypes.HWND),
-                    ('lpVerb', wintypes.LPCWSTR), ('lpFile', wintypes.LPCWSTR), ('lpParameters', wintypes.LPCWSTR),
-                    ('lpDirectory', wintypes.LPCWSTR), ('nShow', ctypes.c_int), ('hInstApp', wintypes.HINSTANCE),
-                    ('lpIDList', ctypes.c_void_p), ('lpClass', wintypes.LPCWSTR), ('hkeyClass', wintypes.HKEY),
-                    ('dwHotKey', wintypes.DWORD), ('hIconOrMonitor', wintypes.HANDLE), ('hProcess', wintypes.HANDLE)]
-
-    shell32 = ctypes.WinDLL('shell32', use_last_error=True)
-    shell32.ShellExecuteExW.argtypes = [ctypes.POINTER(ShellExecuteInfo)]
-    user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
-    user32.GetForegroundWindow.restype = wintypes.HWND
-    window = user32.GetForegroundWindow()
-    owner = wintypes.DWORD()
-    user32.GetWindowThreadProcessId(window, ctypes.byref(owner))
-    ctypes.windll.ole32.CoInitializeEx(None, 0x2 | 0x4)  # the shell wants COM on this thread
-    info = ShellExecuteInfo(cbSize=ctypes.sizeof(ShellExecuteInfo),
-                            fMask=0x40 | 0x100 | 0x400,  # NOCLOSEPROCESS, NOASYNC, FLAG_NO_UI (errors come back)
-                            hwnd=window if owner.value == os.getpid() else None,
-                            lpVerb=verb, lpFile=program, lpParameters=parameters, nShow=0)
-    if not shell32.ShellExecuteExW(ctypes.byref(info)):
-        error = ctypes.get_last_error()
-        if error == 1223:  # ERROR_CANCELLED: the player said No
-            return False
-        raise CoopError(f'Windows could not run the co-op setup: {ctypes.FormatError(error)}')
-    if info.hProcess:
-        kernel32.WaitForSingleObject(wintypes.HANDLE(info.hProcess), 0xFFFFFFFF)
-        kernel32.CloseHandle(wintypes.HANDLE(info.hProcess))
-    return True
 
 
 def active_save_dir(user_dir):

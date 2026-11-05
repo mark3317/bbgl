@@ -14,10 +14,11 @@ import socket
 import socketserver
 import subprocess
 import threading
+import tempfile
 import time
 
 DISCOVERY_PORT, CONTROL_PORT, GAME_PORT = 37601, 37600, 37658
-PROTOCOL = 'BBGL-P2P-1'
+PROTOCOL = 'BBGL-P2P-2'
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 
 
@@ -25,26 +26,54 @@ def encoded(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
 
 
-def write_json(path, value):
+def write_json(path, value, *, create_only=False):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix('.tmp')
-    temp.write_bytes(encoded(value))
-    os.replace(temp, path)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as stream:
+        temp = Path(stream.name)
+    try:
+        temp.write_bytes(encoded(value))
+        publish = (os.rename if os.name == 'nt' else os.link) if create_only else os.replace
+        for attempt in range(8):
+            try:
+                publish(temp, path)
+                return
+            except FileExistsError:
+                if create_only:
+                    return
+                raise
+            except PermissionError as error:
+                if getattr(error, 'winerror', None) not in (5, 32, 33) or attempt == 7:
+                    raise
+                time.sleep(.01 * (attempt+1))
+    finally:
+        temp.unlink(missing_ok=True)
 
 
-def choose_network(networks, mode='auto', custom=''):
+def choose_network(networks, mode='lan', custom=''):
     if mode == 'custom':
         ip = str(ipaddress.IPv4Address(custom.strip()))
         choices = [n for n in networks if ip in n['addresses']]
     elif mode in ('tailscale', 'radmin'):
         choices = [n for n in networks if mode == n.get('provider') or mode in n['text'].lower()]
+    elif mode in ('lan', 'auto'):
+        choices = [n for n in networks if not n['vpn']]
+        if len(choices) > 1:
+            # Prefer the physical adapter used by the system's default route.
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                    probe.connect(('192.0.2.1', 9))
+                    address = probe.getsockname()[0]
+                preferred = [n for n in choices if address in n['addresses']]
+            except OSError:
+                preferred = []
+            choices = preferred or sorted(choices, key=lambda n: n.get('value', n['text']))[:1]
     else:
-        choices = [n for n in networks if n['vpn']] or networks
+        raise ValueError('Unknown connection type.')
     if not choices:
-        raise ValueError('Selected network is not connected. Check the VPN and refresh.')
-    if len(choices) != 1 or len(choices[0]['addresses']) != 1 and mode != 'custom':
-        raise ValueError('Several networks found. Choose Tailscale, Radmin or a custom local IPv4.')
+        raise ValueError('Selected network is not connected. Check the network connection.')
+    if len(choices) != 1 or len(choices[0]['addresses']) != 1 and mode not in ('custom', 'lan', 'auto'):
+        raise ValueError('Several VPN addresses found. Check the selected VPN network.')
     n = choices[0]
     address = ip if mode == 'custom' else n['addresses'][0]
     return address, n
@@ -72,8 +101,8 @@ def candidate_addresses(network, tailscale=None, extra=''):
 
 
 def configuration(offers):
-    if not 2 <= len(offers) <= 5:
-        raise ValueError('Open the launcher on 2–5 players in the same network.')
+    if not 1 <= len(offers) <= 5:
+        raise ValueError('A group supports 1–5 players in the same network.')
     offers = sorted(offers, key=lambda p: p['id'])
     names = [str(p.get('name', p['id'])).strip() for p in offers]
     if any(not re.fullmatch(r'[A-Za-z0-9_-]{3,16}', name) for name in names):
@@ -100,14 +129,13 @@ class Discovery:
         self.profile, self.address, self.port = Path(profile), address, port
         self.targets = set(targets)
         path = self.profile / 'coop/party/identity.json'
-        if path.exists():
-            identity = json.loads(path.read_text(encoding='utf-8'))
-        else:
-            identity = {'id': 'P' + secrets.token_hex(7), 'seed': secrets.token_hex(32)}
-            write_json(path, identity)
+        if not path.exists():
+            write_json(path, {'id': 'P' + secrets.token_hex(7), 'seed': secrets.token_hex(32)}, create_only=True)
+        identity = json.loads(path.read_text(encoding='utf-8'))
         self.offer = dict(identity, host=address, name=str(name)[:32], protocol=PROTOCOL)
         self.lock, self.probes, self.peers = threading.RLock(), {}, {}
         self.closed, self.locked = threading.Event(), None
+        self.mod_share = None
         self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.udp.settimeout(.2)
@@ -129,6 +157,12 @@ class Discovery:
                             return
                         body = json.loads(raw)
                         if body.get('protocol') != PROTOCOL:
+                            return
+                        if body.get('kind') in ('mods_catalog', 'mod_download'):
+                            if outer.mod_share is None:
+                                raise ValueError('Mod sharing unavailable')
+                            self.request.settimeout(30)
+                            outer.mod_share.handle(body, self.wfile)
                             return
                         answer = {'ok': True, 'offer': outer.offer}
                         if body.get('kind') == 'check':
@@ -156,6 +190,22 @@ class Discovery:
             now = time.monotonic()
             return [self.offer] + [p for p, seen in self.peers.values() if now - seen < 5]
 
+    def publish_runtime_peers(self):
+        """Refresh the running game's discovery directory without fixing a roster."""
+        offers = [dict(p, port=CONTROL_PORT, p2p=GAME_PORT) for p in self.offers()]
+        path = self.profile / 'coop/party/peers.json'
+        write_json(path, offers)
+        return path
+
+    def dynamic_configuration(self):
+        # A stable home identity is independent of who happened to open the UI first.
+        cfg = configuration([self.offer])
+        cfg['mode'] = 'dynamic-worlds-v1'
+        cfg['identity'] = dict(self.offer, port=CONTROL_PORT, p2p=GAME_PORT)
+        path = self.profile / 'coop/party/dynamic-config.json'
+        write_json(path, cfg)
+        return cfg, path
+
     def _remember(self, offer, address):
         if (offer.get('protocol') != PROTOCOL or offer.get('host') != address or
                 not re.fullmatch(r'[A-Za-z0-9]{1,16}', offer.get('id', '')) or
@@ -165,7 +215,10 @@ class Discovery:
             return
         with self.lock:
             if len(self.peers) >= 16 and offer['id'] not in self.peers:
-                return
+                now = time.monotonic()
+                self.peers = {who: value for who, value in self.peers.items() if now-value[1] < 5}
+                if len(self.peers) >= 16:
+                    return
             self.peers[offer['id']] = (offer, time.monotonic())
 
     def _listen(self):
@@ -173,7 +226,7 @@ class Discovery:
             try:
                 raw, source = self.udp.recvfrom(8192)
                 body = json.loads(raw)
-                if body.get('protocol') != PROTOCOL:
+                if not isinstance(body, dict) or body.get('protocol') != PROTOCOL:
                     continue
                 if body.get('kind') == 'ping':
                     self.udp.sendto(encoded(dict(protocol=PROTOCOL, kind='pong', nonce=body.get('nonce'))), source)
@@ -183,7 +236,9 @@ class Discovery:
                     if event:
                         event.set()
                 elif body.get('kind') in ('hello', 'reply'):
-                    self._remember(body.get('offer', {}), source[0])
+                    if not isinstance(body.get('offer'), dict):
+                        continue
+                    self._remember(body['offer'], source[0])
                     if body['kind'] == 'hello':
                         self.udp.sendto(encoded(dict(protocol=PROTOCOL, kind='reply', offer=self.offer)), source)
             except socket.timeout:
@@ -238,19 +293,26 @@ class Discovery:
                 with self.lock:
                     self.probes.pop((peer['host'], nonce), None)
 
-    def check(self):
+    def check(self, verify=True, reuse=False):
         cfg = configuration(self.offers())
         key = digest(cfg)
         if self.locked not in (None, key):
             raise ValueError('The running game uses another group. Finish that session first.')
-        self.mesh_check(cfg)
-        for peer in cfg['members']:
-            if peer['id'] != self.offer['id']:
-                self.request(peer['host'], 'check', digest=key)
+        if verify:
+            self.mesh_check(cfg)
+            for peer in cfg['members']:
+                if peer['id'] != self.offer['id']:
+                    self.request(peer['host'], 'check', digest=key)
         # Never create a replacement group while the former owner/room is live.
         path = self.profile / 'coop/party/config.json'
         if path.exists():
             old = json.loads(path.read_text(encoding='utf-8'))
+            # An absent peer does not change an already established group.
+            old_members = {m['id']: m for m in old.get('members', [])}
+            if (reuse and self.offer['id'] in old_members and
+                    all(p['id'] in old_members and old_members[p['id']] == m
+                        for p, m in zip(sorted(self.offers(), key=lambda p: p['id']), cfg['members']))):
+                return old, path
             journal = self.profile / 'coop/party/groups' / old['group'] / 'party-journal.json'
             if old['group'] != cfg['group'] and journal.exists():
                 state = json.loads(journal.read_text(encoding='utf-8'))['state']
@@ -267,12 +329,13 @@ class Discovery:
 
 
 def launch_environment(env, discovery):
-    cfg, path = discovery.check()  # fresh check; UI readiness is never a cached permission
-    discovery.locked = digest(cfg)
+    cfg, path = discovery.dynamic_configuration()
+    peers = discovery.publish_runtime_peers()
     env = dict(env)
     env.update(BB_PARTY_CONFIG=str(path), BB_PARTY_MEMBER=discovery.offer['id'],
+               BB_PARTY_PEERS=str(peers),
                BBGL_PROFILE_DIR=str(discovery.profile), BB_DATA_DIR=str(discovery.profile),
-               BB_FPS='60', BB_FPS_LIMIT='60', BB_COOP='1')
+               BB_COOP='1')
     patches = [p.strip() for p in env.get('BB_PATCHES', '').split(';') if p.strip()]
     if 'Skip Intro' not in patches:
         patches.append('Skip Intro')

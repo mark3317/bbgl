@@ -18,9 +18,25 @@ Sources checked for ideas (last on 12 October 2026): shadPS4 (our renderer match
 [каталог](TEST-CATALOG.md). Удалены подтверждённые остатки; отдельный открытый
 дефект local-three coordinator: WinError 5 при замене status JSON.
 
+## Предметы и награды — актуализация 05.11.2026
+
+Добыча врагов/охотников, проверенные скриптовые подборы и награды боссов переведены
+на штатную выдачу игры с личными условиями. Общий прогресс сохранён; недостающие
+уникальные награды основной игры/DLC и17 лотов чаш проверяются после готовности
+загрузки к хосту, без секундного опроса. Исправлено сохранение глобальных отметок
+одноразовой добычи (107 лотов/86 флагов), включая повторный вход и цикл NG+.
+Целевые проверки, DLL-сборка/установка на ПК и запуск двух профилей подтверждены;
+игровая выдача, отсутствие повторов и независимость чаш требуют подтверждения.
+[Текущая реализация и сценарии](../mods-src/BBSC/docs/REWARDS.md).
+
 ## Main work, in order
 
 1. **Seamless co-op / BBGL + BBSC-GL** — reviewed 4 November 2026.
+   Late joining (4 November): dynamic per-player home sessions, live discovery and
+   host-authorized admission replace the regular launch-time roster. Built/installed
+   PC + laptop; both launchers opened and found twin/test automatically. Starts alone
+   and later arrival covered by14 isolated tests; gameplay still unconfirmed.
+   Legacy local-three path is unchanged.
    Mainline uses embedded Party and private-network peer connections; no external
    game server/VPS is required. Offline / Co-op remain launch modes (T26 reverted).
    Latest source includes native player names, a bounded second wait for the same

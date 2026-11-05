@@ -95,7 +95,7 @@ with tempfile.TemporaryDirectory() as temporary:
             assert 'final tail' in events, events
             assert any('Could not open game log' in e for e in events), events
         else:
-            log = (root / 'last_run.log').read_text()
+            log = next(root.glob('run_*.log')).read_text()
             assert ('successor tail' if SCENARIO == 'restart' else 'final tail') in log, log
     finally:
         if keeper is not None:

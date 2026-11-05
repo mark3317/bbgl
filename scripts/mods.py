@@ -42,6 +42,8 @@ def content_root(folder, depth=0):
     beside notes and pictures), and the game's folders without dvdroot_ps4 (<mod>/chr,
     <mod>/parts, ...), also next to other folders (Screenshots, Optional)."""
     folder = Path(folder)
+    if (folder / 'bbgl-delta.json').is_file():
+        return folder, ''
     if not folder.is_dir():
         return None
     # Every retail release (patches.BLOODBORNE_IDS).
@@ -91,25 +93,35 @@ def discover(root):
     root = Path(root)
     if not root.is_dir():
         return []
-    return sorted((p.name for p in root.iterdir() if p.is_dir() and content_root(p)),
+    from prompt_icons import is_prompt
+    return sorted((p.name for p in root.iterdir() if not p.name.startswith('.') and not is_prompt(p.name)
+                   and p.is_dir() and content_root(p)),
                   key=lambda name: (name.casefold(), name))
 
 
 def selected(root, config):
     available = discover(root)
     if not config or not Path(config).is_file():
-        return available
+        return [n for n in available if n != 'Diamond Sword']
     settings = json.loads(Path(config).read_text(encoding='utf-8'))
     disabled_names = settings.get('disabled', [])
     if not isinstance(disabled_names, list) or not all(isinstance(n, str) for n in disabled_names):
         raise ValueError('Disabled mods must be a list of folder names')
-    disabled = set(disabled_names)
+    disabled = disabled_mods(settings)
     order = settings.get('order', [])
     if not isinstance(order, list) or not all(isinstance(n, str) for n in order):
         raise ValueError('Mod order must be a list of folder names')
     # New folders are enabled automatically and appended in alphabetical order.
     return list(dict.fromkeys(n for n in [*order, *available]
                              if n in available and n not in disabled))
+
+
+def disabled_mods(settings):
+    """Keep the bundled sword opt-in; a previously saved selection remains explicit."""
+    disabled = set(settings.get('disabled', []))
+    if 'Diamond Sword' not in settings.get('order', []) and 'Diamond Sword' not in settings.get('enabled', []):
+        disabled.add('Diamond Sword')
+    return disabled
 
 
 def mod_files(folder):
@@ -492,6 +504,8 @@ def main():
     # folder with a dvdroot_ps4 layout. They lie under the player's mods, which still win, and
     # apply with mods off: every feature has its own switch.
     parser.add_argument('--generated', type=Path, action='append', default=[])
+    parser.add_argument('--button-icons', type=Path)
+    parser.add_argument('--bbsc-runtime', type=Path)
     args = parser.parse_args()
     layers = [(folder.name, folder) for folder in args.generated if content_root(folder)]
     if args.enabled == '1':
@@ -518,10 +532,20 @@ def main():
             for name in selected(args.mods_dir, args.config):
                 layers.append((name, args.mods_dir / name))
     generated = {folder.name for folder in args.generated}
+    from bundled_deltas import materialize
+    layers = [(name, materialize(folder, args.game, args.out / 'bundled-mods' / name))
+              for name, folder in layers]
     try:
         layers = keep_pc_menu_text(layers, generated, args.out)
     except (OSError, ValueError) as error:
         print(f'Mods: PC menu strings not merged ({error})', file=sys.stderr)
+    if args.button_icons:
+        from prompt_icons import apply
+        layers = apply(layers, args.game, args.button_icons, args.out)
+    if args.bbsc_runtime:
+        sys.path.insert(0, str(args.bbsc_runtime))
+        from dream_hints import apply as apply_dream_hints
+        layers = apply_dream_hints(layers, args.game, args.out)
     print(build_manifest(args.game, args.out, layers))
 
 

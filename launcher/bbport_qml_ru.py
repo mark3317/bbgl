@@ -9,25 +9,57 @@ The classic Tk launcher keeps its own table (bbport_i18n.py).
 import re
 
 RU = {
+    "Pick up the Notebook from the messengers in the Hunter's Dream to receive the co-op items automatically.": 'Заберите Блокнот у посланников в Сне охотника — предметы для совместной игры выдадутся автоматически.',
+    'Download': 'Скачать',
+    'Mod folders': 'Папки модов',
+    'No installed mods': 'У игрока нет установленных модов',
+    'Mods on the network': 'Моды в сети',
+    'A mod with this name is already installed': 'Мод с таким именем уже установлен.',
+    'Mod changed; wait for the list to update': 'Мод изменился. Дождитесь обновления списка.',
+    'Mod sharing unavailable': 'У этого игрока обмен модами недоступен.',
+    'Mod transfer busy': 'Игрок уже передаёт моды. Попробуйте ещё раз позже.',
+    'Mod no longer available': 'Мод больше недоступен.',
+    'Mod download interrupted': 'Соединение прервалось. Повторите скачивание.',
+    'Downloaded mod does not match its catalog': 'Скачанные файлы не совпадают с заявленным содержимым мода.',
+    'Mod is too large': 'Размер мода превышает ограничение в 8 ГБ.',
+    'Mod archive is too large': 'Архив мода превышает допустимый размер или количество файлов.',
+    'Invalid mod catalog': 'Игрок передал некорректный список модов.',
+    'Invalid mod response': 'Игрок передал некорректный ответ.',
+    'Invalid mod size': 'Игрок передал некорректный размер мода.',
+    'Invalid mod name': 'Недопустимое имя мода или файла.',
+    'Invalid archive path': 'В архиве обнаружен недопустимый путь.',
+    'Invalid archive entry': 'В архиве обнаружены ссылки или повторяющиеся пути.',
+    'The mod list updates automatically. Changes apply at the next game start. Lower mods override earlier ones.': 'Список обновляется автоматически. Изменения применятся при следующем запуске игры. Моды ниже в списке имеют приоритет.',
+    'No mods yet. Put each mod in its own folder or download one from a player below.': 'Модов пока нет. Положите каждый мод в отдельную папку или скачайте его у игрока ниже.',
+    'Mods from players on your selected co-op network': 'Моды игроков в выбранной сети кооператива',
+    'Waiting for players with mod sharing. Open the updated launcher on both computers and select the same network in Co-op.': 'Ожидание игроков с обменом модами. Откройте обновлённый лаунчер на обоих компьютерах и выберите общую сеть в разделе «Кооператив».',
+    'Downloading mods… Please wait.': 'Загружаем моды… Подождите.',
+    'Not installed': 'Не установлен',
+    'Different contents — existing files will be kept': 'Содержимое отличается — установленные файлы будут сохранены',
+    'Installed, matching contents': 'Установлен, содержимое совпадает',
+    'Download mod': 'Скачать мод',
+    "Use this player's mod set": 'Применить набор этого игрока',
+    'Mod synchronization complete.': 'Набор модов синхронизирован.',
+    'Mod downloaded (disabled).': 'Мод скачан и пока выключен.',
+    'Mod download failed:': 'Не удалось скачать мод:',
+    'Different mod contents:': 'Содержимое мода отличается:',
+    'Wait for mod synchronization to finish.': 'Дождитесь окончания синхронизации модов.',
     'Player name must be 3–16 Latin letters, numbers, - or _.': 'Имя игрока должно содержать от 3 до 16 латинских букв, цифр, знаков - или _.',
     'Players must use different names. Change the player name and refresh.': 'Имена игроков должны различаться. Измените имя игрока и обновите подключение.',
     'Detailed diagnostic logs': 'Подробные логи диагностики',
-    'Collect network packets, mod timeline and performance measurements in last_run.log. Enable only to diagnose a problem; may reduce performance.': 'Записывает сведения о сетевых пакетах, события мода и замеры производительности в last_run.log. Включайте для разбора проблемы; может снижать производительность.',
+    'Detailed GPU logs': 'Подробные логи GPU',
+    'Record co-op events, mod warnings and errors in the game log. GPU errors are included.': 'Записывает события коопа, предупреждения мода и ошибки, включая ошибки GPU.',
     'Profile folder (test)': 'Папка профиля (тест)',
     'Current profile:': 'Текущий профиль:',
     'Open profile': 'Открыть профиль',
+    'Profile folder': 'Папка профиля',
     'Open a separate launcher with settings and co-op data in this folder. New folders start with a fresh profile. The current window keeps its profile.': 'Открывает отдельный лаунчер с настройками и данными коопа в этой папке. В новой папке создаётся чистый профиль. Текущее окно сохраняет свой профиль.',
     'Choose an absolute profile folder path.': 'Укажите абсолютный путь к папке профиля.',
     'Could not open profile: {}': 'Не удалось открыть профиль: {}',
     'A separate launcher was opened with the selected profile.': 'Открыт отдельный лаунчер с выбранным профилем.',
     ' of 5': ' из 5',
-    'Configure firewall': 'Настроить брандмауэр',
-    'Firewall setup is optional. If players cannot connect, use this button to allow incoming connections. Only this action asks for administrator rights; starting co-op does not.': 'Настройка брандмауэра необязательна. Если игроки не могут подключиться, нажмите кнопку, чтобы разрешить входящие соединения. Права администратора запрашиваются только для этого действия, а не при запуске коопа.',
+
     'Enter your co-op name, password and server invite code. You can skip this step for offline play and return to Settings → Co-op later.': 'Укажите ник, пароль и код приглашения сервера для совместной игры. Для офлайн-игры этот шаг можно пропустить и вернуться к нему позже в настройках коопа.',
-    'Firewall configured. You can start co-op without administrator rights.': 'Брандмауэр настроен. Совместную игру можно запускать без прав администратора.',
-    'Configuring firewall: approve the Windows administrator prompt…': 'Настройка брандмауэра: подтвердите запрос прав администратора Windows…',
-    'Co-op needs a Yes on the Windows administrator prompt (firewall rules); the answer was No. Try Configure firewall again, or continue without it.': 'Настройка брандмауэра отменена в запросе Windows. Нажмите «Настроить брандмауэр» ещё раз или продолжите без настройки.',
-    "Starts BBSC's two servers on this PC. If connections are blocked, use Configure firewall in Seamless co-op. After Play, the launcher window closes; the servers stay active until you exit the game.": 'Запускает серверы BBSC на этом ПК. Если подключения заблокированы, настройте брандмауэр кнопкой в разделе «Совместная игра». После запуска игры окно лаунчера закрывается; серверы работают до выхода из игры.',
 
     'Insert or L3+R3 opens the guide in game': 'Во время игры Insert или L3+R3 открывает меню.',
     'In the game, Insert or L3+R3 opens the guide. Setup can be run again from Game & Saves.': 'Во время игры Insert или L3+R3 открывает меню. Мастер настройки можно повторно открыть в разделе «Игра и сохранения».',
@@ -252,6 +284,13 @@ RU = {
     'Step ': 'Шаг ',
     ' of 4': ' из 4',
     'Welcome to Yharnam': 'Добро пожаловать в Ярнам',
+    'Performance': 'Производительность',
+    'Quality': 'Качество',
+    'Maximum': 'Максимум',
+    'Custom settings': 'Свои настройки',
+    'Your hunt begins here.': 'Здесь начинается ваша охота.',
+    'This wizard will help you choose your game and saves folders, set up co-op and select graphics settings.': 'Мастер поможет выбрать папки игры и сохранений, настроить совместную игру и подобрать графику.',
+    'Co-op is optional. You can change all settings later in the launcher.': 'Совместную игру можно настроить позже. Все параметры доступны в настройках лаунчера.',
     'Add your game files': 'Добавьте файлы игры',
     'Welcome': 'Начало',
     'Finish': 'Готово',
@@ -609,9 +648,7 @@ RU = {
     'A co-op name is 3-16 letters, numbers, - or _.': 'Имя в совместной игре — 3–16 букв, цифр, - или _.',
     'Choose a password of at least 4 characters (one you use nowhere else).':
         'Выберите пароль не короче 4 символов (который больше нигде не используете).',
-    'Co-op needs a Yes on the Windows administrator prompt (firewall rules); the answer was No. Try Start hosting again.':
-        'Для совместной игры нужно ответить «Да» на запрос администратора Windows (правила брандмауэра), а ответ '
-        'был «Нет». Попробуйте «Запустить сервер» снова.',
+
     'Set up co-op first (the BBSC package is missing).': 'Сначала настройте совместную игру (нет пакета BBSC).',
     'That invite code is damaged; ask the host to copy it again.':
         'Код приглашения повреждён; попросите хоста скопировать его ещё раз.',
@@ -644,8 +681,7 @@ RU = {
 
 # Texts with values: {} in the English template, {0}, {1}, ... in the Russian one.
 PATTERNS = [
-    ('Firewall setup did not return a result. See {}.', 'Настройка брандмауэра не вернула результат. Скрипт: {}.'),
-    ('Firewall setup failed: {}', 'Ошибка настройки брандмауэра: {}'),
+
     ('Downloading {}/{} · {} / {} GiB', 'Загрузка {0}/{1} · {2} / {3} ГиБ'),
     ('Unpacking {}/{} · {}/{}', 'Распаковка {0}/{1} · {2}/{3}'),
     ('Not enough free space: need {} GiB', 'Недостаточно места: требуется {0} ГиБ'),
@@ -659,10 +695,7 @@ PATTERNS = [
      'Tailscale or the same network.',
      'Сервер совместной игры {0} не отвечает. Хост должен запустить сервер (лаунчер открыт), а вы оба — быть '
      'в Tailscale или одной сети.'),
-    ('The firewall rules were not made although Windows allowed the setup. A firewall program other than Windows '
-     'Defender Firewall may manage them; the setup script is {}.',
-     'Правила брандмауэра не созданы, хотя Windows разрешила настройку. Возможно, ими управляет другой '
-     'брандмауэр, а не Защитник Windows; сценарий настройки: {0}.'),
+
     ("The host's server did not create the account ({}).", 'Сервер хоста не создал аккаунт ({0}).'),
     ("The host's server does not accept the name {}; choose another.", 'Сервер хоста не принимает имя {0}; выберите другое.'),
     ('Unsafe path in the package: {}', 'Небезопасный путь в пакете: {0}'),
@@ -746,7 +779,6 @@ PATTERNS = [
 
 _COMPILED = None
 
-
 def _compiled():
     global _COMPILED
     if _COMPILED is None:
@@ -758,7 +790,6 @@ def _compiled():
             regex = '^' + re.escape(english).replace(r'\{\}', '(.*?)') + '$'
             _COMPILED.append((re.compile(regex, re.S), russian))
     return _COMPILED
-
 
 def tr(text):
     """The Russian text for an English launcher text, or the text itself."""
@@ -838,7 +869,7 @@ RU.update({
     "For your co-op account on the host's server. Use one you use nowhere else.": 'Отдельный пароль для кооператива.',
     'Exclusive switches the display to its own mode: notifications and other windows do not show over the game.': 'Эксклюзивный режим скрывает уведомления и другие окна.',
     'The monitor the game window and fullscreen go to, in the order the game log lists them.': 'На каком экране запускать игру.',
-    'Firewall setup is optional. If players cannot connect, use this button to allow incoming connections. Only this action asks for administrator rights; starting co-op does not.': 'Если друзья не могут подключиться, разрешите подключения в брандмауэре Windows.',
+
 })
 
 RU['Downloads into the game folder selected above.'] = 'Скачивание в указанную выше папку игры.'
@@ -865,7 +896,7 @@ RU.update({
 })
 
 RU.update({'Start server': 'Запустить сервер', 'Stop server': 'Остановить сервер',
-'Allows co-op server connections through Windows Firewall on local and Tailscale networks.': 'Разрешает подключения к серверу в локальной сети и Tailscale через брандмауэр Windows.'})
+})
 
 RU.update({'Cheats': 'Читы', 'Advanced system': 'Расширенные настройки'})
 
@@ -923,9 +954,8 @@ RU.update({
     'Choose an address for the selected connection.': 'Выберите адрес для этого подключения.',
 })
 
-RU.update({'Allows co-op server connections through Windows Firewall for the selected connection.': 'Разрешает подключения к серверу в брандмауэре Windows для выбранного подключения.'})
 
-RU.update({'Connection unavailable': 'Подключение недоступно', 'Allow incoming connections for the selected network. A custom address allows server ports from all networks. Windows will ask for administrator permission.': 'Будут разрешены входящие подключения для выбранной сети. Для своего адреса порты сервера открываются для всех сетей. Windows запросит права администратора.'})
+RU.update({'Connection unavailable': 'Подключение недоступно', })
 
 RU.update({
     'Custom network': 'Своё подключение',
@@ -996,4 +1026,43 @@ RU.update({
     'an update is still being installed; try again in a minute': 'обновление ещё устанавливается; повторите попытку через минуту',
     'Image effects': 'Эффекты изображения',
     'Starting P2P co-op. Host: Beckoning Bell. Guest: Small Resonant Bell.': 'Запуск совместной игры. Хост: Зовущий Колокол. Гость: Малый звонкий колокол.',
+})
+
+RU.update({
+    'Finding players automatically…': 'Автоматический поиск игроков…',
+    'Players online:': 'В сети:',
+    'Player search unavailable:': 'Поиск игроков недоступен:',
+    'Starting co-op…': 'Запуск совместной игры…',
+    'A group supports 1–5 players in the same network.': 'Группа поддерживает от 1 до 5 игроков в одной сети.',
+
+    'Players with an open launcher or game are found automatically in the selected network. Roles are chosen with bells in the game.': 'Игроки с открытым лаунчером или игрой находятся автоматически в выбранной сети. Роли выбираются колоколами в игре.',
+})
+
+RU.update({
+    'Local network': 'Локальная сеть',
+    'Unknown connection type.': 'Неизвестный способ подключения.',
+    'Selected network is not connected. Check the network connection.': 'Выбранная сеть недоступна. Проверьте подключение к сети.',
+    'Several VPN addresses found. Check the selected VPN network.': 'Найдено несколько VPN-адресов. Проверьте выбранную VPN-сеть.',
+    'Download and install {}…': 'Скачать и установить {}…',
+    'Downloading {}…': 'Загрузка {}…',
+    'Installer opened. Complete installation, then connect to your VPN network.': 'Установщик открыт. Завершите установку и подключитесь к вашей VPN-сети.',
+    'For Internet play, install a VPN and join the same network as your friends.': 'Для игры через интернет установите VPN и подключитесь к одной сети с друзьями.',
+    'VPN installation failed:': 'Не удалось установить VPN:',
+    'Could not find the VPN installer on the official website.': 'Не удалось найти установщик VPN на официальном сайте.',
+    'VPN installer is too large.': 'Установщик VPN превышает допустимый размер.',
+    'VPN installer download is incomplete.': 'Установщик VPN загружен не полностью.',
+    'The VPN download is not a Windows installer.': 'Загруженный файл не является установщиком Windows.',
+})
+
+RU.update({
+    'Play with friends': 'Игра с друзьями',
+    'Mod': 'Мод',
+    'Order': 'Порядок',
+    'Enabled': 'Включён',
+    'Inactive — installation required': 'Неактивен — требуется установка',
+    'Put each mod in its own folder. Mods shared by players appear in this table automatically.': 'Поместите каждый мод в отдельную папку. Моды других игроков появятся в таблице автоматически.',
+    'Mods are not synchronized': 'Моды не синхронизированы',
+    'Not all player mods are installed or synchronized. Check the mod list before starting co-op, or launch the game anyway.': 'Не все моды игроков установлены или синхронизированы. Проверьте список модов перед совместной игрой или запустите игру без синхронизации.',
+    'Mod settings': 'Настройки модов',
+    'Launch game': 'Запустить игру',
 })

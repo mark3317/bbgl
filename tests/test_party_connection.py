@@ -13,6 +13,38 @@ import bbport_party as party
 
 
 class PartyConnectionTests(unittest.TestCase):
+    def test_expired_discoveries_do_not_block_late_player(self):
+        node,=self.group(1)
+        old=time.monotonic()-10
+        with node.lock:
+            node.peers={str(i):({},old) for i in range(16)}
+        fresh=dict(node.offer,id='Late',host='127.0.0.88')
+        node._remember(fresh,fresh['host'])
+        self.assertIn(fresh,node.offers())
+
+    def test_malformed_udp_datagram_does_not_stop_discovery(self):
+        node,=self.group(1)
+        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as peer:
+            peer.bind(('127.0.0.88',0));peer.settimeout(2)
+            target=(node.address,node.port)
+            peer.sendto(b'[]',target)
+            peer.sendto(party.encoded(dict(protocol=party.PROTOCOL,kind='hello',offer=[])),target)
+            peer.sendto(party.encoded(dict(protocol=party.PROTOCOL,kind='ping',nonce='live')),target)
+            self.assertEqual(json.loads(peer.recv(8192))['nonce'],'live')
+
+    def test_status_replace_survives_reader_sharing_violation(self):
+        path=Path(self.temp.name)/'status.json'
+        replace=party.os.replace
+        attempts=[]
+        def replace_after_reader(source,target):
+            attempts.append(source)
+            if len(attempts)==1:
+                error=PermissionError('File in use'); error.winerror=32
+                raise error
+            return replace(source,target)
+        with patch.object(party.os,'replace',side_effect=replace_after_reader):
+            party.write_json(path,{'drained':True})
+        self.assertEqual(json.loads(path.read_text()),{'drained':True})
     def test_names_preserved_and_rename_keeps_group_identity(self):
         offers=[dict(id='StableA',seed='a',host='127.0.0.1',name='Host'),
                 dict(id='StableB',seed='b',host='127.0.0.2',name='twin')]
@@ -53,13 +85,43 @@ class PartyConnectionTests(unittest.TestCase):
         configs = [n.check()[0] for n in self.nodes]
         self.assertEqual(configs[0], configs[1]); self.assertEqual(configs[0], configs[2])
         env = party.launch_environment({'BB_NET_BACKEND':'old','BB_PATCHES':'Other'}, a)
-        self.assertEqual(env['BB_FPS'], '60')
-        self.assertEqual(env['BB_FPS_LIMIT'], '60')
+        self.assertNotIn('BB_FPS', env)
+        self.assertNotIn('BB_FPS_LIMIT', env)
+        for fps, cap in (('60', '60'), ('120', '120'), ('uncap', '144'), ('uncap', None)):
+            with self.subTest(fps=fps, cap=cap):
+                selected = {'BB_FPS': fps}
+                if cap is not None:
+                    selected['BB_FPS_LIMIT'] = cap
+                launched = party.launch_environment(selected, a)
+                self.assertEqual(launched['BB_FPS'], fps)
+                self.assertEqual(launched.get('BB_FPS_LIMIT'), cap)
+                self.assertEqual(selected, {k: launched[k] for k in selected})
         self.assertNotIn('BB_NET_BACKEND',env)
         self.assertEqual(env['BB_PARTY_MEMBER'], a.offer['id'])
         self.assertIn('Skip Intro',env['BB_PATCHES'])
-        self.assertEqual(json.loads(Path(env['BB_PARTY_CONFIG']).read_text()), configs[0])
-        self.assertEqual(a.locked,party.digest(configs[0]))
+        launched = json.loads(Path(env['BB_PARTY_CONFIG']).read_text())
+        self.assertEqual(launched['mode'], 'dynamic-worlds-v1')
+        self.assertEqual([m['id'] for m in launched['members']], [a.offer['id']])
+        self.assertIsNone(a.locked)
+        peers = json.loads(Path(env['BB_PARTY_PEERS']).read_text())
+        self.assertEqual({p['id'] for p in peers}, {d.offer['id'] for d in (a,b,c)})
+
+    def test_home_identity_does_not_depend_on_who_is_currently_online(self):
+        a, b = self.group(2)
+        cfg, _ = a.check()
+        home, _ = a.dynamic_configuration()
+        with a.lock:
+            a.peers.clear()
+        with patch.object(a, 'mesh_check', side_effect=AssertionError('launch preflight')):
+            env = party.launch_environment({}, a)
+        self.assertEqual(json.loads(Path(env['BB_PARTY_CONFIG']).read_text()), home)
+        self.assertNotEqual(home['group'], cfg['group'])
+
+    def test_first_launch_alone_needs_no_peer(self):
+        a = party.Discovery(Path(self.temp.name)/'solo', '127.0.0.44', set(), 'Hunter')
+        self.nodes.append(a)
+        env = party.launch_environment({}, a)
+        self.assertEqual(len(json.loads(Path(env['BB_PARTY_CONFIG']).read_text())['members']), 1)
 
     def test_udp_failure_blocks_start(self):
         a,b = self.group(2)
@@ -82,12 +144,11 @@ class PartyConnectionTests(unittest.TestCase):
         cfg,_ = a.check()
         b.locked = 'different-group'
         with self.assertRaisesRegex(ValueError,'different groups'):
-            party.launch_environment({},a)
+            a.check()
         b.locked=None
         with a.lock:
             a.peers.clear()
-        with self.assertRaises(ValueError):
-            party.configuration(a.offers())
+        self.assertEqual(len(party.configuration(a.offers())['members']), 1)
 
     def test_old_live_group_cannot_be_replaced(self):
         a,b = self.group(2)
@@ -101,7 +162,8 @@ class PartyConnectionTests(unittest.TestCase):
     def test_network_selection_and_tailscale_peer_inventory(self):
         lan={'text':'Ethernet','vpn':False,'addresses':['192.168.1.3'],'ranges':['192.168.1.0/24']}
         ts={'text':'Tailscale','vpn':True,'addresses':['100.64.1.3'],'ranges':['100.64.1.3/32']}
-        self.assertEqual(party.choose_network([lan,ts])[0],'100.64.1.3')
+        self.assertEqual(party.choose_network([lan,ts])[0],'192.168.1.3')
+        self.assertEqual(party.choose_network([lan,ts],'tailscale')[0],'100.64.1.3')
         self.assertEqual(party.choose_network([lan,ts],'custom','192.168.1.3')[0],'192.168.1.3')
         with self.assertRaises(ValueError): party.choose_network([lan],'radmin')
         with patch.object(party.subprocess,'run') as run:

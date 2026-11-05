@@ -1,3 +1,254 @@
+## 05.11.2026 — итоги исправлений добычи и наград (ПК)
+
+[Актуальная сводка мода](../mods-src/BBSC/docs/REWARDS.md): штатная добыча
+врагов/охотников, скриптовые и боссовые награды; личные отметки подбора;
+недостающие уникальные base/DLC награды и17 лотов чаш проверяются при готовности
+загрузки к хосту без секундного опроса. Общий прогресс сохранён, предметы по
+инвентарю хоста не рассылаются. Повторный «След когтя» исправлен общим путём
+для107 лотов/86 глобальных флагов с учётом NG+.
+Последний DLL-only build/deploy exit0, delta5; бэкап
+`D:/Games/Bloodborne/coop-dev/backups/global-loot-receipts-20261105-20261105-062348`.
+Два профиля стартовали06:24:17 МСК;34/34 hooks и native loot ready у обоих.
+Сборка/установка/запуск подтверждены, игровые сценарии OPEN. Лаунчер повторно
+не собирался в последней DLL-дельте. Подробности прогона:
+`out/coop-dev/runs/global-loot-receipts-20261105/run.md`.
+Исторические утверждения ниже не отменяют эту сводку.
+
+## 05.11.2026 — отдельные GPU-логи и уменьшенный курсор установлены на ПК
+
+В Система → расширенные настройки добавлен отдельный переключатель
+«Подробные логи GPU», по умолчанию выключен. Предупреждение о сотнях мегабайт
+и более за сеанс перенесено к нему. Включение задаёт BB_GPU_LOG=debug независимо
+от общей диагностики; выключение сохраняет error/critical. Явные переменные
+окружения по-прежнему имеют приоритет. Стрелка курсора уменьшена с максимальных
+22×28 до 16×20 px; hotspot пересчитан по острию, HiDPI-вариант сохранён.
+Целевые logging/settings/localization проверки, узкий русский Qt-предпросмотр,
+проверка собранного лаунчера и SDL cursor smoke PASS. Пакет лаунчера и последующая
+сборка порта завершились exit=0; полный быстрый деплой и дельта порта на ПК exit=0.
+Мод не пересобирался. Бэкапы и журнал: out/coop-dev/runs/gpu-log-toggle-20261105.
+Запрошен повторный запуск Player 1/2 с существующим cheat_one_hit_kill=1;
+GPU debug по умолчанию выключен. Настройки/сейвы не менялись. Игровой контроль открыт.
+
+## 04.11.2026 — настройки и мастер установлены ПК + ноут 19:06 МСК
+
+Строка текущего профиля перенесена под три системные кнопки. Выбор подключения
+недоступен до первой проверки и во время обновления списка. В мастер добавлено
+приветствие. Пресеты закреплены только на вкладках «Экран» и «Эффекты изображения»;
+«Баланс» убран, названия: «Производительность», «Качество», «Максимум», «Свои настройки».
+Целевые проверки и Qt-предпросмотры PASS; быстрый пакет собран exit=0.
+ПК и ноутбук установлены exit=0, по 5144 файлов, с резервными копиями.
+Сейвы и настройки сохранены, игра/лаунчер не запускались. Подробности:
+out/coop-dev/runs/profile-label-20261104/run.md.
+
+## 04.11.2026 — папка профиля, установка ПК + ноут 18:53 МСК
+
+В системных настройках после папки лаунчера добавлена «Папка профиля»:
+открывает активный DATA_DIR в Проводнике. Из расширенных убраны старые
+«Открыть профиль» (запуск тестового профиля) и «Открыть bbport.ini».
+Целевые проверки 4 PASS, русский Qt-предпросмотр просмотрен.
+DLL и полный быстрый пакет собраны exit=0; ПК и ноутбук установлены exit=0,
+по 5146 файлов, с бэкапами. Включено завершённое исправление дверей лекционного
+корпуса; игровой результат остаётся открытым. Игру/лаунчер не запускали,
+сейвы и настройки не меняли. Подробности: fixes/2026-11-04-profile-folder-button.md,
+out/coop-dev/runs/profile-folder-20261104/run.md.
+
+## 04.11.2026 — built-in button images / false mod warning
+
+Confirmed config difference: PC Xbox icons active, laptop icons disabled; laptop
+Diamond Sword already active. Personal icons no longer participate in mod comparison.
+Successful downloads update cached statuses immediately; pre-download polls cannot
+restore obsolete missing/conflict results. Real mod mismatches still warn.
+
+User requested icons out of mods: packaged resources now under
+launcher/assets/button-prompts, separate selection with read-only legacy fallback.
+run.py maps chosen built-in layer even with user mods off. Legacy icon names excluded
+from discovery/sharing; old directories moved to device backup during installation.
+10 targeted checks PASS plus 3 direct mods PASS / 1 POSIX-only skip. Fast launcher
+build and PC/laptop copy exit=0; both launchers opened with responding titled
+windows. Legacy icon directories moved into device backups. Details recorded in
+out/coop-dev/runs/builtin-icons-20261104/run.md. Game visual confirmation OPEN.
+No original game/save writes, BBSC source/pin or protocol/VPS change for this task.
+
+## 04.11.2026 — mod table and co-op launch warning
+
+Missing peer mods now appear inactive in the shared table with an inline Install
+button; matching mods have no marker. Removed the per-player set button/separate
+catalog UI. Co-op Play warns on catalog/content/active-order differences and offers
+accented Mod settings or Launch game. Download stays disabled until selected.
+Seven sharing checks and actual Qt workspace/Main dialog check PASS; RU previews
+reviewed at narrow width. Fast launcher build and laptop copy exit=0 (5142 files);
+backup C:/Games/Bloodborne/coop-dev/backups/mod-table-20261104-160233.
+Launcher/game not started. Laptop build/deploy record:
+`out/coop-dev/runs/mod-table-20261104/run.md`. Physical transfer/gameplay OPEN.
+No BBSC source/pin, protocol, save/settings changes for this task.
+
+## 04.11.2026 — current package installed laptop; launcher opened15:49MSK
+
+New explicit request supersedes earlier PC-only scope. Same successful15:38package
+transferred by strict SSH to DESKTOP-73Q9JB7; source input metadata unchanged and
+no other active related chat. Remote copy exit0,5149files; backup:
+C:/Games/Bloodborne/coop-dev/backups/settings-cleanup-laptop-20261104-154907.
+Install C:/Games/Bloodborne/Bloodborne Game Launcher. User settings/saves/game data
+preserved. Launcher started in interactive markn/session1; direct interactive
+snapshot confirms window Bloodborne Game Launcher, PID19168, Responding=true.
+Temporary launch/check tasks removed; no game start or VPS update. Details:
+out/coop-dev/runs/settings-cleanup-20261104-1538/run.md.
+
+## 04.11.2026 — settings cleanup built/installed PC15:39MSK
+
+Removed firewall button/dialog/script generator/elevation helper and obsolete
+firewall-only test/doc. Existing Windows rules unchanged. Installed mods now has
+its own table and both folder settings showing configured/effective runtime paths;
+removed separate folder tab. Short co-op description and online-count label.
+All preset identities retain independent upscaling/frame-generation choices through
+real settings calls. Targeted tests and1280/1024 Qt previews PASS; frozen executable
+Qt smoke in isolated profile PASS. Fast launcher/package build and PC copy exit0,
+5142files. Existing current DLL/port reused; mod input metadata unchanged since
+successful15:18build. Backup:
+D:/Games/Bloodborne/coop-dev/backups/settings-cleanup-20261104-153924.
+User narrowed scope to PC only: laptop not modified; no VPS update applicable.
+No game launch, real save/settings/game-data changes, commit/pin/push. Record:
+out/coop-dev/runs/settings-cleanup-20261104-1538/run.md.
+See fixes/2026-11-04-settings-cleanup.md. Installed package also includes completed
+home/VPN/mod-sharing source changes; earlier source-only install status historical.
+
+## 04.11.2026 — launcher home spacing and VPN dropdown, SOURCE ONLY
+
+Home summary/fields share padding and alignment, without card backplates at user
+request; launch footer follows wrapped
+content, with scrolling on short windows. Missing VPNs appear after inventory
+checks, with a Download button on the right of their dropdown row; installed VPNs
+remain selectable. Download preserves the selected connection. Qt preview reviewed;
+VPN6 and localization5 checks PASS. No build/deploy, live profile/save/game writes,
+commit/pin/push. See fixes/2026-11-04-launcher-home-spacing.md.
+
+## 04.11.2026 — current fixes built/installed; three PC profiles launched13:40MSK
+
+Supersedes SOURCE ONLY deployment status below for native world retirement,
+repeat-death native handlers, guest aura and recipient crash isolation. Related
+chats read and complete, including launcher mod sharing and VPN settings.
+DLL build exit0; fast package build exit0. New VPN work began during first build;
+waited for completion and rebuilt only launcher/package, retaining unchanged DLL.
+Source size/mtime unchanged during final rebuild. Native port reused; no VPS
+component/protocol update needed. Parent HEAD1987812, BBSC HEAD/gitlink0ddb1d4
+plus recorded local changes; no commit/pin/push.
+
+PC deploy exit0, copied5147; backup:
+D:/Games/Bloodborne/coop-dev/backups/native-retirement-20261104-133925.
+Existing Player1/2/3 CMD scripts started distinct profiles/ports3658/3659/3660;
+three native windows present/responding (PID32276/31192/27620), fresh13:40 logs.
+Existing60FPS/no-DLSS settings retained. Party-only process diagnostics enabled
+for this test; parent environment restored. No manual save/settings/live-journal
+edits, game-data changes or process termination. Laptop not updated/launched.
+Gameplay recovery, native death reset and guest appearance remain OPEN.
+Record: parent out/coop-dev/runs/native-retirement-deploy-20261104-1328/run.md.
+
+## 04.11.2026 — VPN connection settings, SOURCE ONLY
+
+Default LAN; no automatic/custom mode in UI. Installed Radmin VPN/Tailscale
+detected independently of active adapters; only installed providers enter the list.
+Settings/wizard share download-and-open-installer buttons for missing programs,
+background progress and periodic post-install detection. Removed manual IP fields,
+local-three test UI and empty Connection tab. Targeted VPN/UI6, network6+8,
+firewall3, localization5 PASS. Official installer endpoints HTTP200/MZ checked;
+actual installers not launched. No build/deploy/gameplay, live profile/save edits,
+BBSC/pin changes or commit/push. Details: [VPN settings](fixes/2026-11-04-vpn-connection-settings.md).
+
+## 04.11.2026 — launcher file-mod list and LAN exchange, SOURCE ONLY
+
+Automatic folder/profile polling replaces manual Refresh. Installed file mods
+have switches and compact priority controls; folder settings moved to their own
+tab. Existing selected-interface discovery TCP serves catalogs and verified mod
+downloads, without new ports. Download one missing mod disabled, or explicitly
+apply another player's order/enabled set after fetching missing files. Conflicting
+same-name contents never overwritten. Temporary download folders ignored by loader.
+7 isolated polling/real-TCP tests,1 rendered Russian Qt workspace,8 Party checks,
+20 mod-loader tests PASS (6 existing skips); localization5 PASS. Old setup suite
+has2 pre-existing expectation errors. No build/deploy/physical LAN/gameplay check,
+real profile/save edits, BBSC source/pin changes, commit or push by this task.
+Details: [mod exchange](fixes/2026-11-04-launcher-mod-sharing.md).
+
+## 04.11.2026 — late joining built and installed PC + laptop
+
+Supersedes SOURCE ONLY deployment status below. All related chats completed before
+build (late joining, sword integration, cursor, FPS, Player1 menu, cleanup).
+Launcher package.sh BB_FAST_DEPLOY=1/SKIP_BUILD=1 exit0; current native cursor port
+and BBSC DLL reused. Frozen launcher smoke loaded dynamic-worlds-v1, discovery2
+and acquired an isolated temporary world successfully. Source input metadata
+unchanged during build. Build contents/run status: parent
+out/coop-dev/runs/late-join-pc-laptop-20261104-112427/run.md.
+Parent HEAD1987812, BBSC HEAD/gitlink0ddb1d4, with recorded local source changes;
+no commit, pin update or push performed by this build/deploy task.
+
+PC deploy exit0, copied5143; laptop deploy exit0, copied5146 (metadata selection,
+no file/hash audit). Backups:
+- D:/Games/Bloodborne/coop-dev/backups/late-join-20261104-112904
+- C:/Games/Bloodborne/coop-dev/backups/late-join-20261104-112932
+
+Updated Diamond Sword already installed on PC by its authoring chat; copied its
+current asset package to laptop mods/Diamond Sword. Laptop existing mods_enabled
+and default new-mod selection enable it without editing settings/mod profiles.
+Both launchers opened in interactive sessions (PC2 / laptop1), visible/responding
+confirmed. Laptop direct task attempt did not confirm a window; recovered with
+an interactive hidden helper, confirmed visible UI, removed our one-shot tasks.
+Fresh automatic discovery on both devices lists twin and test. This confirms
+launcher presence, not native room join/world arrival or any gameplay fix.
+No game launched by this task. Real settings/saves/journals unchanged.
+Late-join gameplay and native menu-exit confirmation remain OPEN.
+
+## 04.11.2026 — late joining implemented, SOURCE ONLY
+
+Regular launcher co-op now uses per-player durable home sessions and live peer
+lookup (discovery BBGL-P2P-2). A player may start alone; a host can reserve a guest
+whose launcher/game starts later, without rebuilding a roster or restarting either
+game. Discovery feeds a live directory, never a voting list. Bells keep their roles.
+DynamicEngine uses one durable writer/authority per hosted world. Admission first
+persists a provisional guest binding, then commits on the host; only a confirmed
+host snapshot exposes a native admission. Competing hosts/guest acquire serialize
+at the guest. Separate unbound players may host independent worlds. Explicit
+native leave/cancel is still required; partitions never promote or release guests.
+Guest identity/login and NP/HTTP/relay sockets survive attaching/detaching. Native
+room IDs are random63-bit, fencing callbacks across independent hosts. Relay keeps
+16 outstanding frames/peer, ordered buffering, bounded queues and durable receipts.
+Legacy static/local-three invitations retain their unanimous Engine path.
+
+Checks:14 new real-socket/crash/race/native integration tests PASS;8 launcher
+connection tests and3 explicit-firewall tests PASS;4 targeted legacy NP/RPC tests
+PASS. All data/profiles temporary; no game launched, no product build, installation,
+settings/save changes, pin update or push. Gameplay remains UNCONFIRMED.
+All participants need the new runtime/discovery version for a later game test.
+Details: mods-src/BBSC/docs/fixes/2026-11-04-late-join.md.
+
+## 04.11.2026 — co-op frame rate follows launcher settings (installed on PC)
+
+Removed forced BB_FPS=60 / BB_FPS_LIMIT=60 from regular Party launch and
+local-three launch. Each local player retains its own profile FPS mode/cap;
+run metadata records these per player instead of claiming a shared 60 FPS.
+Selected launch-environment tests PASS (2 tests, fixed/unlocked/custom-cap cases);
+git diff --check PASS. Launcher package.sh BB_FAST_DEPLOY=1 build exit0;
+PC deploy exit0 (5141 files, metadata selection), native port/mod reused.
+Backup: D:/Games/Bloodborne/coop-dev/backups/fps-settings-20261104-102240.
+Build inputs unchanged; related chats completed. No game launch or real
+settings/save changes; gameplay confirmation pending.
+Above-60 platform/elevator reports in TickBbscFrameRate remain a hypothesis,
+not a confirmed consequence of this change. Prefer matching rates across peers.
+
+## 04.11.2026 — launcher presence UI installed on this PC
+
+Co-op PLAY no longer depends on discovery readiness or mesh preflight. Removed
+manual connection-check button. Presence updates every 3s without coopBusy;
+adapters refresh every 15s, discovery remains alive in the hidden launcher while
+its game runs. Network/name edits serialize against discovery work.
+Launch permits a singleton; a known group retains missing peers instead of
+silently becoming a different group. Live journal replacement protection remains.
+Party roster remains fixed: first-time late joining into a singleton world is not
+implemented here; detect the intended group before its first launch.
+Build package.sh BB_FAST_DEPLOY=1 exit0; PC deploy exit0 (5141 files by metadata).
+Backup: D:/Games/Bloodborne/coop-dev/backups/launcher-presence-20261104-100216.
+No game launched; live UI/network confirmation pending.
+Targeted tests: discovery 8, firewall 3, localization 5 PASS. No real settings,
+saves or journals changed by development checks. Build/deploy/gameplay separate.
+
 ## 04.11.2026 — Player 1 menu fix installed on this PC
 
 BBSC d893098 built successfully (exit0); six-file delta installed (copy exit0)
@@ -379,7 +630,8 @@ runner logs — `coop/local-test/runs/<UTC stamp>/`. Журналы игр ос�
 До старта проверяются наличие всех профилей, игры, трёх разных папок сейвов и
 свободные порты. Каждый child получает BBGL_PROFILE_DIR **до** загрузки лаунчера.
 Переменные путей другого игрока очищаются. Профили и сейвы не пересоздаются.
-Оконный режим1280×720, FPS60 и Skip Intro задаются на запуск, без записи settings.
+Оконный режим1280×720 и Skip Intro задаются на запуск, без записи settings.
+Обновление 04.11 (исходники): FPS и лимит берутся из профиля каждого игрока.
 При выходе/ошибке одного игрока остальные игры не завершаются автоматически.
 
 Последний запуск:

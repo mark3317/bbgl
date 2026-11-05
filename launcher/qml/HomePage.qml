@@ -9,6 +9,7 @@ Item {
     property bool savesBlocked: false
     property bool onlineBlocked: false
     property real panelWidth: Math.min(610, width - Theme.railWidth - 32)
+    readonly property real contentWidth: panelWidth - 88
     Image { anchors.fill: parent; source: Qt.resolvedUrl("../assets/ui/home-background.png"); fillMode: Image.PreserveAspectCrop; smooth: true }
     Rectangle { anchors.fill: parent; color: "#180b0d10" }
     Rectangle {
@@ -22,19 +23,25 @@ Item {
     Flickable {
         id: homeScroll
         objectName: "homeScroll"
-        x: Theme.railWidth + 44; y: 32; width: home.panelWidth - 64; height: parent.height - y - 184
+        x: Theme.railWidth + 44; y: 32; width: home.contentWidth + 24
+        height: Math.max(0, launchActions.y - y - 24)
         clip: true; contentHeight: content.implicitHeight
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        ScrollBar.vertical: ScrollBar {
+            policy: homeScroll.contentHeight > homeScroll.height + 1 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+            active: homeScroll.contentHeight > homeScroll.height + 1
+            width: 4; padding: 0
+            contentItem: Rectangle { implicitWidth: 4; implicitHeight: 24; radius: 2; color: Theme.textFaint }
+            background: Item {}
+        }
         Column {
-            id: content; width: parent.width - 24; spacing: 12
+            id: content; width: home.contentWidth; spacing: 16
             Text { width: parent.width; text: "Bloodborne Game Launcher"; color: Theme.text; font.family: Theme.serif; font.pixelSize: 32; wrapMode: Text.WordWrap }
             Rectangle { width: 36; height: 3; radius: 1.5; color: Theme.accentHover }
-            Rectangle {
-                width: parent.width; height: summary.implicitHeight + 24
-                radius: 4; color: "#e6111519"; border.color: Theme.lineStrong
+            Item {
+                width: parent.width; height: summary.implicitHeight + 28
                 Column {
-                    id: summary; x: 18; y: 12; width: parent.width - 36; spacing: 8
+                    id: summary; x: 18; y: 14; width: parent.width - 36; spacing: 10
                     Item {
                         width: parent.width; height: profileTitle.implicitHeight
                         Text {
@@ -54,7 +61,7 @@ Item {
                                 {label: launcher.tr("Generation"), value: launcher.setupFacts.frameGeneration}
                             ]
                             delegate: Item {
-                                width: parent.width; height: Math.max(18, factLabel.implicitHeight, factValue.implicitHeight) + 4
+                                width: parent.width; height: Math.max(18, factLabel.implicitHeight, factValue.implicitHeight) + 6
                                 Rectangle { visible: index > 0; width: parent.width; height: 1; color: "#28374048" }
                                 Text { id: factLabel; anchors.verticalCenter: parent.verticalCenter; width: parent.width * 0.46; text: modelData.label; color: Theme.textDim; font.family: Theme.serif; font.pixelSize: 16; wrapMode: Text.WordWrap }
                                 Text { id: factValue; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: parent.width * 0.52; text: modelData.value; color: Theme.text; font.family: Theme.serif; font.pixelSize: 17; font.weight: Font.Medium; horizontalAlignment: Text.AlignRight; wrapMode: Text.WordWrap }
@@ -66,21 +73,22 @@ Item {
                 }
             }
             Item {
-                width: parent.width; height: connectionFields.implicitHeight + 16
+                width: parent.width; height: connectionFields.implicitHeight + 24
                 Column {
-                    id: connectionFields; x: 16; y: 6; width: parent.width - 32; spacing: 4
-            FieldRow {
-                width: parent.width; compact: true; minimumHeight: 54; serifLabel: true
-                showDivider: true
-                field: launcher.settingsRevision < 0 ? ({}) : launcher.sectionFields("Co-op", "Seamless co-op").find(f => f.key === "coop_name")
-            }
-            CoopConnection {
-                width: parent.width; compact: true; serifLabels: true; showPlayerName: false; visible: launcher.playMode === "coop"
-                onAttentionRequested: (target) => {
-                    if (!home.visible) return
-                    homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))
-                }
-            }
+                    id: connectionFields; x: 18; y: 12; width: parent.width - 36; spacing: 0
+                    FieldRow {
+                        width: parent.width; compact: true; minimumHeight: 56; serifLabel: true
+                        showDivider: launcher.playMode === "coop"
+                        field: launcher.settingsRevision < 0 ? ({}) : launcher.sectionFields("Co-op", "Seamless co-op").find(f => f.key === "coop_name")
+                    }
+                    CoopConnection {
+                        width: parent.width; compact: true; serifLabels: true; showPlayerName: false; showStatus: false
+                        visible: launcher.playMode === "coop"
+                        onAttentionRequested: (target) => {
+                            if (!home.visible) return
+                            homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))
+                        }
+                    }
                 }
             }
             Text {
@@ -88,15 +96,16 @@ Item {
                 text: home.gameBlocked ? launcher.tr("Choose your game folder or download the game.") : home.savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") : launcher.gameDownloadStatus
                 color: Theme.warn; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap
             }
-            GlassButton { visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
+            GlassButton { width: parent.width; visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
         }
     }
-    Item {
-        x: Theme.railWidth + 44; width: home.panelWidth - 88
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 12; height: 160
+    Column {
+        id: launchActions
+        x: Theme.railWidth + 44; width: home.contentWidth
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 24; spacing: 12
         Item {
             id: modeSwitch
-            anchors.horizontalCenter: parent.horizontalCenter; width: 296; height: 44
+            anchors.horizontalCenter: parent.horizontalCenter; width: Math.min(320, parent.width); height: 44
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
             Row {
                 anchors.fill: parent
@@ -124,15 +133,16 @@ Item {
         }
         GlassButton {
             id: playButton
-            anchors.horizontalCenter: parent.horizontalCenter; y: 54
-            width: 296; height: 56; serif: true; highlighted: !launcher.running && !launcher.coopBusy
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: modeSwitch.width; height: 56; serif: true; highlighted: !launcher.running && !launcher.coopBusy
             text: launcher.running || launcher.coopLaunchPending ? launcher.tr("Cancel launch") : launcher.tr("Play")
             enabled: launcher.running || launcher.coopLaunchPending || (!launcher.coopBusy && !launcher.setupRunning && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked)
             onClicked: launcher.running || launcher.coopLaunchPending ? launcher.cancelLaunch() : home.primaryRequested()
         }
         Text {
-            y: 122; width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+            width: parent.width; wrapMode: Text.WordWrap
             text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
+            visible: text.length > 0
             color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
         }
     }

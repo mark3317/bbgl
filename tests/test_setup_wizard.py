@@ -87,42 +87,40 @@ class FirstRunWizardTests(unittest.TestCase):
         self.assertEqual(backend.startupProblem, '')
 
     def test_bundled_prompts_switch_without_download_and_follow_ingame_choice(self):
-        mods_dir = self.root / 'mods'
+        from prompt_icons import layer
         for name in (core.KEYBOARD_PROMPTS, core.XBOX_PROMPTS):
-            texture = mods_dir / name / 'menu/common.tpf.dcx'
+            texture = self.root / 'launcher/assets/button-prompts' / name / 'menu/common.tpf.dcx'
             texture.parent.mkdir(parents=True)
             texture.write_bytes(b'DCX\0fixture')
         profile_file = self.root / 'mods.json'
-        profile_file.write_text(json.dumps({'disabled': [core.KEYBOARD_PROMPTS, core.XBOX_PROMPTS]}))
+        original = {'order': ['User mod', core.XBOX_PROMPTS], 'disabled': [core.KEYBOARD_PROMPTS]}
+        profile_file.write_text(json.dumps(original))
         backend = LauncherBackend()
+        self.addCleanup(backend.shutdown_coop)
+        self.assertEqual(backend.promptChoice, 'Xbox')
+        backend.setPrompt('Keyboard')
+        self.assertEqual(backend.promptChoice, 'Keyboard')
+        ini = (self.root / 'bbport.ini').read_text(encoding='utf-8')
+        self.assertIn('key_roll=Left Shift', ini)
+        self.assertIn('key_lock_on=Mouse3', ini)
+        self.assertEqual(layer(self.root, backend.promptChoice).name, core.KEYBOARD_PROMPTS)
+        backend.app['mods_enabled'] = False
+        self.assertEqual(backend.promptChoice, 'Keyboard')
+        backend.setPrompt('Xbox')
+        self.assertEqual(backend.promptChoice, 'Xbox')
+        backend.setPrompt('PlayStation')
         self.assertEqual(backend.promptChoice, 'PlayStation')
-        with patch.object(LauncherBackend, '_choose_prompt_download', side_effect=AssertionError('Unexpected download')):
-            backend.setPrompt('Keyboard')
-            self.assertEqual(backend.promptChoice, 'Keyboard')
-            ini = (self.root / 'bbport.ini').read_text(encoding='utf-8')
-            self.assertIn('key_roll=Left Shift', ini)
-            self.assertIn('key_lock_on=Mouse3', ini)
-            self.assertNotIn(core.KEYBOARD_PROMPTS, [m['name'] for m in backend.contentMods])
-            backend.setPrompt('Xbox')
-            self.assertEqual(backend.promptChoice, 'Xbox')
-            # The in-game menu changes mods.json; refreshing must reflect that choice.
-            profile = json.loads(profile_file.read_text())
-            profile['disabled'] = [core.XBOX_PROMPTS]
-            profile['enabled'] = [core.KEYBOARD_PROMPTS]
-            profile_file.write_text(json.dumps(profile))
-            backend.refresh_addons()
-            self.assertEqual(backend.promptChoice, 'Keyboard')
-            backend.setPrompt('PlayStation')
-            self.assertEqual(backend.promptChoice, 'PlayStation')
-        for name in (core.KEYBOARD_PROMPTS, core.XBOX_PROMPTS):
-            self.assertEqual((mods_dir / name / 'menu/common.tpf.dcx').read_bytes(), b'DCX\0fixture')
+        self.assertIsNone(layer(self.root, backend.promptChoice))
+        self.assertEqual(json.loads(profile_file.read_text()), original)
+        self.assertFalse((self.root / 'mods' / core.KEYBOARD_PROMPTS).exists())
+        self.assertFalse((self.root / 'mods' / core.XBOX_PROMPTS).exists())
 
     def test_launch_options_moved_out_of_advanced(self):
         backend = LauncherBackend()
         keys = {field['key'] for page in ('Advanced', 'Diagnostics') for field in backend.fields(page)}
         self.assertFalse(keys & {'close_on_play', 'launchDirectly', 'check_updates'})
         self.assertEqual([f['key'] for f in backend.fields('Diagnostics')],
-                         ['frame_stats', 'gpu_profile', 'vk_validation'])
+                         ['diagnostic_logs', 'gpu_logs', 'frame_stats', 'gpu_profile', 'vk_validation'])
         pages = ('Graphics', 'Display', 'Game', 'Controller', 'Cheats', 'Online', 'Mods', 'Advanced', 'Diagnostics')
         every = [field['key'] for page in pages for field in backend.fields(page)]
         self.assertEqual(len(every), len(set(every)), 'a setting appears on two pages')

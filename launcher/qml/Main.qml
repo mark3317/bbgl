@@ -28,6 +28,53 @@ ApplicationWindow {
         else if (onlineBlocked) openSettings(launcher.playModeSettings[0], launcher.playModeSettings[1])
         else if (!launcher.running && !launcher.setupRunning) launcher.playSelected()
     }
+    Connections {
+        target: launcher
+        function onModSyncWarning() { modWarning.open() }
+    }
+    Dialog {
+        id: modWarning
+        objectName: "modSyncWarningDialog"
+        anchors.centerIn: parent
+        width: Math.min(610, window.width - 80)
+        padding: 28
+        modal: true
+        title: launcher.tr("Mods are not synchronized")
+        header: Item { implicitHeight: 0 }
+        Overlay.modal: Rectangle { color: "#aa000000" }
+        background: Rectangle {
+            color: Theme.surface; radius: 12; border.color: Theme.lineStrong
+            Rectangle { x: 28; y: 0; width: 64; height: 3; color: Theme.warn; radius: 1 }
+        }
+        contentItem: Column {
+            spacing: 22
+            Row {
+                width: parent.width; spacing: 16
+                Rectangle {
+                    width: 44; height: 44; radius: 22; color: "#2b241f"
+                    border.color: "#594333"
+                    Text { anchors.centerIn: parent; text: "!"; color: Theme.warn; font.family: Theme.serif; font.pixelSize: 30 }
+                }
+                Text {
+                    width: parent.width - 60; anchors.verticalCenter: parent.verticalCenter
+                    text: modWarning.title; wrapMode: Text.WordWrap
+                    color: Theme.text; font.family: Theme.serif; font.pixelSize: 26
+                }
+            }
+            Text {
+                width: parent.width
+                text: launcher.tr("Not all player mods are installed or synchronized. Check the mod list before starting co-op, or launch the game anyway.")
+                wrapMode: Text.WordWrap; color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 14
+                lineHeight: 1.35
+            }
+            Rectangle { width: parent.width; height: 1; color: Theme.line }
+            Flow {
+                width: parent.width; spacing: 12
+                GlassButton { objectName: "modWarningSettings"; text: launcher.tr("Mod settings"); highlighted: true; width: (parent.width - 12) / 2; onClicked: { modWarning.close(); window.openSettings("Mods & Patches", "Installed mods") } }
+                GlassButton { objectName: "modWarningLaunch"; text: launcher.tr("Launch game"); width: (parent.width - 12) / 2; onClicked: { modWarning.close(); launcher.playUnsynchronized() } }
+            }
+        }
+    }
     Component.onCompleted: {
         wizardStep = launcher.wizardStartStep
         if (launcher.startPage === "Setup") page = "Setup"
@@ -81,58 +128,6 @@ ApplicationWindow {
         current: page
         locked: page === "Setup"
         onNavigate: (target) => { if (target === "Settings") openSettings("", ""); else page = target }
-    }
-
-    Connections {
-        target: launcher
-        function onCoopChanged() {
-            if (!launcher.coopBusy && launcher.coopFirewallError && !firewallDialog.visible)
-                firewallDialog.open()
-        }
-    }
-    Dialog {
-        id: firewallDialog
-        objectName: "firewallDialog"
-        anchors.centerIn: parent
-        width: Math.min(520, window.width - 80)
-        modal: true
-        padding: 28
-        topPadding: 8
-        bottomPadding: 24
-        title: launcher.tr("Configure firewall")
-        background: Rectangle {
-            color: Theme.surface; radius: 10; border.color: Theme.lineStrong
-        }
-        header: Item {
-            implicitHeight: 88
-            Rectangle { x: 28; y: 25; width: 28; height: 3; radius: 1.5; color: Theme.accentHover }
-            Label {
-                x: 28; y: 42; width: parent.width - 56
-                text: firewallDialog.title; color: Theme.text
-                font.family: Theme.sans; font.pixelSize: 21; font.weight: Font.DemiBold
-            }
-        }
-        contentItem: Label {
-            text: launcher.tr("Allow incoming connections for the selected network. A custom address allows server ports from all networks. Windows will ask for administrator permission.")
-            color: Theme.textDim; wrapMode: Text.WordWrap
-            font.family: Theme.sans; font.pixelSize: 14; lineHeight: 1.25
-        }
-        footer: Item {
-            implicitHeight: 92
-            Rectangle { x: 28; width: parent.width - 56; height: 1; color: Theme.line }
-            Row {
-                anchors { right: parent.right; rightMargin: 28; top: parent.top; topMargin: 20 }
-                spacing: 12
-                GlassButton {
-                    text: launcher.tr("Cancel"); width: 140; height: 44
-                    onClicked: firewallDialog.close()
-                }
-                GlassButton {
-                    text: launcher.tr("Confirm"); width: 168; height: 44; primary: true
-                    onClicked: { firewallDialog.close(); launcher.coopConfigureFirewall() }
-                }
-            }
-        }
     }
 
     // What the last action did (Home shows it in its status line): a short-lived message at the

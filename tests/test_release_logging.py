@@ -77,10 +77,28 @@ with tempfile.TemporaryDirectory(prefix='bbgl-release-log-') as tmp:
     settings=launcher.app_settings({})
     with patch.dict(os.environ,{},clear=True):
         assert launcher.game_environment(settings)['BB_DIAGNOSTICS']=='0'
+        assert not settings['gpu_logs']
+        assert launcher.game_environment(settings)['BB_GPU_LOG']=='error'
+        settings['gpu_logs']=True
+        gpu_only=launcher.game_environment(settings)
+        assert gpu_only['BB_GPU_LOG']=='debug' and gpu_only['BB_DIAGNOSTICS']=='0'
+        settings['gpu_logs']=False
         settings['diagnostic_logs']=True
-        assert launcher.game_environment(settings)['BB_DIAGNOSTICS']=='1'
+        compact = launcher.game_environment(settings)
+        assert compact['BB_DIAGNOSTICS']=='1'
+        assert compact['BB_GPU_LOG']=='error' and compact['BBSC_LOG']=='warning'
+        for key in ('BB_NET_DIAGNOSTICS', 'BB_PARTY_DIAGNOSTICS', 'BB_PERF_CAPTURE', 'SHADPS4_BBSC_PERF'):
+            assert compact[key]=='0'
+        settings['gpu_logs']=True
+        assert launcher.game_environment(settings)['BB_GPU_LOG']=='debug'
+        settings['gpu_logs']=False
+        settings['extra_env']='BB_GPU_LOG=debug BB_NET_DIAGNOSTICS=1'
+        custom = launcher.game_environment(settings)
+        assert custom['BB_GPU_LOG']=='debug' and custom['BB_NET_DIAGNOSTICS']=='1'
         settings['extra_env']='BB_DIAGNOSTICS=0'
         assert launcher.game_environment(settings)['BB_DIAGNOSTICS']=='0'
+    with patch.dict(os.environ,{'BB_GPU_LOG':'trace'},clear=True):
+        assert launcher.game_environment(settings)['BB_GPU_LOG']=='trace'
     # Validate the Qt settings model without requiring a GUI runtime.
     tree=ast.parse((ROOT/'launcher/bbport_launcher_backend.py').read_text(encoding='utf-8'))
     rows=[node for node in ast.walk(tree) if isinstance(node,ast.Call)
@@ -91,4 +109,5 @@ with tempfile.TemporaryDirectory(prefix='bbgl-release-log-') as tmp:
                   and any(isinstance(t,ast.Name) and t.id=='SETTINGS_SECTIONS' for t in node.targets))
     groups=eval(compile(ast.Expression(sections),'settings-sections','eval'),{'core':launcher})
     assert sum(keys.count('diagnostic_logs') for _,keys in groups['System'])==1
+    assert sum(keys.count('gpu_logs') for _,keys in groups['System'])==1
 print('PASS: release skips formatting and profiling; explicit diagnosis, GPU/DLL stderr and launcher switch')

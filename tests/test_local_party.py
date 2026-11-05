@@ -19,6 +19,18 @@ from compat import Compatibility
 
 
 class LocalPartyTests(unittest.TestCase):
+    def test_concurrent_first_launch_shares_one_invitation(self):
+        from concurrent.futures import ThreadPoolExecutor
+        barrier=threading.Barrier(3)
+        token_hex=local.secrets.token_hex
+        def simultaneous_seed(size):
+            if size==16:
+                barrier.wait(3)
+            return token_hex(size)
+        with patch.object(local.secrets,'token_hex',side_effect=simultaneous_seed), ThreadPoolExecutor(3) as pool:
+            configs=list(pool.map(lambda _:local.configuration(self.root)[0], range(3)))
+        self.assertEqual(configs,[local.configuration(self.root)[0]]*3)
+
     def test_native_launch_uses_name_and_keeps_party_member_id(self):
         from engine import invite
         from compat import start_from_environment
@@ -73,7 +85,13 @@ class LocalPartyTests(unittest.TestCase):
         entries=local.profiles(self.root);cfg,path=local.configuration(self.root)
         class Core:
             def app_settings(self,value):return dict(value)
-            def game_environment(self,value):return {'BB_PATCHES':'Other','BB_NET_BACKEND':'old'}
+            def game_environment(self,value):
+                env = {'BB_PATCHES':'Other','BB_NET_BACKEND':'old','BB_FPS':value['fps_mode']}
+                if value.get('frame_cap'):
+                    env['BB_FPS_LIMIT'] = value['frame_cap']
+                return env
+        for entry, (fps, cap) in zip(entries, (('120', '120'), ('uncap', '144'), ('uncap', ''))):
+            entry['settings'].update(fps_mode=fps, frame_cap=cap)
         for entry in entries:
             original=(entry['profile']/'settings.json').read_bytes()
             with patch.dict(os.environ,{'BBGL_PROFILE_DIR':str(entry['profile'])}):
@@ -81,7 +99,9 @@ class LocalPartyTests(unittest.TestCase):
             self.assertEqual(env['BB_USER_DIR'],str(entry['user']))
             self.assertEqual(env['BB_PARTY_MEMBER'],f"LocalPlayer{entry['index']}")
             self.assertEqual(env['BB_CONFIG'],str(entry['profile']/'bbport.ini'))
-            self.assertEqual(env['BB_FPS'],'60');self.assertEqual(env['BB_FULLSCREEN'],'0')
+            self.assertEqual(env['BB_FPS'],entry['settings']['fps_mode'])
+            self.assertEqual(env.get('BB_FPS_LIMIT'),entry['settings']['frame_cap'] or None)
+            self.assertEqual(env['BB_FULLSCREEN'],'0')
             self.assertIn('Skip Intro',env['BB_PATCHES']);self.assertNotIn('BB_NET_BACKEND',env)
             self.assertEqual((entry['profile']/'settings.json').read_bytes(),original)
         with patch.dict(os.environ,{'BBGL_PROFILE_DIR':str(self.root/'wrong')}):
@@ -96,6 +116,55 @@ class LocalPartyTests(unittest.TestCase):
         p.unlink()
         with self.assertRaisesRegex(ValueError,'existing profile'):
             local.profiles(self.root)
+
+    def test_individual_player_bell_after_third_game_exits(self):
+        import base64
+        import runpy
+        from compat import start_from_environment
+        cfg, path = local.configuration(self.root)
+        entry_main = runpy.run_path(str(ROOT/'scripts/local_party.py'))['main']
+
+        class Core:
+            app_settings = staticmethod(dict)
+            game_environment = staticmethod(lambda settings: {})
+
+        def start(index):
+            profile = self.root/f'{local.PROFILE} Player {index}'
+            def run_game(*args, **kwargs):
+                return start_from_environment(dict(os.environ), self.root/'install')
+            with patch.dict(os.environ, {'LOCALAPPDATA':str(self.root),
+                                         'BBGL_PROFILE_DIR':str(profile)}), \
+                 patch.object(sys,'argv',['local_party.py','--player',str(index),'--config',str(path)]), \
+                 patch.object(runpy,'run_path',side_effect=run_game):
+                os.environ.pop('BB_LOCAL_PARTY_RUN',None)
+                return entry_main(Core())
+
+        guest = start(1)
+        self.addCleanup(guest.close)
+        host = start(2)
+        self.addCleanup(host.close)
+        start(3).close()
+        self.assertEqual(host.control('/party/acquire',{}),1)
+        self.assertEqual(host.e.member['p2p'],cfg['members'][1]['p2p'])
+        native = dict(state=0, loading=False, alive=True, members=1, fresh=True, bell=True)
+        deadline = time.monotonic()+8
+        while time.monotonic()<deadline:
+            host.control('/party/native',native)
+            if guest.control('/party/can_beckon',{})==0:
+                break
+            time.sleep(.1)
+        self.assertEqual(guest.control('/party/acquire',{}),0)
+        guest.control('/party/native',dict(native,bell=False,responder=True))
+        guest.http_call('/summon_messenger/create',dict(UserId=guest.game_ids[guest.e.id],
+                        SummonData=base64.b64encode(bytes(224)).decode()),{})
+        deadline = time.monotonic()+8
+        while not host.http_call('/summon_messenger/get',{}, {})['SummonDataList']:
+            if time.monotonic()>=deadline:
+                self.fail('Player 2 did not discover the responder')
+            time.sleep(.05)
+        room = host.np_command(101,dict(max_slots=5))['room_id']
+        host.http_call('/summon_messenger/request',{'TargetUserId':host.game_ids[guest.e.id]}, {})
+        self.assertEqual(guest.np_command(102,dict(room_id=room))['details']['room_data']['room_id'],room)
 
     def test_child_cannot_inherit_another_players_paths(self):
         env=local.child_environment(self.root/'player',{'BB_CONFIG':'wrong','BB_P2P_PORT':'wrong',

@@ -71,7 +71,7 @@ def run_ui(route=None):
         launcher_window.append(window)
         manage_window_lifetime(app, backend, window)
         def close_after_launch():
-            # The pipe reader writes last_run.log and must survive window closure
+            # The pipe reader writes the run log and must survive window closure
             # for every game, including guests and offline play. Hosted servers
             # also stay alive until the game exits.
             window.close()

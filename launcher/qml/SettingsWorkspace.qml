@@ -17,7 +17,7 @@ Item {
         {name: "Visuals", icon: "visuals", tile: "tile-visuals", detail: launcher.tr("Graphics, display & frame rate")},
         {name: "Controls", icon: "controls", tile: "tile-controls", detail: launcher.tr("Prompts, mouse & keyboard")},
         {name: "Game & Saves", icon: "folder", tile: "tile-game-and-saves", detail: launcher.tr("Game files, saves & language")},
-        {name: "Co-op", icon: "online", tile: "tile-online", detail: launcher.tr("P2P co-op over your network")},
+        {name: "Co-op", icon: "online", tile: "tile-online", detail: launcher.tr("Play with friends")},
         {name: "Mods & Patches", icon: "puzzle", tile: "tile-mods-and-patches", detail: launcher.tr("Mods, enhancements & tweaks")},
         {name: "System", icon: "system", tile: "tile-system", detail: launcher.tr("Startup, updates & diagnostics")}
     ]
@@ -177,67 +177,71 @@ Item {
             Rectangle { width: parent.width; height: 1; color: Theme.line }
         }
 
+        // Presets stay above the scrolling fields on the two graphics tabs.
+        Item {
+            id: presetHeader
+            objectName: "graphicsPresetHeader"
+            visible: workspace.query === "" && (is("Visuals", "Display & frame rate") || is("Visuals", "Image effects"))
+            y: header.y + header.height + 4
+            width: parent.width - 14; height: visible ? presetBox.height + 26 : 0
+            Column {
+                id: presetBox; y: 18; width: parent.width; spacing: 10
+                Text { text: launcher.tr("Preset"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12 }
+                Item {
+                    width: parent.width; height: 56
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+                    Row {
+                    anchors.fill: parent; spacing: 0
+                    Repeater {
+                        model: ["low", "high", "ultra", "custom"]
+                        delegate: Button {
+                            id: presetButton
+                            property bool selected: launcher.graphicsPreset === modelData
+                            width: presetBox.width / 4; height: 56
+                            hoverEnabled: true
+                            text: launcher.presetLabel(modelData)
+                            contentItem: Text {
+                                text: presetButton.text; color: presetButton.selected || presetButton.hovered || presetButton.activeFocus ? Theme.text : Theme.textDim
+                                font.family: Theme.serif; font.pixelSize: 16
+                                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                                wrapMode: Text.WordWrap
+                            }
+                            background: Rectangle {
+                                color: "transparent"
+                                Rectangle {
+                                    visible: presetButton.selected || presetButton.activeFocus
+                                    height: presetButton.selected ? 2 : 1; width: parent.width - 28
+                                    anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                                    color: presetButton.selected ? Theme.accentHover : Theme.lineStrong
+                                }
+                            }
+                            ToolTip.visible: hovered && launcher.recommendedPreset === modelData
+                            ToolTip.text: launcher.tr("Recommended")
+                            onClicked: launcher.applyGraphicsPreset(modelData)
+                        }
+                    }
+                    }
+                }
+                Text {
+                    width: parent.width; wrapMode: Text.WordWrap; lineHeight: 1.3
+                    color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
+                    text: launcher.presetDescription(launcher.graphicsPreset)
+                }
+            }
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+        }
+
         Flickable {
             id: detailScroll
+            objectName: "settingsDetailScroll"
             visible: workspace.query === ""
-            y: header.y + header.height + 4; width: parent.width; height: parent.height - y
+            y: presetHeader.y + presetHeader.height; width: parent.width; height: parent.height - y
             clip: true; boundsBehavior: Flickable.StopAtBounds
             contentHeight: detailColumn.implicitHeight + 40
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             Column {
                 id: detailColumn
                 width: detailScroll.width - 14; spacing: 0
-
-                // Graphics presets, above every Visuals section: they rewrite the rows below.
-                Item {
-                    visible: workspace.category === "Visuals"
-                    width: parent.width; height: visible ? presetBox.height + 26 : 0
-                    Column {
-                        id: presetBox; y: 18; width: parent.width; spacing: 10
-                        Text { text: launcher.tr("Preset"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12 }
-                        Item {
-                            width: parent.width; height: 46
-                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
-                            Row {
-                            anchors.fill: parent; spacing: 0
-                            Repeater {
-                                model: ["low", "balanced", "high", "ultra", "custom"]
-                                delegate: Button {
-                                    id: presetButton
-                                    property bool selected: launcher.graphicsPreset === modelData
-                                    width: presetBox.width / 5; height: 46
-                                    hoverEnabled: true
-                                    text: launcher.presetLabel(modelData)
-                                    contentItem: Text {
-                                        text: presetButton.text; color: presetButton.selected || presetButton.hovered || presetButton.activeFocus ? Theme.text : Theme.textDim
-                                        font.family: Theme.serif; font.pixelSize: 18
-                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                                        elide: Text.ElideRight
-                                    }
-                                    background: Rectangle {
-                                        color: "transparent"
-                                        Rectangle {
-                                            visible: presetButton.selected || presetButton.activeFocus
-                                            height: presetButton.selected ? 2 : 1; width: parent.width - 28
-                                            anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                                            color: presetButton.selected ? Theme.accentHover : Theme.lineStrong
-                                        }
-                                    }
-                                    ToolTip.visible: hovered && launcher.recommendedPreset === modelData
-                                    ToolTip.text: launcher.tr("Recommended")
-                                    onClicked: launcher.applyGraphicsPreset(modelData)
-                                }
-                            }
-                            }
-                        }
-                        Text {
-                            width: parent.width; wrapMode: Text.WordWrap; lineHeight: 1.3
-                            color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-                            text: launcher.presetDescription(launcher.graphicsPreset)
-                        }
-                    }
-                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
-                }
 
                 Repeater {
                     id: fieldRepeater
@@ -271,27 +275,20 @@ Item {
                         GlassButton { text: launcher.tr("Import trophy keys"); width: 180; onClicked: launcher.importTrophyKeys() }
                     }
                     CoopConnection {
-                        width: parent.width; showFirewall: true; visible: is("Co-op", "Seamless co-op")
+                        width: parent.width; visible: is("Co-op", "Seamless co-op")
                         onAttentionRequested: (target) => { if (workspace.visible) detailScroll.contentY = Math.max(0, Math.min(target.mapToItem(detailColumn, 0, 0).y - 24, detailScroll.contentHeight - detailScroll.height)) }
                     }
                     Note { visible: is("Mods & Patches", "Cheats"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
-                    Repeater {
-                        model: is("Mods & Patches", "Installed mods") ? launcher.contentMods : []
-                        delegate: Item {
-                            width: detailColumn.width; height: 52
-                            GlassSwitch { anchors.verticalCenter: parent.verticalCenter; text: modelData.name; checked: modelData.enabled; onToggled: launcher.setMod(modelData.name, checked) }
-                            Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 6
-                                GlassButton { text: "↑"; width: 180; height: 48; onClicked: launcher.moveMod(modelData.name, -1) }
-                                GlassButton { text: "↓"; width: 180; height: 48; onClicked: launcher.moveMod(modelData.name, 1) }
-                            }
-                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
-                        }
+                    ModsTable {
+                        width: parent.width; visible: is("Mods & Patches", "Installed mods")
+                        mods: launcher.modTableRows
                     }
-                    Note { visible: is("Mods & Patches", "Installed mods") && launcher.contentMods.length === 0; text: launcher.tr("No mods in the mods folder yet. Put each mod in its own folder there, then refresh.") }
+                    Note { visible: is("Mods & Patches", "Installed mods"); text: launcher.tr("The mod list updates automatically. Changes apply at the next game start. Lower mods override earlier ones.") }
+                    Note { visible: is("Mods & Patches", "Installed mods") && launcher.contentMods.length === 0; text: launcher.tr("Put each mod in its own folder. Mods shared by players appear in this table automatically.") }
                     Flow { width: parent.width; visible: is("Mods & Patches", "Installed mods"); spacing: 10
-                        GlassButton { text: launcher.tr("Refresh"); width: 180; height: 48; onClicked: launcher.refresh_addons() }
                         GlassButton { text: launcher.tr("Open mods folder"); width: 180; height: 48; onClicked: launcher.action("openMods") }
                     }
+                    Note { visible: is("Mods & Patches", "Installed mods") && launcher.modsDownloading; text: launcher.tr("Downloading mods… Please wait.") }
                     Repeater { model: is("Mods & Patches", "Installed mods") ? launcher.patches : []
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
@@ -299,7 +296,9 @@ Item {
                         Flow { width: parent.width; spacing: 10
                             GlassButton { text: launcher.tr("Desktop shortcut"); width: 180; height: 48; onClicked: launcher.createShortcut() }
                             GlassButton { text: launcher.tr("Open launcher folder"); width: 180; height: 48; onClicked: launcher.action("openPort") }
+                            GlassButton { text: launcher.tr("Profile folder"); width: 180; height: 48; onClicked: launcher.action("openProfile") }
                         }
+                        Note { text: launcher.tr("Current profile:") + " " + launcher.activeProfileFolder }
                     }
                     Column { visible: is("System", "System"); width: parent.width; spacing: 14
                         ToggleRow { label: launcher.tr("Check for updates"); hint: launcher.tr("Checks for new launcher versions at startup."); checked: launcher.checked("check_updates"); onToggled: (on) => launcher.setValue("check_updates", on) }
@@ -310,12 +309,9 @@ Item {
                         }
                     }
                     Flow { width: parent.width; visible: is("System", "Advanced system"); spacing: 10
-                        GlassButton { text: launcher.tr("Open profile"); width: 180; height: 48; onClicked: launcher.action("openTestProfile") }
-                        GlassButton { text: launcher.tr("Open bbport.ini"); width: 180; height: 48; onClicked: launcher.action("openConfig") }
                         GlassButton { text: launcher.tr("Clear shader cache"); width: 180; height: 48; onClicked: launcher.action("clearCache") }
                         GlassButton { text: launcher.tr("Setup wizard"); width: 180; height: 48; onClicked: workspace.openSetup(0) }
                     }
-                    Note { visible: is("System", "Advanced system"); text: launcher.tr("Current profile:") + " " + launcher.activeProfileFolder }
                     Flow { width: parent.width; visible: is("System", "Logs"); spacing: 10
                         GlassButton { text: launcher.tr("Copy log"); width: 180; height: 48; onClicked: launcher.action("copyLog") }
                         GlassButton { text: launcher.tr("Clear log"); width: 180; height: 48; onClicked: launcher.action("clearLog") }

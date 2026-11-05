@@ -35,7 +35,7 @@ if (-not $Install) {
 if (-not $Root) { $Root = Split-Path $Install -Parent }
 $Dev = Join-Path $Root 'coop-dev'
 $GameProcs = 'bb-probe', 'bb-play', 'bbsc-launch'
-$UserFiles = 'user', 'out', 'mods', 'bbport.ini', 'input.ini', 'mods.json', 'patches.json', 'last_run.log', 'coop-server.json'
+$UserFiles = 'user', 'out', 'mods', 'bbport.ini', 'input.ini', 'mods.json', 'patches.json', 'run_*.log', 'last_run*.log', 'coop-server.json'
 
 # Match launcher/bbport_paths.py without calling its migrating/writing initializer.
 function ProfileDir {
@@ -75,6 +75,11 @@ function ActiveSave {
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     return $c
 }
+function LatestGameLog {
+    Get-ChildItem -LiteralPath (UserDir) -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like 'run_*.log' -or $_.Name -like 'last_run*.log' } |
+        Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+}
 function ClientPkg {
     $bundled = Join-Path $Install 'coop\client'
     if (Test-Path (Join-Path $bundled 'bbsc\bbsc.dll')) { return $bundled }
@@ -112,7 +117,7 @@ switch ($Action) {
     "profile=$(ProfileDir)"
     "settings_file=$(SettingsFile)"
     "bbsc_data=$(DataPkg)"
-    "game_log=$(Join-Path (UserDir) 'last_run.log')"
+    "game_log=$((LatestGameLog).FullName)"
     "user_dir=$(UserDir)"
     $a = ActiveSave; "active_save=$($a.FullName) modified=$($a.LastWriteTime)"
     $p = ClientPkg; "bbsc_package=$p"
@@ -214,6 +219,7 @@ switch ($Action) {
     New-Item -ItemType Directory -Force $out | Out-Null
     $u = UserDir; $p = DataPkg
     $sets = @(
+        @{ dir = $u; filter = 'run_*.log'; to = 'game' },
         @{ dir = $u; filter = 'last_run*.log'; to = 'game' },
         @{ dir = (Join-Path $u 'log'); filter = '*'; to = 'game-log' }
     )

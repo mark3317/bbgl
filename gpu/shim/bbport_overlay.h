@@ -19,7 +19,7 @@ class Instance;
 
 namespace BbOverlay {
 
-/// Startup presenter only; -1 hides the shader preparation screen.
+/// Presenter thread (startup, then VideoOut); -1 hides the shader preparation screen.
 void SetShaderProgress(int percent);
 
 /// Present thread, once: the ImGui context and its Vulkan backend.

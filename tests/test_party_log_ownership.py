@@ -37,19 +37,23 @@ class PartyLogOwnershipTests(unittest.TestCase):
             for marker in ('launcher preparation','BBGL party launch','native stdout','native stderr','exit=0','reader remains alive'):
                 self.assertIn(marker,text)
             self.assertNotIn('must-never',text)
+            self.assertEqual(list(root.glob('run_*.log')), [])
             self.assertFalse((root/'last_run.1.log').exists())
 
-    def test_direct_runner_rotates_and_owns_native_log(self):
+    def test_direct_runner_owns_timestamped_native_log(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'last_run.log').write_text('previous run',encoding='utf-8')
             with (root/'wrapper.log').open('w',encoding='utf-8') as wrapper:
                 child=subprocess.run([sys.executable,'-c',FIXTURE,str(root)],stdout=wrapper,
                                      stderr=subprocess.STDOUT,timeout=10)
             self.assertEqual(child.returncode,0,(root/'wrapper.log').read_text())
-            text=(root/'last_run.log').read_text(encoding='utf-8')
+            logs=list(root.glob('run_*.log'))
+            self.assertEqual(len(logs),1)
+            text=logs[0].read_text(encoding='utf-8')
             for marker in ('BBGL party launch','native stdout','native stderr','exit=0'):
                 self.assertIn(marker,text)
-            self.assertEqual((root/'last_run.1.log').read_text(),'previous run')
+            self.assertEqual((root/'last_run.log').read_text(),'previous run')
+            self.assertFalse((root/'last_run.1.log').exists())
             self.assertNotIn('must-never',text)
 
 if __name__=='__main__':unittest.main()

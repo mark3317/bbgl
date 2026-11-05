@@ -1,4 +1,4 @@
-"""Network selection, firewall scope, and retained server endpoint compatibility."""
+"""Network selection and retained server endpoint compatibility."""
 import base64,json,sys,unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,14 +9,14 @@ import bbport_party as party
 class HostConnectionTests(unittest.TestCase):
  def networks(self):
   return [{'value':'radmin','text':'Radmin VPN','vpn':True,'addresses':['26.1.2.3'],'ranges':['26.0.0.0/8']},{'value':'lan','text':'Ethernet','vpn':False,'addresses':['192.168.1.5'],'ranges':['192.168.1.0/24']}]
- def test_auto_prefers_only_vpn_and_requires_choice_if_ambiguous(self):
+ def test_default_is_lan_even_with_several_vpns(self):
   networks=self.networks()
-  self.assertEqual(party.choose_network(networks),('26.1.2.3',networks[0]))
+  self.assertEqual(party.choose_network(networks),('192.168.1.5',networks[1]))
   networks.append(dict(networks[0],value='other',text='Other VPN'))
-  with self.assertRaisesRegex(ValueError,'Several networks'):party.choose_network(networks)
+  self.assertEqual(party.choose_network(networks)[0],'192.168.1.5')
  def test_multiple_addresses_require_local_selection_and_absent_provider_is_rejected(self):
   networks=self.networks();networks[0]['addresses'].append('26.1.2.4')
-  with self.assertRaisesRegex(ValueError,'Several networks'):party.choose_network(networks,'radmin')
+  with self.assertRaisesRegex(ValueError,'Several VPN addresses'):party.choose_network(networks,'radmin')
   self.assertEqual(party.choose_network(networks,'custom','26.1.2.4')[0],'26.1.2.4')
   with self.assertRaisesRegex(ValueError,'not connected'):party.choose_network(networks,'tailscale')
  def test_custom_ipv4_requires_an_active_local_address(self):
@@ -29,10 +29,6 @@ class HostConnectionTests(unittest.TestCase):
    result=coop.network_candidates()
   self.assertIn("Status -eq 'Up'",run.call_args.args[0][-1])
   self.assertEqual(result[0]['addresses'],['26.1.2.3','26.1.2.4']);self.assertEqual(result[0]['ranges'],['26.0.0.0/8'])
- def test_firewall_scope_is_explicit_and_validated(self):
-  self.assertIn("@('26.0.0.0/8','LocalSubnet')",coop._firewall_script('game.exe',('26.0.0.0/8','LocalSubnet')))
-  self.assertIn("@('Any')",coop._firewall_script('game.exe',('Any',)))
-  with self.assertRaises(ValueError):coop._firewall_script('game.exe',("bad';command",))
  def test_server_local_summon_address_does_not_leak_to_guests(self):
   server=Path(__file__).resolve().parents[1]/'mods-src/BBSC/server/gameserver';sys.path.insert(0,str(server))
   import bbsc_gameserver as gs

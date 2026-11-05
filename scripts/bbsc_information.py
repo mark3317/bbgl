@@ -5,29 +5,35 @@ from pathlib import Path
 
 TEXT = {
     'en': ('BBSC-GL — Bloodborne Game Launcher',
-           'This launcher includes BBSC-GL, a modified version of Bloodborne Seamless Co-op.\n\n'
-           'Start co-op from the launcher. The host rings the Beckoning Bell; guests ring the Small Resonant Bell. '
-           'Use the Silencing Blank to leave the session. The Sinister Resonant Bell searches for a world to invade.\n\n'
-           'Stay together across areas, lamps, bosses and deaths. Each player keeps their own character. '
-           'Guests have their own Hunter\'s Dream. Shared progress and enemy scaling are configured in the launcher.\n\n'
-           'This fork includes fixes for chalice travel, reconnecting, key items and recovery after death. '
-           'The mod is experimental; keep additional backups.\n\n'
+           'Seamless co-op: play through the main story and Chalice Dungeons together. '
+           'Stay together across areas, at lamps, through boss battles and after death. '
+           'Each player has their own side quests.\n\n'
+           'Pick up the Notebook from the messengers in the Hunter\'s Dream to receive co-op items automatically. '
+           'If you already have the Notebook, missing items will be added when you load your own world.\n\n'
+           'Beckoning Bell — call other players.\n'
+           'Small Resonant Bell — join a host.\n'
+           'Silencing Blank — stop searching or end co-op.\n'
+           'Sinister Resonant Bell — find a world to invade.\n\n'
+           'Shared progress and enemy scaling are configured in the launcher. '
+           'The mod is experimental — keep backups.\n\n'
            'BBSC-GL: github.com/mark3317/bbsc-gl\n'
            'Launcher: github.com/mark3317/bbgl\n'
-           'Based on BBSC by CLS_AMG and its contributors. Original authors retain their credits and licences.'),
+           'Based on BBSC by CLS_AMG and its contributors. Credits and licences are preserved.'),
     'ru': ('BBSC-GL — Bloodborne Game Launcher',
-           'В лаунчер включён BBSC-GL — модифицированная версия Bloodborne Seamless Co-op.\n\n'
-           'Запустите кооператив из лаунчера. Хост звонит в Зовущий Колокол, гости — в Малый звонкий колокол. '
-           'Бланк молчания позволяет покинуть сессию. Зловещий звонкий колокол ищет мир для вторжения.\n\n'
-           'Играйте вместе при переходах между областями, использовании фонарей, сражениях с боссами и после смерти. '
-           'Каждый сохраняет своего персонажа. У гостей — собственный Сон охотника. '
-           'Общий прогресс и усиление врагов настраиваются в лаунчере.\n\n'
-           'В этой версии исправлены ошибки переходов в чаши, повторного подключения, выдачи ключевых предметов '
-           'и восстановления после смерти. '
-           'Мод остаётся экспериментальным; храните дополнительные резервные копии.\n\n'
+           'Бесшовный кооператив: проходите вместе основной сюжет и подземелья чаш. '
+           'Оставайтесь вместе при переходах между областями, у фонарей, в битвах с боссами и после смерти. '
+           'Побочные квесты у каждого игрока свои.\n\n'
+           'Заберите Блокнот у посланников в Сне охотника — предметы для кооператива выдадутся автоматически. '
+           'Если Блокнот уже есть, недостающие предметы добавятся при загрузке своего мира.\n\n'
+           'Зовущий Колокол — позвать игроков.\n'
+           'Малый звонкий колокол — присоединиться к хозяину мира.\n'
+           'Бланк молчания — остановить поиск или завершить кооператив.\n'
+           'Зловещий звонкий колокол — найти мир для вторжения.\n\n'
+           'Общий прогресс и усиление врагов настраиваются в лаунчере. '
+           'Мод экспериментальный — сохраняйте резервные копии.\n\n'
            'BBSC-GL: github.com/mark3317/bbsc-gl\n'
            'Лаунчер: github.com/mark3317/bbgl\n'
-           'Основано на BBSC от CLS_AMG и участников проекта. Авторство и лицензии исходных компонентов сохранены.')
+           'На основе BBSC от CLS_AMG и участников проекта. Авторство и лицензии сохранены.')
 }
 
 

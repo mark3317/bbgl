@@ -1,0 +1,195 @@
+{
+  "format": 1,
+  "price": 10000,
+  "files": [
+    {
+      "target": "dvdroot_ps4/menu/common.tpf.dcx",
+      "base": "dvdroot_ps4/menu/common.tpf.dcx",
+      "patch": "000.bsdiff",
+      "base_sha256": "6c60f895698fe13ab9757739b63356304756c338e62d53bf093266c1e3ddda06",
+      "sha256": "4b9ac8d91f955aee61bfca6bcbb91738af61a208719f2e6f44e668e52897952e"
+    },
+    {
+      "target": "dvdroot_ps4/menu/menu_knowledge_01042.tpf.dcx",
+      "base": "dvdroot_ps4/menu/menu_knowledge_01010.tpf.dcx",
+      "patch": "001.bsdiff",
+      "base_sha256": "be59c7dc89b31e618f9d6392762e9eedb04636c8f07b228d1841eee6294d55ef",
+      "sha256": "1cbb6005f9ba7ebffef125b2891b2b205dac57703ccf167392cfb97bd6822dd1"
+    },
+    {
+      "target": "dvdroot_ps4/msg/dandk/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/dandk/item.msgbnd.dcx",
+      "patch": "002.bsdiff",
+      "base_sha256": "83560ede1953108e2021d17ef88e5ba42e798502302360568cd532df3d8b1947",
+      "sha256": "de45636efc78314fe7b34b0b5553db99792256009ab529874cab3970c01433c9"
+    },
+    {
+      "target": "dvdroot_ps4/msg/deude/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/deude/item.msgbnd.dcx",
+      "patch": "003.bsdiff",
+      "base_sha256": "af447cbf3db8800c562ccc08dba6f9a19db4d1f948d070f5dc4bfb11909f2a8e",
+      "sha256": "92a12c9f694a1235774dc82fb9c78cd3c985c9f286e163c357f9e2d8aa44d3a5"
+    },
+    {
+      "target": "dvdroot_ps4/msg/enggb/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/enggb/item.msgbnd.dcx",
+      "patch": "004.bsdiff",
+      "base_sha256": "1d88dcee87832aa5ebdbb29e1d88f609418fc0e66fb2546046b1aafc07325a27",
+      "sha256": "d073e83578336005e972326227963dca64786069267c20ac5e8b00827d40fc63"
+    },
+    {
+      "target": "dvdroot_ps4/msg/engus/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/engus/item.msgbnd.dcx",
+      "patch": "005.bsdiff",
+      "base_sha256": "ebbca6e95f82b684594264a4a235b8a6e87f735fecca3be8b04bf93b7f49621a",
+      "sha256": "4c38b0398dea5e9dbbb247a89a30c874c24372bec1da70be34537cb9535ce0d0"
+    },
+    {
+      "target": "dvdroot_ps4/msg/finfi/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/finfi/item.msgbnd.dcx",
+      "patch": "006.bsdiff",
+      "base_sha256": "8a9d125fe4bccdffbe9eb052bda33e0dfb563ad61fc12891a38c8201e450a930",
+      "sha256": "173e4a13738728c069bd934fe355ff83431157ffb9e63acbda61ee1d79b0f7e7"
+    },
+    {
+      "target": "dvdroot_ps4/msg/frafr/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/frafr/item.msgbnd.dcx",
+      "patch": "007.bsdiff",
+      "base_sha256": "90d2eaffa44a821357b1f4f46fb38a406b4170448f43cd8dae0c75af82ecf20f",
+      "sha256": "992af8c3116b0e71b2031743e5bb587c232ff8df77b4657543d173f39e30bd93"
+    },
+    {
+      "target": "dvdroot_ps4/msg/itait/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/itait/item.msgbnd.dcx",
+      "patch": "008.bsdiff",
+      "base_sha256": "8223bcb55caf0fa5910f129ec7a0f348529269bdd810b13b3c1f424ee4985765",
+      "sha256": "a69c10fc40dc3e35faa826fc4bf20aa80fa741cc22cc29d4e7bbb6c661aa8d4b"
+    },
+    {
+      "target": "dvdroot_ps4/msg/japanese/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/japanese/item.msgbnd.dcx",
+      "patch": "009.bsdiff",
+      "base_sha256": "c4cafbda7096f08ae88cefff0d949a1a3f0913a4a6fe67ad9c9445ad759d378a",
+      "sha256": "00dd0a14e3dc613f93e66a22cfc0c6e6b184508491d82ce5f6b485749232eaaa"
+    },
+    {
+      "target": "dvdroot_ps4/msg/jpnjp/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/jpnjp/item.msgbnd.dcx",
+      "patch": "010.bsdiff",
+      "base_sha256": "97fd889bf0074cbc550329d63e1a8782e6119f5f8b1809769d20c97eb3552b68",
+      "sha256": "9a89ddab9356abf016819d92922ccc4327aa1a00f7a6b158673c6f34f3126871"
+    },
+    {
+      "target": "dvdroot_ps4/msg/korkr/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/korkr/item.msgbnd.dcx",
+      "patch": "011.bsdiff",
+      "base_sha256": "328489b65bbb5ba7154c29e70b1ffb3d8a351e15a137518259398e979e9562c4",
+      "sha256": "27a705604f1e215e5350004c3737d47f4f630020f1d0a304ed481d21304e89f5"
+    },
+    {
+      "target": "dvdroot_ps4/msg/nldnl/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/nldnl/item.msgbnd.dcx",
+      "patch": "012.bsdiff",
+      "base_sha256": "d8964424a3ffda54f0cf7de3c4c0594ea19b8370c86c847c80a4ff2739ae6279",
+      "sha256": "a3e8225289a278d8d39fa59916986339da8cc74f0e3bae98ba9c790b6f1d175d"
+    },
+    {
+      "target": "dvdroot_ps4/msg/norno/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/norno/item.msgbnd.dcx",
+      "patch": "013.bsdiff",
+      "base_sha256": "44c9ed85aa7389543062c95d5777197ba68a631d8e842460cd479e12f97001f9",
+      "sha256": "6b2c58df2eedb6ff3daf23b7e90afbcb32e8a5f1dfd979a241e306689340a4f3"
+    },
+    {
+      "target": "dvdroot_ps4/msg/polpl/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/polpl/item.msgbnd.dcx",
+      "patch": "014.bsdiff",
+      "base_sha256": "bf7ecdc3aecf32f1511be96dda49ff4cd1543c123df51d0fb89930a0daf24d25",
+      "sha256": "9a24ed6d07f8413dc9a6ceed2eb84f4a7645b5d2988adbc3ef7c6cad47171902"
+    },
+    {
+      "target": "dvdroot_ps4/msg/porbr/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/porbr/item.msgbnd.dcx",
+      "patch": "015.bsdiff",
+      "base_sha256": "794a5047ee2feea71c178bbce067cf437a3798f3da6f5d350dc1ca32ffb2acf5",
+      "sha256": "de51c3f6a98a8cd686bbd1880ab0c720f48d45f9fceb37372a496d7da8ebf290"
+    },
+    {
+      "target": "dvdroot_ps4/msg/porpt/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/porpt/item.msgbnd.dcx",
+      "patch": "016.bsdiff",
+      "base_sha256": "5e77f404514f8330dbaac708be040f261d6be21c83149a7557a0c2c046a2b139",
+      "sha256": "73f0d62d5e48ee3ff20b56101469c39b5d6206d90a5500094f25ba8d0d6ba214"
+    },
+    {
+      "target": "dvdroot_ps4/msg/rusru/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/rusru/item.msgbnd.dcx",
+      "patch": "017.bsdiff",
+      "base_sha256": "1e9f78f2c148ea1cf308ebfd51ad0472413de9ac6681df6bd6f9d4bb5b0a3996",
+      "sha256": "cbc800a4f98ade290e38b8da8e26a9f35e07dc1235ceb752d3518e2f7c524bf9"
+    },
+    {
+      "target": "dvdroot_ps4/msg/spaar/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/spaar/item.msgbnd.dcx",
+      "patch": "018.bsdiff",
+      "base_sha256": "0918d5b3d55a593cab9de1fa090e19746fd38659d30baff652bcedd34b94206a",
+      "sha256": "8ecc5325c632a3e0d98d1b99b2275fd4ecf93aa455c5e6c73e2305f76ef21e02"
+    },
+    {
+      "target": "dvdroot_ps4/msg/spaes/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/spaes/item.msgbnd.dcx",
+      "patch": "019.bsdiff",
+      "base_sha256": "cc14b55848e1acd1336efc3ca53866aac6d34752bac9adc6b3d6f07c98307774",
+      "sha256": "f93cd65b2a40b2f427bb944e3f8ab9d8fd50cb41cb9c6142dd4aaf02f4f41fd5"
+    },
+    {
+      "target": "dvdroot_ps4/msg/swese/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/swese/item.msgbnd.dcx",
+      "patch": "020.bsdiff",
+      "base_sha256": "ebd1b9c18816b215062f71e103cf2a2fc1378fe5fe202f45087593aef81644d7",
+      "sha256": "264c1a17dcb02e7d5a154954a891a6b470bd3be07f1ddf198cff8480ef3f6efc"
+    },
+    {
+      "target": "dvdroot_ps4/msg/turtr/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/turtr/item.msgbnd.dcx",
+      "patch": "021.bsdiff",
+      "base_sha256": "b792dff0ad4d60876d8e5b3dbbbe3a970d1be69e1727acf3f4366a4f6375119d",
+      "sha256": "17a25ad7fdd2c13cf7b6e5c3269ab44ba97cb287433b8ae5b1d88beb73cd2c89"
+    },
+    {
+      "target": "dvdroot_ps4/msg/zhocn/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/zhocn/item.msgbnd.dcx",
+      "patch": "022.bsdiff",
+      "base_sha256": "5f9e3d2e75d8b110731dcb299b666d43b028058fa80eeea4ebaac4f989267c99",
+      "sha256": "b21ff17e1704a76f068c79c03d0bd18d433c201af75173758e2445edb890c2e4"
+    },
+    {
+      "target": "dvdroot_ps4/msg/zhotw/item.msgbnd.dcx",
+      "base": "dvdroot_ps4/msg/zhotw/item.msgbnd.dcx",
+      "patch": "023.bsdiff",
+      "base_sha256": "e81b182f9417548018f3738035560fecaf7b13ebfe7c2fe6a9c2ce46d4f5821e",
+      "sha256": "b2d8c90478ce6bfea4bb1d102ed106eeafd362ad3adb149300f3dd06b448faca"
+    },
+    {
+      "target": "dvdroot_ps4/param/gameparam/gameparam.parambnd.dcx",
+      "base": "dvdroot_ps4/param/gameparam/gameparam.parambnd.dcx",
+      "patch": "024.bsdiff",
+      "base_sha256": "b7064a868303d32b97a31ccaba71faa823576ddfd51f5a5320a135ddfb28db91",
+      "sha256": "50091b51f32299793c3cdd22daae9d547cd5315ab6867f262e9a85e05c3c879c"
+    },
+    {
+      "target": "dvdroot_ps4/parts/wp_a_9800.partsbnd.dcx",
+      "base": "dvdroot_ps4/parts/wp_a_1030.partsbnd.dcx",
+      "patch": "025.bsdiff",
+      "base_sha256": "483b16e9aeb31969a78896f8f9a834ff570d759151b095b2da1d688de0b50f02",
+      "sha256": "0487f27bac4dedcb79c1545ec20964ca8c1d353e44c52d0508225425f3a86dac"
+    },
+    {
+      "target": "dvdroot_ps4/parts/wp_a_9800_l.partsbnd.dcx",
+      "base": "dvdroot_ps4/parts/wp_a_1030_l.partsbnd.dcx",
+      "patch": "026.bsdiff",
+      "base_sha256": "8689a79d7327dbd5071acd6f751757662787acae732c02b027ee1697a538ebd0",
+      "sha256": "c96c5484b53387f9341aac1fd859b06a86619871300cdc463cfd5319fa258783"
+    }
+  ]
+}

@@ -1,10 +1,37 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <limits>
 #include "gpu/shadps4/video_core/renderer_vulkan/ui_composition.h"
 
 int main() {
     using namespace Vulkan::UiComposition;
+    // A subpixel uncovered edge must move past the first/last pixel centres at
+    // every output size, for either Vulkan Y direction. Alpha is still provided
+    // by the original fade shader (no second overlay or repeated blending).
+    for (const auto size : {std::pair{1280,720}, {1920,1080}, {2560,1440},
+                            {3440,1440}, {3840,2160}, {5120,1440}}) {
+        for (bool flipped : {false, true}) {
+            float x = 0, y = flipped ? float(size.second) : 0;
+            float w = float(size.first), h = flipped ? -float(size.second) : float(size.second);
+            assert(ExpandFadeViewport(0x17e76c08, x, y, w, h));
+            const float top = std::min(y, y + h), bottom = std::max(y, y + h);
+            // Model an inward one-pixel raster edge at each side.
+            assert(x + 1 < 0.5f && x + w - 1 > size.first - 0.5f);
+            assert(top + 1 < 0.5f && bottom - 1 > size.second - 0.5f);
+        }
+    }
+    for (uint64_t hash : {uint64_t{0x34e8a281}, uint64_t{0x0b0acf50}}) {
+        float x=0, y=0, w=1920, h=1080;
+        assert(!ExpandFadeViewport(hash,x,y,w,h));
+        assert(x==0 && y==0 && w==1920 && h==1080);
+    }
+    for (float offset : {20.0f, std::numeric_limits<float>::quiet_NaN()}) {
+        float x=offset, y=0, w=1920, h=1080;
+        assert(!ExpandFadeViewport(0x17e76c08,x,y,w,h));
+        assert(w==1920 && h==1080);
+    }
     // Title/loading menus have no depth/camera. UI must still go to the native target.
     assert(Choose(true, true, false, true) == Background::Copy);
     assert(Choose(true, true, false, false) == Background::Copy);

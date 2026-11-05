@@ -49,6 +49,25 @@ constexpr bool MovieShader(uint64_t hash) {
            hash == 0x44072322 || hash == 0xa334a845;
 }
 
+// The native solid fade has a very small edge allowance in guest coordinates.
+// Keep a physical-pixel allowance after viewport scaling, including a flipped Y
+// viewport. Only expand a full-screen fade; text, panels and inset views stay put.
+inline bool ExpandFadeViewport(uint64_t hash, float& x, float& y, float& width,
+                               float& height) {
+    if (hash != 0x17e76c08 || !std::isfinite(x) || !std::isfinite(y) ||
+        !std::isfinite(width) || !std::isfinite(height) || width < 256 ||
+        std::abs(height) < 144 || std::abs(x) > 2 ||
+        std::abs(height < 0 ? y + height : y) > 2) {
+        return false;
+    }
+    constexpr float margin = 2.0f;
+    x -= margin;
+    width += 2 * margin;
+    y += height < 0 ? margin : -margin;
+    height += height < 0 ? -2 * margin : 2 * margin;
+    return true;
+}
+
 inline std::array<float, 2> Scale(uint32_t guest_width, uint32_t guest_height,
                                 uint32_t output_width, uint32_t output_height,
                                 bool native_coordinates) {

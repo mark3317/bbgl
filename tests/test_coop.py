@@ -43,15 +43,6 @@ class CoopTests(unittest.TestCase):
                          copy / 'savedata' / '1' / 'CUSA00207' / 'SPRJ0005')
         self.assertTrue((Path(env['BBSC_SAVE_DIR']) / 'userdata0000').is_file())
 
-    def test_firewall_rules_stay_on_tailscale_and_the_home_network(self):
-        script = coop._firewall_script(r'C:\Games\bbport\bin\bb-probe.exe')
-        self.assertIn("@('100.64.0.0/10','LocalSubnet')", script)
-        self.assertNotIn('Any', script)
-        self.assertEqual(script.count('New-NetFirewallRule'), len(coop.FIREWALL_PORTS) + 1)
-
-    def test_firewall_script_quotes_an_apostrophe_in_the_path(self):
-        script = coop._firewall_script(r"C:\Users\O'Neil\bbport\bin\bb-probe.exe")
-        self.assertIn(r"-Program 'C:\Users\O''Neil\bbport\bin\bb-probe.exe'", script)
 
     def test_tailscale_addresses(self):
         self.assertTrue(coop.is_tailscale('100.65.141.9'))

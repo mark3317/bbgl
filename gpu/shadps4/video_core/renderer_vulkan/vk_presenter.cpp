@@ -174,10 +174,13 @@ Presenter::Presenter(Frontend::WindowSDL& window_, AmdGpu::Liverpool* liverpool_
     // No VideoOut thread exists yet: startup frames use the normal Vulkan presenter
     // synchronously, so ImGui and its command scheduler retain a single owner.
     rasterizer->WarmUp([this](u32 done, u32 total) {
+        shader_startup_cover = true;
         BbOverlay::SetShaderProgress(int(u64(done) * 100 / total));
         Present(PrepareBlankFrame(true), false, false);
     });
-    BbOverlay::SetShaderProgress(-1);
+    if (shader_startup_cover) {
+        BbOverlay::SetShaderProgress(100);
+    }
 }
 
 Presenter::~Presenter() {
@@ -786,6 +789,16 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool is_game_frame)
     // time before this frame). A frame shown again has none.
     u32 generated = is_reusing_frame ? 0 : frame->generated_count;
     const auto start = std::chrono::steady_clock::now();
+    // Keep the preparation screen over the game's initial grey frames. Start the
+    // grace period with actual game output, not while CPU startup is still running.
+    if (shader_startup_cover && is_game_frame && !is_reusing_frame) {
+        if (shader_startup_cover_until == std::chrono::steady_clock::time_point{}) {
+            shader_startup_cover_until = start + std::chrono::milliseconds(1500);
+        } else if (start >= shader_startup_cover_until) {
+            shader_startup_cover = false;
+            BbOverlay::SetShaderProgress(-1);
+        }
+    }
     if (!is_reusing_frame && is_game_frame) {
         const double ms =
             std::chrono::duration<double, std::milli>(start - last_game_present).count();

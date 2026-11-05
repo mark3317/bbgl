@@ -169,6 +169,8 @@ private:
     /// The game's picture before its UI, through the same passes as the frame.
     Frame hudless_frame{};
     std::chrono::steady_clock::time_point last_game_present{};
+    bool shader_startup_cover{};
+    std::chrono::steady_clock::time_point shader_startup_cover_until{};
     std::atomic<double> game_frame_ms{16.7}; ///< written by the present thread
     /// Generated frames per game frame the display can show (UpdateFrameGenLimit).
     std::atomic<u32> frame_gen_limit{0};

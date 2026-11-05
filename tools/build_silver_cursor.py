@@ -22,7 +22,7 @@ def main():
     for factor in (1, 2):
         size = (32 * factor, 32 * factor)
         art = source.copy()
-        art.thumbnail((22 * factor, 28 * factor), Image.Resampling.LANCZOS)
+        art.thumbnail((16 * factor, 20 * factor), Image.Resampling.LANCZOS)
         canvas = Image.new("RGBA", size)
         canvas.paste(art, (factor, factor))
         if factor == 1:
@@ -37,7 +37,7 @@ def main():
         parts.append("};\n")
     parts.append("} // namespace BbSilverCursor\n")
     TARGET.write_text("".join(parts), encoding="utf-8")
-    print(f"Packed classic arrow, hotspot ({tip_x},{tip_y}), 32x32 + 64x64 (visible height <=28)")
+    print(f"Packed classic arrow, hotspot ({tip_x},{tip_y}), 32x32 + 64x64 (visible height <=20)")
 
 
 if __name__ == "__main__":

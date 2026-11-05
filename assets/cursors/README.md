@@ -1,5 +1,16 @@
 # Classic minimalist arrow (variant 1, current)
 
+5 November 2026: applied the user-approved warm-white ImageGen preview to
+`classic-arrow.png` and regenerated the embedded 32x32 / 64x64 images.
+The requested fill reference is the in-game overlay text, RGB(236,231,223)
+(`#ECE7DF`). Current visible height remains at most 20px, hotspot (1,2).
+The SDL cursor smoke passed; a game build, deployment and visual check are pending.
+
+Recolor prompt (built-in ImageGen): preserve the existing classic upper-left
+arrow silhouette, proportions and thin dark outline; change only the interior
+to uniform warm white #ECE7DF, with transparent background, no gradient,
+texture, glow, shadow or bevel. The generated preview was approved before use.
+
 The user selected variant 1 of the minimalist sheet and requested approximately
 the default Windows cursor size. `classic-arrow.png` is the new ImageGen master;
 `classic-arrow-32x32.png` is the normal-size preview. The converter packs a 32x32

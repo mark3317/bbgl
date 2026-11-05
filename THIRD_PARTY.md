@@ -9,6 +9,7 @@ Fork maintenance, co-op changes, launcher integration and releases: **mark3317**
 | shadNet | [Wozzardman/shadnet-p2p](https://github.com/Wozzardman/shadnet-p2p) | GPL-2.0-or-later; pinned tools and source references in packaging |
 | Xbox button prompts | [Dommo](https://www.nexusmods.com/bloodborne/mods/30) | Distributed as a texture delta; original game required |
 | PCBButtons | [JinkiJinn](https://www.nexusmods.com/bloodborne/mods/460) | Distributed as a texture delta; original game required |
+| Diamond Sword texture | Mojang / Microsoft; [bedrock-samples](https://github.com/Mojang/bedrock-samples/blob/main/resource_pack/textures/items/diamond_sword.png) | Optional sword, off by default; packaged as asset deltas, original game required. Mesh and integration: mark3317 |
 | Game server formats | fhody125 / NoDreamForHunter | MIT notice in the release licences |
 
 Additional runtime licences and source notices are shipped in `licenses/`. This project does not claim authorship of upstream work. Game files, Sony / FromSoftware assets and player data are not included as playable game archives.

@@ -10,6 +10,10 @@ TextField {
     font.family: Theme.sans
     font.pixelSize: 13
     leftPadding: 12
+    rightPadding: 12
+    topPadding: 8
+    bottomPadding: 8
+    verticalAlignment: TextInput.AlignVCenter
     hoverEnabled: true
     background: Rectangle {
         radius: Theme.radius

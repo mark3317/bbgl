@@ -76,11 +76,13 @@ ldd "$dest/bin/bb-probe.exe" "$dest/bin/bb-gpu-capabilities.exe" |
     done
 cp -r scripts patches "$dest/"
 "$venv/Scripts/python.exe" packaging/windows/bundle-prompts.py "$dest"
+"$venv/Scripts/python.exe" packaging/windows/bundle-diamond-sword.py "$dest"
 # Legacy CPU (Intel 3rd generation and older): the translation plan scripts/cpu_compat.py applies.
 mkdir -p "$dest/tools" && cp tools/legacy-cpu-plan.json "$dest/tools/"
-cp run.py LICENSE README.md README.ru.md THIRD_PARTY.md packaging/windows/README-Windows.txt "$dest/"
+cp run.py LICENSE README.md README.ru.md CHANGELOG.md THIRD_PARTY.md packaging/windows/README-Windows.txt "$dest/"
 mkdir -p "$dest/docs"
 cp -r docs/screenshots "$dest/docs/"
+cp docs/release-1.3.0.md "$dest/docs/"
 if [[ -d fsr4_shaders ]]; then cp -r fsr4_shaders "$dest/"; fi
 # Shader pre-build catalog (scripts/shader_catalog.py): records only, no game code or SPIR-V.
 if [[ -d shader_catalog ]]; then cp -r shader_catalog "$dest/"; fi
@@ -111,7 +113,7 @@ find "$dest" -name __pycache__ -prune -exec rm -r {} +
 if [[ ${BB_FAST_DEPLOY:-0} != 1 ]]; then
 "$venv/Scripts/python.exe" packaging/windows/verify-release.py "$dest"
 # Nothing from the game itself may ship: its archives (.dcx and what they hold) and executables.
-game_files=$(find "$dest" -type f ! -path "$dest/mods/*/menu/common.tpf.dcx" \( -iname '*.dcx' -o -iname '*.tpf' -o -iname '*bnd' -o -iname '*.bdt' \
+game_files=$(find "$dest" -type f ! -path "$dest/launcher/assets/button-prompts/*/menu/common.tpf.dcx" \( -iname '*.dcx' -o -iname '*.tpf' -o -iname '*bnd' -o -iname '*.bdt' \
     -o -iname '*.bhd' -o -iname '*.prx' -o -iname '*.sprx' -o -iname 'eboot.bin' -o -iname 'param.sfo' \))
 if [[ -n $game_files ]]; then
     echo "Game files in the package (players supply their own):" >&2

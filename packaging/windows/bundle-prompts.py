@@ -1,4 +1,4 @@
-"""Build icon mods before packaging, so switching them only changes selection."""
+"""Package ready-made button images as built-in launcher resources."""
 import hashlib
 import json
 import os
@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from bundled_prompts import install
 
-destination = Path(sys.argv[1]) / 'mods'
+destination = Path(sys.argv[1]) / 'launcher/assets/button-prompts'
 cache = ROOT / 'out/vendor/ready-prompts'
 for choice in ('Xbox', 'Keyboard'):
     manifest = json.loads((ROOT / 'bundled-mods/prompts/manifest.json').read_text(encoding='utf-8'))

@@ -161,14 +161,6 @@
 - Сценарии: `test_bbsc_is_told_where_the_saves_are`, `test_firewall_rules_stay_on_tailscale_and_the_home_network`, `test_firewall_script_quotes_an_apostrophe_in_the_path`, `test_tailscale_addresses`, `test_tailscale_is_found_on_path_outside_program_files`, `test_tailscale_found_in_program_files_when_not_on_path`, `test_tailscale_address_from_the_route_when_the_cli_is_missing`.
 - Ограничения: сейвы/восстановление/durable state: выбирать методы; не обязательный полный прогон; mock/stub не доказывает игровую интеграцию; 6 PASS; исторический save contract сохранён, explicit skip.
 
-## `tests/test_coop_firewall_action.py`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: Launching never elevates; firewall setup is an explicit user action.
-- Запуск: `unittest discover -s tests -p test_coop_firewall_action.py`; assertion/check sites: 3.
-- Сценарии: `test_party_launch_does_not_check_or_configure_firewall`, `test_only_explicit_action_configures_firewall`, `test_cannot_configure_while_running_or_busy`.
-- Ограничения: mock/stub не доказывает игровую интеграцию; Qt venv/PySide6.
-
 ## `tests/test_coop_latency_diagnostics.py`
 
 - Решение: Сохранить; статический обзор.

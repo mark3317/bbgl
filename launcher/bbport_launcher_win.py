@@ -44,8 +44,8 @@ PATCH_VERSION = '01.09'
 MAX_LOG_LINES = 6000
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 # This fork's build; the release tag includes this version.
-VERSION = '1.1.0'
-CURRENT_RELEASE_TAG = 'v1.1.0'
+VERSION = '1.3.0'
+CURRENT_RELEASE_TAG = 'v1.3.0'
 HERO_ART = PORT_DIR / 'launcher' / 'art' / 'hero.png'
 STRIP_ART = PORT_DIR / 'launcher' / 'art' / 'strip.png'
 RELEASES_API = 'https://api.github.com/repos/mark3317/bbgl/releases/latest'
@@ -272,13 +272,13 @@ APP_DEFAULTS = {'ui_language': '', 'test_profile_dir': '', 'game_dir': str(PORT_
                 'player_name': '', 'fullscreen': True, 'fullscreen_mode': 'borderless', 'display': '',
                 'hdr': False, 'present_mode': 'Mailbox',
                 'fps_mode': '120', 'frame_cap': '', 'draw_pipe': '', 'readbacks': '',
-                'frames_ahead': '', 'vram_budget_mb': '', 'diagnostic_logs': False, 'frame_stats': False, 'gpu_profile': False,
+                'frames_ahead': '', 'vram_budget_mb': '', 'diagnostic_logs': False, 'gpu_logs': False, 'frame_stats': False, 'gpu_profile': False,
                 'vk_validation': False, 'extra_env': '',
                 'check_updates': True, 'online': False, 'online_server': 'srv.shadps4.net:31313',
                 'online_webapi': '', 'online_npid': '', 'online_password': '', 'online_upnp': True,
                 'coop_name': '', 'coop_password': '', 'coop_invite': '', 'coop_emulator': 'port',
-                'play_mode': 'offline', 'coop_role': 'client', 'graphics_preset': 'balanced',
-                'coop_connection': 'auto', 'coop_host_address': '', 'coop_custom_address': '', 'coop_peer_addresses': '',
+                'play_mode': 'offline', 'coop_role': 'client', 'graphics_preset': 'high',
+                'coop_connection': 'lan', 'coop_host_address': '', 'coop_custom_address': '', 'coop_peer_addresses': '',
                 # First-run setup (bbport_startup): setupVersion is the wizard version last
                 # finished or skipped.
                 'setup_name_edited': False, 'setup_auto_name': '', 'setupCompleted': False, 'setupSkipped': False, 'setupVersion': 1,
@@ -401,30 +401,24 @@ VRAM_BUDGETS = [('', ('Automatic (recommended)', 'Автоматически (р
 GRAPHICS_PRESETS = {
     'low': {'upscaler': 'off', 'preset': '3', 'model_lod': '1', 'effect_ssao': '0', 'effect_dynamic_shadows': '0',
             'effect_ssr': '0', 'fps_mode': '60'},
-    'balanced': {'upscaler': 'off', 'preset': '2', 'model_lod': '0', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
-                 'effect_ssr': '0', 'fps_mode': '120'},
     'high': {'upscaler': 'off', 'preset': '1', 'model_lod': '0', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
              'effect_ssr': '0', 'fps_mode': '120'},
     'ultra': {'upscaler': 'off', 'preset': '0', 'model_lod': '-2', 'effect_ssao': '1', 'effect_dynamic_shadows': '1',
               'effect_ssr': '1', 'fps_mode': '120'},
 }
 GRAPHICS_PRESET_INFO = {
-    'low': ('Low', 'Performance upscaling (×2), lower model detail, no SSAO or dynamic-light shadows, 60 FPS. '
-                   'For integrated graphics, the Steam Deck and cards with under 4 GB.'),
-    'balanced': ('Balanced', "Balanced upscaling (×1.7) and the game's own detail, 120 FPS. "
-                             'The default; for cards with 4-8 GB.'),
-    'high': ('High', "Quality upscaling (×1.5) and the game's own detail, 120 FPS. "
-                     'For cards with 8-12 GB.'),
-    'ultra': ('Ultra', 'Native resolution, highest model detail and screen-space reflections (not in the '
-                       'original game), 120 FPS. For cards with 12 GB or more.'),
-    'custom': ('Custom', 'Your own combination. Choosing a preset changes only upscaling, model detail, SSAO, '
-                         'dynamic-light shadows, reflections and the frame rate.'),
+    'low': ('Performance', 'Reduced effects, 60 FPS.'),
+    'high': ('Quality', 'High quality, 120 FPS.'),
+    'ultra': ('Maximum', 'Maximum detail and reflections, 120 FPS.'),
+    'custom': ('Custom settings', 'Custom graphics settings.'),
 }
 
 
 def graphics_preset_of(ini, app):
     """Quality preset identity ignores independent upscaling/frame-generation choices."""
-    preferred = app.get('graphics_preset', 'balanced')
+    preferred = app.get('graphics_preset', 'high')
+    if preferred == 'balanced':  # Legacy name; quality values are identical to high.
+        preferred = 'high'
     if preferred == 'custom':
         return 'custom'
     names = ([preferred] if preferred in GRAPHICS_PRESETS else []) + [name for name in GRAPHICS_PRESETS if name != preferred]
@@ -454,7 +448,7 @@ def recommended_graphics_preset(gpu):
     memory = int(match.group(2))
     if match.group(1) != 'discrete' or memory < 3500:
         return 'low'
-    return 'balanced' if memory < 7500 else 'high' if memory < 11500 else 'ultra'
+    return 'high' if memory < 11500 else 'ultra'
 UI_LANGUAGES = bbport_lang.LANGUAGE_NAMES
 
 FSR4_COMMIT = 'ae8d628fae208813172446d1e49ed94150b04658'
@@ -557,11 +551,8 @@ def play_mode(s):
     return mode if mode in PLAY_MODES else 'offline'
 
 
-# Button prompt packs. Both are edits of the game's own menu/common.tpf.dcx, so the port does not
-# ship them: the player downloads one from Nexus Mods and the launcher adds it to the mods folder
-# (install_prompt_pack). Keyboard is PCBButtons by JinkiJinn; its images show shadPS4's PC layout,
-# so choosing it also binds those keys (bbport.ini key_*); the engine names keys in text
-# (src/key_prompts.c) when the bindings differ from the images.
+# Button images are built-in resources under launcher/assets/button-prompts.
+# Legacy pack names are retained for selection migration and import compatibility.
 KEYBOARD_PROMPTS = 'Keyboard Prompts (PCBButtons)'
 KEYBOARD_PROMPTS_URL = 'https://www.nexusmods.com/bloodborne/mods/460'
 XBOX_PROMPTS = 'Xbox Prompts (Dommo)'
@@ -678,6 +669,7 @@ def game_environment(s):
         if s[key]:
             env[name] = s[key]
     env.setdefault('BB_DIAGNOSTICS', '1' if s.get('diagnostic_logs', False) else '0')
+    env.setdefault('BB_GPU_LOG', 'debug' if s.get('gpu_logs', False) else 'error')
     for key, name in (('frame_stats', 'BB_FRAME_STATS'), ('gpu_profile', 'BB_GPU_PROFILE'),
                       ('vk_validation', 'BB_VK_VALIDATION')):
         if s[key]:
@@ -686,6 +678,14 @@ def game_environment(s):
         if '=' in item:
             key, value = item.split('=', 1)
             env[key] = value
+    if env['BB_DIAGNOSTICS'] == '1':
+        # Keep the co-op timeline. High-volume traces require an explicit opt-in.
+        for name, value in (
+            ('BB_GPU_LOG', 'error'), ('BBSC_LOG', 'warning'),
+            ('BB_NET_DIAGNOSTICS', '0'), ('BB_PARTY_DIAGNOSTICS', '0'),
+            ('SHADPS4_BBSC_PERF', '0'), ('BB_PERF_CAPTURE', '0'),
+        ):
+            env.setdefault(name, value)
     # Co-op builds its own environment pointed at the selected host.
     env['BB_ONLINE'] = '0'
     env.pop('BB_NET_BACKEND', None)
@@ -1693,12 +1693,15 @@ class Launcher:
                    'Насколько точно данные, записанные GPU, возвращаются игре.'))
         self.section(f, _('Diagnostics', 'Для разработчика'))
         self.check(f, 'diagnostic_logs', 'app', _('Detailed diagnostic logs (may reduce performance)', 'Подробные логи диагностики (могут снижать производительность)'))
+        self.check(f, 'gpu_logs', 'app', _('Detailed GPU logs', 'Подробные логи GPU'),
+                   _('Writes a large amount of data: hundreds of megabytes or more per session. May reduce performance. Enable only to diagnose graphics problems.',
+                     'Записывает много данных: сотни мегабайт и больше за сеанс. Может снижать производительность. Включайте только для диагностики графики.'))
         self.check(f, 'frame_stats', 'app', _('Frame statistics in the log (every 5 s)', 'Статистика кадров в журнале (раз в 5 с)'))
         self.check(f, 'gpu_profile', 'app', _('GPU time per pass in the log', 'Профиль GPU в журнале'))
         self.check(f, 'vk_validation', 'app', _('Vulkan validation layers (needs the Vulkan SDK; much slower)',
                                                 'Слои валидации Vulkan (нужен Vulkan SDK; сильно замедляет)'))
         self.row(f, _('Extra variables', 'Доп. переменные'), ttk.Entry(f, textvariable=self.var('extra_env', 'app'), width=58),
-                 _('NAME=value pairs separated by spaces (README lists them).', 'Пары ИМЯ=значение через пробел (список в README).'))
+                 _('Separate NAME=value pairs with spaces.', 'Разделяйте пары ИМЯ=значение пробелами.'))
 
     def build_log(self):
         tk, ttk = self.tk, self.ttk
@@ -1868,7 +1871,8 @@ class Launcher:
         for index, name in enumerate(self.mod_order):
             line = ttk.Frame(self.mods_frame)
             line.pack(fill='x', pady=1)
-            var = tk.BooleanVar(value=old.get(name, name not in profile.get('disabled', [])))
+            from mods import disabled_mods
+            var = tk.BooleanVar(value=old.get(name, name not in disabled_mods(profile)))
             var.trace_add('write', lambda *_a: setattr(self,'mod_dirty',True))
             self.mod_vars[name] = var
             ttk.Button(line, text='▲', width=3, command=lambda i=index: self.move_mod(i, -1)).pack(side='left')
@@ -1988,7 +1992,7 @@ class Launcher:
                                      'Подготовка игры; она откроется в своём окне…'), fg=GOLD)
 
     def read_output(self, process):
-        """Helper thread: the game's output to the Log page and to <saves folder>/last_run.log."""
+        """Game output to the Log page and a timestamped file in the saves folder."""
         log = None
         try:
             log = open_run_log(self.app.get('user_dir') or DATA_DIR / 'user')
@@ -2284,22 +2288,18 @@ class GameJob:
             self.handle = None
 
 
-RUN_LOGS_KEPT = 3
-
-
 def open_run_log(log_dir):
-    """<saves folder>/last_run.log for a new run. The previous runs' logs move to
-    last_run.1.log, last_run.2.log ... (RUN_LOGS_KEPT in all): starting again after a crash
-    no longer loses the log of the run that crashed."""
+    """A separate local launch-time log; existing runs are never overwritten."""
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
-    names = ['last_run.log'] + [f'last_run.{n}.log' for n in range(1, RUN_LOGS_KEPT)]
-    for older, newer in zip(reversed(names[1:]), reversed(names[:-1])):
+    name = time.strftime('run_%Y%m%d_%H%M%S')
+    sequence = 1
+    while True:
+        suffix = '' if sequence == 1 else f'_{sequence}'
         try:
-            (log_dir / newer).replace(log_dir / older)
-        except OSError:
-            pass
-    return open(log_dir / 'last_run.log', 'w', encoding='utf-8', buffering=1)
+            return open(log_dir / f'{name}{suffix}.log', 'x', encoding='utf-8', buffering=1)
+        except FileExistsError:
+            sequence += 1
 
 
 

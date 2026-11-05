@@ -3193,7 +3193,7 @@ void Rasterizer::UnmapMemory(VAddr addr, u64 size) {
 }
 
 void Rasterizer::UpdateDynamicState(const GraphicsPipeline* pipeline, const bool is_indexed) const {
-    UpdateViewportScissorState();
+    UpdateViewportScissorState(pipeline->GetStage(Shader::SwStage::Vertex).pgm_hash);
     UpdateDepthStencilState();
     UpdatePrimitiveState(is_indexed);
     UpdateRasterizationState();
@@ -3206,7 +3206,7 @@ void Rasterizer::UpdateDynamicState(const GraphicsPipeline* pipeline, const bool
                              [&](auto&& command) { scheduler.Record(std::move(command)); });
 }
 
-void Rasterizer::UpdateViewportScissorState() const {
+void Rasterizer::UpdateViewportScissorState(u64 vs_hash) const {
     const auto& regs = Regs();
 
     const auto combined_scissor_value_tl = [](s16 scr, s16 win, s16 gen, s16 win_offset) {
@@ -3297,6 +3297,11 @@ void Rasterizer::UpdateViewportScissorState() const {
             viewport.height = yscale * 2.0f * target_scale[1];
         }
 
+        if (!regs.IsClipDisabled()) {
+            UiComposition::ExpandFadeViewport(
+                vs_hash,
+                viewport.x, viewport.y, viewport.width, viewport.height);
+        }
         viewports.push_back(viewport);
 
         auto vp_scsr = scsr;

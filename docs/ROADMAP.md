@@ -1,7 +1,8 @@
 > Independent travel, 05.11.2026: development started on `codex/independent-world-travel`.
-> The first gate adds room/map presence and pure ownership/routing/guest-altar rules;
-> free travel is not enabled yet. Guests will see host chalices while visiting the
-> host world, with personal altars preserved at home.
+> Native integration now includes per-map enemy authority, scoped state transfer,
+> independently requested lamp loads and the host's altar view for visitors.
+> Source73d84d3: targeted fixtures PASS, native build/connection test in progress.
+> Game confirmation remains separate; personal altars are retained at home.
 > [Implementation status](../mods-src/BBSC/docs/fixes/2026-11-05-independent-world-travel.md).
 
 > Подтверждение пользователя 05.11.2026: основной сюжет полностью пройден и проверен в кооперативе, переход в NG+ работает. Чаши работают совместно, штатная случайная генерация корневых чаш возвращена. Прежние общие статусы финала ниже исторические; редкие сценарии наград/обрядов/составов группы учитываются отдельно.

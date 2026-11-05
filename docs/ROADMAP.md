@@ -1,4 +1,8 @@
 > Independent travel, 05.11.2026: development started on `codex/independent-world-travel`.
+> Latest game result18:15: activation confirmed, guest lamps failed and both
+> profiles crashed in new takeover Warp. Fixd6bd1f6 corrects native ESD context
+> and vector alignment; targeted tests/build/delta PASS, staging updated18:24.
+> No new game launch; gameplay recheck remains OPEN. Earlier statuses below historical.
 > Native integration now includes per-map enemy authority, scoped state transfer,
 > independently requested lamp loads and the host's altar view for visitors.
 > Source73d84d3: targeted fixtures, DLL build/delta and isolated two-profile

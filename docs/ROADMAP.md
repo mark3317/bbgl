@@ -1,3 +1,10 @@
+> Native travel rework05.11: source420c200 restores original local EMEVD
+> animations/waits/stage requests and native FirstSync admission before map
+> events. Removed direct summon-coordinate loading, manual respawn writes and
+> late-arrival enemy warps. Owner residency survives movies; m29 state is scoped
+> by mounted dungeon/ritual. Targeted native/event/asset checks PASS; previous
+> gameplay failures remain OPEN until the user tests the new build. See HANDOFF.
+
 > Independent travel follow-up05.11: source5a1e4cd adds complete owner-state
 > seeding for late enemy arrivals, native historical death without rewards,
 > native all-actor hide/enable and completed-load presence fencing. Travel

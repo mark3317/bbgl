@@ -1,3 +1,10 @@
+> Independent travel update05.11: source f8e7bf6 fixes host lamp view through
+> existing shared progress, resolves device commands by native executor, and
+> replaces destructive player disabling with per-peer native binding/insertion
+> lifecycle. Targeted fixtures and MOD syntax PASS; new gameplay confirmation
+> remains OPEN (guest lists/altars, reunion models, host prompt flicker).
+> Build/deploy/start recorded in BBSC HANDOFF and ignored run evidence.
+
 > Independent travel, 05.11.2026: development started on `codex/independent-world-travel`.
 > 18:25–18:36 game check: no-follow separation confirmed, no native crash, both
 > exits0. Guest Dream devices still refused; host prompt flicker reported.

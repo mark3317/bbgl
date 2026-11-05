@@ -1,3 +1,10 @@
+> Independent travel follow-up05.11: source5a1e4cd adds complete owner-state
+> seeding for late enemy arrivals, native historical death without rewards,
+> native all-actor hide/enable and completed-load presence fencing. Travel
+> interception precedes quest journaling and handles host/guest native requests.
+> Targeted fixtures/ELF/trampoline checks PASS; all reported game failures remain
+> OPEN until the next user run. Detailed evidence/status: BBSC HANDOFF.
+
 > Independent travel update05.11: source f8e7bf6 fixes host lamp view through
 > existing shared progress, resolves device commands by native executor, and
 > replaces destructive player disabling with per-peer native binding/insertion

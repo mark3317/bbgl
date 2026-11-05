@@ -1,3 +1,9 @@
+> Independent travel, 05.11.2026: development started on `codex/independent-world-travel`.
+> The first gate adds room/map presence and pure ownership/routing/guest-altar rules;
+> free travel is not enabled yet. Guests will see host chalices while visiting the
+> host world, with personal altars preserved at home.
+> [Implementation status](../mods-src/BBSC/docs/fixes/2026-11-05-independent-world-travel.md).
+
 > Подтверждение пользователя 05.11.2026: основной сюжет полностью пройден и проверен в кооперативе, переход в NG+ работает. Чаши работают совместно, штатная случайная генерация корневых чаш возвращена. Прежние общие статусы финала ниже исторические; редкие сценарии наград/обрядов/составов группы учитываются отдельно.
 
 > Подготовка BBGL 1.2.0 (05.11.2026): [описание релиза](release-1.2.0.md). Текущий путь — LAN/VPN P2P с поздним подключением; отдельный сервер не нужен. Исторические версии/пути ниже не являются текущими инструкциями. Статусы сборки и игровых проверок см. в [отчёте подготовки](fixes/2026-11-05-release-1.2.0-preparation.md).

@@ -1,4 +1,8 @@
 > Independent travel, 05.11.2026: development started on `codex/independent-world-travel`.
+> 18:25–18:36 game check: no-follow separation confirmed, no native crash, both
+> exits0. Guest Dream devices still refused; host prompt flicker reported.
+> Fixa904d93 admits native device actors and removes competing owner/Dream/object
+> state application; targeted fixtures PASS, rebuild/startup in progress.
 > Latest game result18:15: activation confirmed, guest lamps failed and both
 > profiles crashed in new takeover Warp. Fixd6bd1f6 corrects native ESD context
 > and vector alignment; targeted tests/build/delta PASS, staging updated18:24.

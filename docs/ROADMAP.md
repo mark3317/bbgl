@@ -1,3 +1,89 @@
+> Отдельная рассылка лифтов06.11 удалена по просьбе пользователя.
+> Штатные события channel31 и обычные снимки переносят unlock flags;
+> original1.09/native trampolines/production capture+apply/bootstrap PASS.
+> Игровой контроль OPEN, DLL этой ревизии не собиралась/не устанавливалась.
+> См. BBSC docs/fixes/2026-11-06-shared-elevator-unlocks.md.
+
+> Повтор06.11,05:25–05:26: установленная правка границ не решила исчезновение.
+> Логи показали удаление/recreate peer при каждом пешем переходе без новой
+> загрузки; native send также отбрасывал player records между картами. Новая
+> правка сохраняет actor и пропускает только player packets; NPC изоляция
+> сохранена. Целевые production/native/negative и MOD syntax PASS. SOURCE ONLY,
+> игры работают; игровой контроль OPEN. BBSC fixes/2026-11-06-player-map-borders.md.
+
+> Видимость игроков06.11: убрано явное скрытие между14 прямыми соседними
+> картами (включая Соборный округ/Лес); состояние локаций и NPC изолировано
+> по прежним правилам. Production/native renderer/MSB/negative control и MOD
+> syntax PASS. Только исходники; DLL не собрана/не установлена, игры работают.
+> Игровой контроль OPEN. См. BBSC docs/fixes/2026-11-06-player-map-borders.md.
+
+> Общая анимация перемещений06.11: ранний native запрос теперь покрывает
+> надгробья, первый выбор алтаря и возвраты через лампы; второй этап алтаря
+> не повторяет анимацию. Production/negative-control/original ABI и MOD syntax
+> PASS. Только исходники, DLL не установлена (П1/П2 работают); игровой контроль
+> OPEN. См. BBSC docs/fixes/2026-11-06-lamp-immediate-animation.md, последний раздел.
+
+> Обновление06.11,02:54 МСК: исправление модели личной чаши после удаления
+> чаши хоста на том же алтаре собрано и установлено (DLL/delta exit0).
+> Общая сборка включает завершённые правки HP, выгрузки NPC, немедленной
+> анимации возврата и списка ламп чаши гостя; прежние source-only статусы ниже
+> исторические для установки. P1/P2 запущены02:54:39/40, хуки загружены у обоих;
+> игровой контроль OPEN.
+> Подробности: BBSC docs/fixes/2026-11-06-personal-altar-model.md и HANDOFF.
+
+> Возврат у лампы06.11: принятая команда сразу запрашивает штатную анимацию
+> местного охотника; данные назначения готовятся параллельно, поздний повтор
+> анимации из события подавляется. Целевые production/ABI/trampoline и MOD syntax
+> PASS. Только исходники, DLL не установлена (обе игры работают), игровой контроль
+> OPEN. См. BBSC docs/fixes/2026-11-06-lamp-immediate-animation.md.
+
+> Допуск перемещений06.11: локальные события выхода больше не ждут NPC/world
+> bootstrap. Для обеих ролей данные готовятся параллельно с анимацией; задерживается
+> только native warp при неготовом назначении. Исправлены scope запросов и чаши.
+> Целевые production проверки, Windows trampoline и MOD syntax PASS. Правка
+> только в исходниках; установленная01:00 сборка её не содержит, игровой контроль
+> OPEN. См. BBSC docs/fixes/2026-11-06-chalice-departure-bootstrap.md.
+
+> Возврат из чаши06.11: в установленном01:00 прогоне найдена общая для хоста
+> и гостя блокировка: события текущей чаши преждевременно ждали готовность Сна.
+> Исправлена привязка проверки к текущей карте; production регрессия FAIL old /
+> PASS fixed, MOD syntax PASS. Новая правка только в исходниках, игровой контроль
+> OPEN. Подробности: BBSC docs/fixes/2026-11-06-chalice-departure-bootstrap.md.
+
+> Возврат через обычные фонари06.11: исправлена маршрутизация46 обычных/DLC
+> и10 чашных ламп; снимки владельца сохраняют локальные команды перемещения,
+> важное состояние локации остаётся общим. Целевые production проверки и MOD
+> syntax PASS; DLL не пересобрана/не установлена, игры работают, игровой контроль
+> OPEN. См. BBSC docs/fixes/2026-11-06-ordinary-lamp-dream-return.md.
+
+> Headstone session exit05.11: установленная причина — старый таймер отсутствия
+> персонажа180с отключал защиту сессии при независимых перемещениях; следующий
+> native StageTransition завершал сессию гостя. Таймер сбрасывается в согласованном
+> независимом режиме для обеих ролей; целевые production проверки и MOD syntax PASS.
+> Исправление в исходниках, DLL не пересобрана/не установлена, игровой контроль OPEN.
+> Подробности: mods-src/BBSC/docs/fixes/2026-11-05-headstone-session-leave.md.
+
+> Coordinated update05.11,21:54 MSK: player arrival admission, native historical
+> dead-enemy admission and host cup joining/preparation corrections built and
+> installed in MAIN (DLL/delta exit0). Two profiles launched; gameplay OPEN.
+> Exact shared source and backup: BBSC HANDOFF / parent run player-arrival-20261105.
+
+> Native enemy follow-up05.11: source now requests the original native channel11
+> CHR historical-death state from the resident map owner before visitor events.
+> Original1.09 serializer/handler and targeted production fixtures PASS; no mod
+> enemy cache. DLL build/deploy and gameplay confirmation remain OPEN. See HANDOFF.
+
+> Host cups regression05.11: fixed personal Dream restoration during joining,
+> refreshed host altars at join completion and injected the selected host cup at
+> native preparation BEFORE layer selection. Targeted fixtures/full MOD syntax
+> PASS; source ready for coordinated build, gameplay confirmation OPEN. See HANDOFF.
+
+> Host Dream correction05.11: removed the personal-Dream mode/settings. Guest
+> Dream events wait for canonical host state plus the complete host altar view;
+> catalogs apply on arrival/update, without second-based corrective polling.
+> Native fixtures and full MOD syntax PASS; no build/deploy while user tests.
+> Gameplay remains OPEN. Details: BBSC HANDOFF.
+
 > Native enemy requirement05.11: custom enemy snapshots/HP/death/position seeding removed
 > from source. Native late-arrival initial state remains OPEN; player FirstSync readiness
 > alone does not prove NPC synchronization. No build/deploy while user continues testing.

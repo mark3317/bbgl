@@ -37,6 +37,16 @@ def main(bbgl):
     parser.add_argument('--config')
     args = parser.parse_args()
     port = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parents[1]
+    # The observer is opt-in for this development install; it never blocks a game.
+    if (port / 'tools/log-observer.json').is_file():
+        try:
+            observer_start = runpy.run_path(str(port / 'scripts/start_log_observer.py'))['start']
+            for player in ((1, 2, 3) if args.all else (args.player,)):
+                if player is not None:
+                    observer_start(port, player)
+        except Exception as error:
+            import warnings
+            warnings.warn(f'Log observer unavailable: {error}', RuntimeWarning)
     if args.all:
         return local.run_three(port)
     if args.player is None or not args.config:

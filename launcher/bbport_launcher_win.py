@@ -674,10 +674,17 @@ def game_environment(s):
                       ('vk_validation', 'BB_VK_VALIDATION')):
         if s[key]:
             env[name] = '1'
+    extra = {}
     for item in str(s['extra_env']).split():
         if '=' in item:
             key, value = item.split('=', 1)
-            env[key] = value
+            extra[key] = value
+    # An explicit profile log level replaces inherited class exceptions too.
+    # Otherwise BB_GPU_LOG=error still formats/writes every inherited HTTP Info.
+    # A class list in the same profile remains an intentional targeted opt-in.
+    if 'BB_GPU_LOG' in extra and 'BB_GPU_LOG_CLASSES' not in extra:
+        env.pop('BB_GPU_LOG_CLASSES', None)
+    env.update(extra)
     if env['BB_DIAGNOSTICS'] == '1':
         # Keep the co-op timeline. High-volume traces require an explicit opt-in.
         for name, value in (

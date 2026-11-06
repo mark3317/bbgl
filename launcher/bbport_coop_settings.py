@@ -1,12 +1,5 @@
 """Player-facing settings of the pinned BBSC-GL fork."""
-SETTINGS = [{'id': 'dream_own',
-  'name': "Own Hunter's Dream",
-  'description': "In the host's Hunter's Dream a guest sees its own Dream (own messengers, shops, "
-                 "Doll, workshop tools); off = the host's copy of the Dream",
-  'type': 'bool',
-  'default': True,
-  'env': 'SHADPS4_BBSC_DREAM_OWN'},
- {'id': 'no_hp_penalty',
+SETTINGS = [{'id': 'no_hp_penalty',
   'name': 'No guest HP cut',
   'description': "Removes the summoned guest's 30% max HP cut",
   'type': 'bool',

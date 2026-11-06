@@ -74,7 +74,6 @@ RU = {
     'Preparing download…': 'Подготовка загрузки…',
     'Downloads into the game folder beside the launcher. Verified ZIP parts are reused when you retry.': 'Игра будет установлена в папку game рядом с лаунчером. При повторной попытке проверенные ZIP-части используются повторно.',
 
-    "In the host's Hunter's Dream a guest sees its own Dream (own messengers, shops, Doll, workshop tools); off = the host's copy of the Dream": 'Гость видит собственный Сон охотника: своих посланников, магазины, Куклу и инструменты мастерской. Если выключено — Сон хоста.',
     "Removes the summoned guest's 30% max HP cut": 'Убирает снижение максимального здоровья призванного гостя на 30%.',
     'A kept death still drops a bloodstain and echoes': 'После смерти отголоски крови остаются на месте гибели; их можно вернуть.',
     'The bell costs no Insight': 'Использование колокола не расходует озарение.',
@@ -94,7 +93,6 @@ RU = {
     'Prepare bundled BBSC': 'Подготовить встроенный BBSC',
     'Preparing bundled co-op…': 'Подготовка встроенного коопа…',
     'Co-op gameplay': 'Настройки кооператива',
-    "Own Hunter's Dream": 'Собственный Сон охотника',
     'No guest HP cut': 'Без снижения здоровья гостя',
     'Bloodstain on death': 'Пятно крови после смерти',
     'Free Beckoning Bell': 'Колокол без расхода озарения',

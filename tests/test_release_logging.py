@@ -16,6 +16,14 @@ native = r'''
 #include "common/logging/log.h"
 extern int ModProbe(bool);
 int main() {
+    if (const char* expected = std::getenv("EXPECT_HTTP_INFO")) {
+        int evaluated = 0;
+        LOG_INFO(Lib_Http, "routine HTTP details {}", ++evaluated);
+        assert(evaluated == (std::string_view(expected) == "1" ? 1 : 0));
+        LOG_ERROR(Lib_Http, "HTTP error survives");
+        LOG_CRITICAL(Render_Vulkan, "GPU critical survives");
+        return 0;
+    }
     const bool diagnostic = Common::Log::DiagnosticsEnabled();
     const char* net = std::getenv("BB_NET_DIAGNOSTICS");
     const bool network = net ? std::string_view(net) == "1" : diagnostic;
@@ -99,6 +107,26 @@ with tempfile.TemporaryDirectory(prefix='bbgl-release-log-') as tmp:
         assert launcher.game_environment(settings)['BB_DIAGNOSTICS']=='0'
     with patch.dict(os.environ,{'BB_GPU_LOG':'trace'},clear=True):
         assert launcher.game_environment(settings)['BB_GPU_LOG']=='trace'
+    # Reproduce the two-profile run: a profile's explicit error level used to
+    # retain the parent's Lib.Http class exception and emit thousands of lines.
+    inherited = {'BB_GPU_LOG_CLASSES': 'Lib.NpSignaling,Lib.Net,Lib.Http'}
+    with patch.dict(os.environ, inherited, clear=True):
+        for extra, expected in (
+            ('BB_GPU_LOG=error', False),
+            ('BB_GPU_LOG=error BB_GPU_LOG_CLASSES=', False),
+            ('BB_GPU_LOG=error BB_GPU_LOG_CLASSES=Lib.Http', True),
+            ('BB_GPU_LOG_CLASSES=Lib.Http BB_GPU_LOG=error', True),
+            ('BB_GPU_LOG=debug', True),
+            ('', True),
+        ):
+            settings['extra_env'] = extra
+            configured = launcher.game_environment(settings)
+            probe_env = dict(env, **configured, EXPECT_HTTP_INFO='1' if expected else '0')
+            result = subprocess.run([str(exe)], env=probe_env, check=True,
+                                    capture_output=True, text=True, timeout=10)
+            assert ('routine HTTP details' in result.stderr) == expected
+            assert 'HTTP error survives' in result.stderr
+            assert 'GPU critical survives' in result.stderr
     # Validate the Qt settings model without requiring a GUI runtime.
     tree=ast.parse((ROOT/'launcher/bbport_launcher_backend.py').read_text(encoding='utf-8'))
     rows=[node for node in ast.walk(tree) if isinstance(node,ast.Call)

@@ -77,7 +77,6 @@ gpu_logs|Writes a large amount of data: hundreds of megabytes or more per sessio
 frame_stats|Records detailed frame timing statistics.|Записывает подробную статистику времени отрисовки кадров.
 gpu_profile|Enables detailed GPU performance measurements.|Включает подробные замеры производительности видеокарты.
 vk_validation|Enables Vulkan diagnostic checks. May reduce performance.|Включает диагностику Vulkan. Может снижать производительность.
-bbsc_dream_own|Guests use their own shops and workshop in the Hunter's Dream.|Гости используют свои магазины и мастерскую в Сне охотника.
 bbsc_no_hp_penalty|Removes the summoned guest's maximum health reduction.|Отключает снижение максимального здоровья призванного гостя.
 bbsc_death_penalty|Drops Blood Echoes at the place of death.|Оставляет отголоски крови на месте смерти.
 bbsc_free_bell|Removes the Insight cost of summoning.|Отключает расход Озарения на призыв.

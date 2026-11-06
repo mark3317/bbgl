@@ -70,7 +70,8 @@ def preset_writes(xml,preset,fps,app_version,segments,elf=None,settings=None):
         writes=rate_scaled(writes,SCALED_FPS[fps])
         print(f'Patches: {fps} FPS: {SCALED_BASE} with its frame-rate values for {fps}')
     writes=rate_corrections(writes,PRESET_RATES.get(fps),elf,settings or {})
-    return frame_steps(writes,PRESET_RATES.get(fps),elf,settings or {})
+    writes=frame_steps(writes,PRESET_RATES.get(fps),elf,settings or {})
+    return physics_frame_step(writes,fps,elf)
 
 
 # Corrections to the community frame-rate lists (Kyo's 1.0 lists), from Awakenchan/BloodBorneButPc
@@ -142,6 +143,45 @@ def frame_steps(writes, fps, elf, settings):
         out.append((offset,data))
     print(f'Patches: {count} fixed frame steps at 1/{fps} s (frame_step_fix=0: 1/60)')
     return out
+
+
+# hkpWorld's task (PS4 sub_1bf99d0) builds its own step-info at rbp-0x48.
+# The FPS lists replace its 1/30 by a fixed 1/60 (or another preset step),
+# even though the task manager and ChrPhysicsModule use the elapsed game
+# step. At 50 FPS under a 60 preset those clocks advance 16.67 and 20 ms:
+# moving collision bodies and the character's support solver disagree.
+#
+# FD4TaskManager::BeginStep calls sub_143f9f0 BEFORE dispatching its tasks.
+# That function copies the actual step-info's +8 into the native current
+# step at image+0x54b7e08. Read that exact value, including the game's clamp,
+# pause/time-scale choices and the preset's loading behavior. No second
+# clock, scratch storage, frame cap change or player-position correction.
+#
+# Replace a dead zero store (the next instruction fills rbp-0x40) and the
+# fixed dt store. EAX is dead here: RAX is loaded immediately afterwards.
+# This also replaces Uncap's jump to its separate fixed-cap dt cave.
+PHYSICS_FRAME_STEP_SITE=0x01bf9b69-EBOOT_BASE
+NATIVE_TASK_STEP=0x054b7e08
+PHYSICS_FRAME_STEP_GUARDS=(
+    (PHYSICS_FRAME_STEP_SITE,15,'dd7642bc287325c6'),
+    (0x0103f9f0,18,'2d6590e108a37b2e'),  # native current-step writer
+    (0x00f88cc2,8,'1e5d6a7918b83c5e'),   # called before task dispatch
+    (0x017f9c2a,16,'a52c76cfdfadcc70'),  # rbp-0x48 passed to hkpWorld
+)
+
+
+def physics_frame_step(writes, fps, elf):
+    """Keep hkpWorld and character support on the native task's game step."""
+    if fps not in (*PRESET_RATES,'uncap') or elf is None:
+        return writes
+    if not all(site_matches(elf,guard) for guard in PHYSICS_FRAME_STEP_GUARDS):
+        print('Patches: native physics frame step skipped (unexpected game code)')
+        return writes
+    # mov eax,[rip+current_step]; mov [rbp-0x48],eax; nop6
+    code=(b'\x8b\x05'+struct.pack('<i',NATIVE_TASK_STEP-(PHYSICS_FRAME_STEP_SITE+6))
+          +b'\x89\x45\xb8'+bytes.fromhex('660f1f440000'))
+    print('Patches: physics follows the native game frame step (moving platforms)')
+    return [*writes,(PHYSICS_FRAME_STEP_SITE,code)]
 
 
 def setting_on(settings,key,env,default):

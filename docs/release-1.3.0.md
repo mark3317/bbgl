@@ -7,7 +7,7 @@ BBGL 1.3.0 includes BBSC-GL 1.3.0. Hunters in the same party can travel independ
 - Use lamps, Hunter’s Dream headstones and Chalice altars independently during a session. The game handles travel and recreates the other hunters when their paths cross again. Lit lamps are shared. Each hunter uses their own Hunter’s Dream, including their workshop and shops.
 - NPC activity, movement and damage use the game’s network handling. The mod no longer scans the entire game memory after joining to rebuild enemy state. Enemy and boss HP scaling uses the game’s existing stat update.
 - In the host’s Chalice Dungeon, the party sees the same lamp destinations. Lamps lit by a guest reach the host’s altar menu even while the host is elsewhere. First-layer progress persists when the party returns to the dungeon in the tested scenario.
-- The party can gather in the Hunter’s Dream for the finale. After a shared ending, each hunter starts in their own Central Yharnam. The game closes the party during loading without the connection-loss banner in the tested transition.
+- The party can gather in the Hunter’s Dream for the finale. After a shared ending, each hunter starts in their own Central Yharnam. In the tested transition, the party closed during loading and the logs showed no connection-loss notification.
 - The game now delivers main-game and DLC boss rewards without a second shared reward queue. Also included are corrections for lamp selection after death, Blood Echo stains when a guest dies alone, returning to the title menu, and the guest’s jump to Rom.
 
 ## Launcher and port
@@ -37,7 +37,7 @@ The two-player tests confirmed reunion visibility, the tested NPC movement and c
 - В общей сессии можно по отдельности пользоваться лампами, надгробиями и алтарями чаш. Переходы выполняет игра, а при новой встрече она снова создаёт персонажей напарников. Зажжённые лампы общие. У каждого охотника свой Сон с личной мастерской и магазинами.
 - ИИ, движение и урон NPC используют сетевую логику игры. Убран полный обход памяти при подключении для восстановления состояния врагов. Масштабирование HP врагов и боссов использует штатный пересчёт характеристик.
 - В подземелье хоста у группы общий список ламп. Лампа, зажжённая гостем, появляется у алтаря хоста, даже когда хост находится в другой локации. В проверенном сценарии прогресс первого слоя сохраняется при возвращении в чашу.
-- Перед финалом группу можно собрать в Сне охотника. После общей концовки каждый начинает в своём Центральном Ярнаме. В проверенном переходе игра закрыла общую сессию во время загрузки без сообщения о потере связи.
+- Перед финалом группу можно собрать в Сне охотника. После общей концовки каждый начинает в своём Центральном Ярнаме. В проверенном переходе сессия закрылась во время загрузки. В журналах нет записи об уведомлении о потере связи.
 - Награды боссов основной игры и DLC выдаёт сама игра. Убрана вторая общая очередь наград. Также уточнён выбор лампы возрождения, исправлены проверенные сценарии пятна крови при смерти гостя в одиночку, выхода в главное меню и прыжка гостя к Ром.
 
 ### Лаунчер и порт

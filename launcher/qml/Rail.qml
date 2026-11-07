@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 
 // The left icon rail (as the in-game guide's): the hunter mark opens Play, the gear Settings.
 Rectangle {
@@ -39,7 +40,37 @@ Rectangle {
             }
         }
     }
+
+    Button {
+        id: updateButton
+        objectName: "railUpdateButton"
+        anchors.bottom: versionLabel.top; anchors.bottomMargin: 8
+        width: rail.width; height: 64
+        visible: !rail.locked && launcher.hasUpdate
+        padding: 0
+        hoverEnabled: true
+        text: launcher.tr("Install the new version")
+        onClicked: launcher.installUpdate()
+
+        background: Item {
+            Rectangle {
+                anchors.centerIn: parent; width: 52; height: 52; radius: 4
+                color: updateButton.down || updateButton.hovered || updateButton.visualFocus
+                     ? Theme.accent : Theme.accentSoft
+                border.color: Theme.accent
+            }
+        }
+        contentItem: Item {
+            NavIcon {
+                anchors.centerIn: parent; width: 30; height: 30
+                kind: "update"; strokeColor: Theme.text
+            }
+        }
+        HoverHandler { cursorShape: Qt.PointingHandCursor }
+        ToolTipText { visible: updateButton.hovered || updateButton.visualFocus; text: updateButton.text }
+    }
     Text {
+        id: versionLabel
         anchors.bottom: parent.bottom; anchors.bottomMargin: 18; anchors.horizontalCenter: parent.horizontalCenter
         text: launcher.version; color: Theme.textFaint; font.family: Theme.sans; font.pixelSize: 10
     }

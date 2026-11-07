@@ -74,16 +74,15 @@ Item {
             }
             Item {
                 width: parent.width; height: connectionFields.implicitHeight + 24
+                visible: launcher.playMode === "coop"
                 Column {
                     id: connectionFields; x: 18; y: 12; width: parent.width - 36; spacing: 0
                     FieldRow {
                         width: parent.width; compact: true; minimumHeight: 56; serifLabel: true
-                        showDivider: launcher.playMode === "coop"
                         field: launcher.settingsRevision < 0 ? ({}) : launcher.sectionFields("Co-op", "Seamless co-op").find(f => f.key === "coop_name")
                     }
                     CoopConnection {
                         width: parent.width; compact: true; serifLabels: true; showPlayerName: false; showStatus: false
-                        visible: launcher.playMode === "coop"
                         onAttentionRequested: (target) => {
                             if (!home.visible) return
                             homeScroll.contentY = Math.max(0, Math.min(target.mapToItem(content, 0, 0).y - 24, homeScroll.contentHeight - homeScroll.height))
@@ -96,7 +95,6 @@ Item {
                 text: home.gameBlocked ? launcher.tr("Choose your game folder or download the game.") : home.savesBlocked ? launcher.tr("The saves folder cannot be written. Choose another one.") : launcher.gameDownloadStatus
                 color: Theme.warn; font.family: Theme.sans; font.pixelSize: 12; wrapMode: Text.WordWrap
             }
-            GlassButton { width: parent.width; visible: launcher.hasUpdate; text: launcher.tr("Install the new version"); onClicked: launcher.installUpdate() }
         }
     }
     Column {
@@ -133,17 +131,35 @@ Item {
         }
         GlassButton {
             id: playButton
+            objectName: "playButton"
             anchors.horizontalCenter: parent.horizontalCenter
             width: modeSwitch.width; height: 56; serif: true; highlighted: !launcher.running && !launcher.coopBusy
             text: launcher.running || launcher.coopLaunchPending ? launcher.tr("Cancel launch") : launcher.tr("Play")
             enabled: launcher.running || launcher.coopLaunchPending || (!launcher.coopBusy && !launcher.setupRunning && !home.gameBlocked && !home.savesBlocked && !home.onlineBlocked)
             onClicked: launcher.running || launcher.coopLaunchPending ? launcher.cancelLaunch() : home.primaryRequested()
         }
-        Text {
-            width: parent.width; wrapMode: Text.WordWrap
-            text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
-            visible: text.length > 0
-            color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
+        // Reserve space for the status so updates never move the launch controls.
+        Flickable {
+            id: noticeArea
+            width: parent.width; height: 42
+            contentWidth: width; contentHeight: noticeText.implicitHeight
+            clip: true; boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
+            interactive: contentHeight > height
+            ScrollBar.vertical: ScrollBar {
+                visible: noticeArea.interactive
+                active: noticeArea.interactive
+                width: 4; padding: 0
+                contentItem: Rectangle { implicitWidth: 4; implicitHeight: 24; radius: 2; color: Theme.textFaint }
+                background: Item {}
+            }
+            Text {
+                id: noticeText
+                x: 8; width: noticeArea.width - 16; wrapMode: Text.Wrap
+                text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
+                onTextChanged: noticeArea.contentY = 0
+                color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
+            }
         }
     }
 }

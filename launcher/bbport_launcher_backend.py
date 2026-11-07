@@ -601,7 +601,7 @@ class LauncherBackend(QObject):
 
     @Property(str, notify=changed)
     def profileSummary(self):
-        name = str(self.value('coop_name')).strip()
+        name = str(self.value('coop_name')).strip() if self.playMode == 'coop' else ''
         folder = Path(self.app.get('user_dir') or core.DATA_DIR / 'user').name
         return (name + '  ·  ' if name else '') + T('Save profile') + ': ' + folder
 

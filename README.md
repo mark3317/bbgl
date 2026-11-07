@@ -10,7 +10,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-Version **1.2.0** restores native random generation for Root Chalices: the host and guests explore the same generated layout while keeping their own altars and individual chalice progress. P2P connections, the interface and mod management have also been updated. See the [1.2.0 release notes and limitations (Russian)](docs/release-1.2.0.md).
+In **1.3.0**, hunters can travel independently and meet again in the same party. The update also reworks native NPC synchronization, Chalice lamps and progress, and the transition from a shared ending to separate worlds. [Release notes and known limits](docs/release-1.3.0.md).
 
 ## Co-op: changes from BBSC
 
@@ -20,7 +20,7 @@ BBSC-GL builds on [Bloodborne Seamless Co-op](https://github.com/CLSAMG22/BBSC).
 - **Personal quests, shared main story.** Each player keeps their own NPC quest progress and personal rewards, while main-story progress is synchronized across the party. Play together while retaining your own character and world.
 - **Working chalices with random generation.** Explore story chalices and randomly generated Root Chalices together. The game creates the Root Chalice layout; guests load the same dungeon as the host. Different rituals and layouts remain distinct, and created dungeon data persists between launches. Guests keep their own altars and progress without having to create a matching chalice first.
 - **Return to your own world.** Guest exit, world recovery and return locations have been improved, including after visiting the host's chalice dungeon.
-- **Personal interactions and rewards.** Extended guest NPC interactions and personal quest-item grants, with an option to use your own Hunter's Dream.
+- **Personal interactions and rewards.** Extended guest NPC interactions and personal quest-item grants, with a personal Hunter’s Dream for every hunter.
 - **Fixes to the original mod.** Addressed repeat-summon and stale-session issues, chalice combat latency, guest return problems and the camera after a party wipe. Death handling and guest menu exit have also been improved. Keys and tools come from personal game sources rather than the host inventory; loot and rewards use native delivery with personal conditions.
 
 A complete main-story co-op playthrough and transition to NG+ were confirmed by the user on 5 November 2026. Co-op chalice exploration and random generation are supported. Coverage of every additional rite, reward edge case and party composition is still being expanded. [BBSC-GL source and development status](https://github.com/mark3317/bbsc-gl/tree/develop).
@@ -52,7 +52,7 @@ The redesigned interface supports English and Russian. Screenshots show the Engl
 
 ## Start playing
 
-1. Download `bbgl-1.2.0-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
+1. Download `bbgl-1.3.0-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
 2. Run **Bloodborne.exe**. Use the built-in download button in setup or select an existing Bloodborne **CUSA03173, update 1.09** folder. Game files are not included in the launcher archive.
 3. For co-op, connect every PC to the same VPN or LAN. Choose **Local network**, **Tailscale** or **Radmin**; installed VPNs appear in the list and missing ones have installation buttons. Check connectivity, then start the game. Players can join later. No server or invite code is required.
 4. Use the in-game co-op bells to gather your party. Keep everyone on the same BBGL release.

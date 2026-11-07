@@ -1,5 +1,7 @@
 # BBGL 1.3.3
 
+The launcher now lists 30, 60, 90, 120 and 144 FPS in ascending order, followed by Unlocked. The automatic cap is labeled “Auto (recommended)”. The default remains 120 FPS.
+
 This update bundles BBSC-GL 1.3.3 with three fixes for co-op.
 
 - Guests who stay in the session can confirm the boss reward as soon as it appears. The game still grants the reward and finishes the encounter through its original sequence.
@@ -18,10 +20,12 @@ Two-player gameplay with a test DLL confirmed the Cleric Beast reward and lamp f
 
 ## Русский
 
+В настройках лаунчера частоты 30, 60, 90, 120 и 144 FPS идут по возрастанию, за ними — «Без ограничения». Автоматический лимит называется «Авто (рекомендуется)». По умолчанию выбрано 120 FPS.
+
 В BBGL 1.3.3 входит BBSC-GL 1.3.3 с тремя исправлениями кооператива.
 
 - Гость, который остаётся в сессии после победы над боссом, может сразу подтвердить окно награды. Игра выдаёт награду и завершает бой штатным порядком.
-- Обе двери Лекционного корпуса переносят находящихся в здании охотников вместе в Кошмар Менсиса или на Границу Кошмара. Сессия сохраняется при переходе.
+- Обе двери Лекционного корпуса переносят находящихся в здании охотников вместе в Кошмар Менсиса или на Границу кошмара. Сессия сохраняется при переходе.
 - Гость видит подсказку лампы, когда игра разрешает её зажечь. После победы гость может зажечь лампу и передать общую точку возрождения хосту.
 
 ### Установка и обновление

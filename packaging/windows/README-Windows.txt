@@ -12,6 +12,7 @@ Each player keeps their own Chalices and altars. Root Chalices use native random
 Guests can help clear the owner’s dungeon and earn their own eligible rewards.
 Additional rites, unusual reward cases and larger-party combinations need broader coverage.
 
+Frame rates are listed from 30 to 144 FPS, followed by Unlocked. The default is 120 FPS.
 BBSC-GL and Xbox/keyboard prompts are bundled. Prompts are selected separately from gameplay mods.
 The optional Diamond Sword mod is bundled and disabled by default (10,000 Blood Echoes in game).
 Detailed logging, profiling, research and cheats are disabled by default.

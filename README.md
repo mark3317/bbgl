@@ -12,7 +12,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-**1.3.3** fixes boss reward confirmation for guests, shared travel through both Lecture Building exits, and guest lamp prompts before victory. [Release notes and gameplay coverage](docs/release-1.3.3.md).
+**1.3.3** fixes boss reward confirmation for guests, shared travel through both Lecture Building exits, and guest lamp prompts before victory. The launcher lists frame rates in ascending order with shorter labels. [Release notes and gameplay coverage](docs/release-1.3.3.md).
 
 ## Party and peer-to-peer networking
 

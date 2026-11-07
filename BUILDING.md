@@ -12,7 +12,7 @@ bash packaging/windows/build-coop-package.sh
 
 The command builds BBSC-GL from `mods-src/BBSC`, builds the port, freezes the launcher and assembles the P2P runtime. FSR-Vulkan is pinned from the [BBGL dependency fork](https://github.com/mark3317/UniversalScalers-Vulkan), which includes the frame-resource lifetime fix used by this release. The current co-op path needs no separate game server, shadNet account or invitation. Historical server build scripts are not part of this release path.
 
-Staging: `out/stage/Bloodborne Game Launcher`. Release: `dist/bbgl-1.3.2-windows-x64.zip` and its `.zip.sha256`. Staging is recreated during packaging; never point it at an installed launcher. Player settings, saves, accounts, logs and game files must not be included.
+Staging: `out/stage/Bloodborne Game Launcher`. Release: `dist/bbgl-1.3.3-windows-x64.zip` and its `.zip.sha256`. Staging is recreated during packaging; never point it at an installed launcher. Player settings, saves, accounts, logs and game files must not be included.
 
 Button prompts and the optional Diamond Sword use binary deltas from `bundled-mods`, applied to the player's own 1.09 files. No game folder is needed to build the release. Diamond Sword and all cheats are disabled by default. Detailed logging, research, profiling and Vulkan validation are opt-in; see [logging policy](docs/LOGGING.md).
 
@@ -24,4 +24,4 @@ Commit the intended BBSC changes before updating the parent gitlink. `coop/SOURC
 
 When building a Git for Windows checkout from MSYS2, use the same line-ending configuration in both environments. If Git for Windows reports a clean checkout but MSYS2 reports only CRLF differences in BBSC dependencies, run the build with `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.autocrlf GIT_CONFIG_VALUE_0=true` in the MSYS2 command environment. Verify that both Git clients report a clean BBSC checkout and that `source_dirty` is false in the final ZIP.
 
-`develop` holds ongoing work; `main` holds release source. The update tag for BBGL 1.3.2 is `v1.3.2`. Previous BBGL tags include `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0` and `v1.3.1`.
+`develop` holds ongoing work; `main` holds release source. The update tag for BBGL 1.3.3 is `v1.3.3`. Previous BBGL tags include `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.3.1` and `v1.3.2`.

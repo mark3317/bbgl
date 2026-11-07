@@ -380,8 +380,8 @@ READBACKS = [('', ('Relaxed (default)', 'Relaxed (по умолчанию)')), (
 # Frame cap of the unlocked mode (BB_FPS_LIMIT). '' leaves the port's own: the display refresh,
 # at most 120, because the game's movement timing breaks above about 120 FPS.
 FRAME_CAPS = [('', ('Auto (recommended)', 'Авто (рекомендуется)')),
-              ('60', ('60',)), ('90', ('90',)), ('120', ('120',)), ('144', ('144  ⚠',)), ('165', ('165  ⚠',)),
-              ('240', ('240  ⚠',)), ('0', ('No limit  ⚠', 'Без ограничения  ⚠'))]
+              ('60', ('60',)), ('90', ('90',)), ('120', ('120',)), ('144', ('144  !',)), ('165', ('165  !',)),
+              ('240', ('240  !',)), ('0', ('No limit  !', 'Без ограничения  !'))]
 # Mouse camera sensitivity in tenths (bbport.ini mouse_sensitivity; 10 = 900 counts per radian).
 MOUSE_SPEEDS = [(str(v), (f'{v / 10:.1f}x',)) for v in (5, 7, 10, 13, 16, 20, 30)]
 # Keyboard movement smoothing (bbport.ini move_smoothing, issue #4): how far the stick swings

@@ -6,6 +6,8 @@
 
 ## Why this fork exists
 
+**The goal of BBGL is to preserve the original Bloodborne experience and add seamless co-op that gives every player a full playthrough.** Hosts and guests alike can explore, fight bosses, interact with the world and earn their own rewards while playing through the game together.
+
 BBGL brings installation, configuration and launching into one interface. Guided setup helps prepare the game, choose a save folder and configure co-op. Play alone or gather friends without manually installing DLLs or assembling separate BBSC components.
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**

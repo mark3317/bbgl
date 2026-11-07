@@ -80,6 +80,12 @@ static constexpr u32 tessellation_offchip_buffer_size = 0x800000u;
 
 static void ResetSubmissionLock(Platform::InterruptId irq) {
     std::unique_lock lock{m_wait_idle};
+    // An idle IRQ can be delivered after another batch was submitted. It must
+    // not release admission for that batch while its draws/fence writes still
+    // reference guest memory. Liverpool signals again after the new work retires.
+    if (!liverpool->IsGpuIdle()) {
+        return;
+    }
     submission_lock = 0;
     cv_lock.notify_all();
 }
@@ -162,6 +168,7 @@ s32 PS4_SYSV_ABI sceGnmAddEqEvent(OrbisKernelEqueue eq, u64 id, void* udata) {
 
 int PS4_SYSV_ABI sceGnmAreSubmitsAllowed() {
     LOG_TRACE(Lib_GnmDriver, "called");
+    std::unique_lock lock{m_wait_idle};
     return submission_lock == 0;
 }
 
@@ -2357,8 +2364,14 @@ s32 PS4_SYSV_ABI sceGnmSubmitDone() {
     LOG_DEBUG(Lib_GnmDriver, "called");
     std::scoped_lock lk{m_submit_lock};
     WaitGpuIdle();
-    if (!liverpool->IsGpuIdle()) {
-        submission_lock = true;
+    {
+        // Publish the wait under the same lock as the idle callback. Otherwise
+        // the callback can clear it between this check and the assignment,
+        // leaving a wait armed after its only completion notification.
+        std::unique_lock lock{m_wait_idle};
+        if (!liverpool->IsGpuIdle()) {
+            submission_lock = true;
+        }
     }
     liverpool->SubmitDone();
     send_init_packet = true;

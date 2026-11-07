@@ -12,7 +12,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-Every hunter can light and use lamps, travel independently without leaving the party, and meet up again. **1.3.2** improves co-op lift synchronization, keeps personal quests isolated, and restores native Vermin rewards for eligible Chalice Dungeon guests. [Release notes and known limits](docs/release-1.3.2.md).
+**1.3.2** improves co-op lift synchronization, keeps personal quests isolated, and restores native Vermin rewards for eligible Chalice Dungeon guests. [Release notes and known limits](docs/release-1.3.2.md).
 
 ## Party and peer-to-peer networking
 
@@ -22,6 +22,7 @@ BBGL uses **Party**, a decentralized system for exchanging co-op data directly b
 
 BBSC-GL builds on [Bloodborne Seamless Co-op](https://github.com/CLSAMG22/BBSC). Seamless sessions, networking and the underlying co-op mechanics were created by the original authors. This fork extends that foundation for playing through the game together:
 
+- **Free travel across the world and Chalice Dungeons.** Every player, host or guest, can light and use lamps, travel via headstones and Chalice altars, and explore different areas or dungeons independently. Hunters stay in the same co-op session and can meet up again.
 - **Complete main campaign and NG+.** The main game has been fully tested as a co-op playthrough through the finale, including the transition to the next NG cycle.
 - **Personal quests, shared main story.** Each player keeps their own NPC quest progress and personal rewards, while main-story progress is synchronized across the party. Play together while retaining your own character and world.
 - **Working chalices with random generation.** Explore story chalices and randomly generated Root Chalices together. The game creates the Root Chalice layout; guests load the same dungeon as the host. Different rituals and layouts remain distinct, and created dungeon data persists between launches. Guests keep their own altars and progress without having to create a matching chalice first.

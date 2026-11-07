@@ -46,15 +46,11 @@ Bundled mod and P2P integration, personal versus main-story progress, seamless c
 
 ## Launcher
 
-The redesigned interface supports English and Russian. Screenshots show the English interface.
+The interface supports English and Russian. The screenshots show the cooperative home screen and graphics settings in English.
 
-![Home](docs/screenshots/launcher-home.png)
+![Home screen in cooperative mode](docs/screenshots/launcher-home.png)
 
 ![Graphics settings](docs/screenshots/launcher-graphics.png)
-
-![Co-op connection](docs/screenshots/launcher-coop.png)
-
-![Mods](docs/screenshots/launcher-mods.png)
 
 ## Start playing
 

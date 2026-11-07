@@ -41,6 +41,8 @@ def main():
             # Example display paths only; no reads/writes or discovery at these paths.
             backend.app.update(player_name='Hunter', mods_dir='C:/Games/BBGL/mods',
                                patches_dir='C:/Games/BBGL/profile/patches')
+            if not args.review:
+                backend.app.update(play_mode='coop', coop_name='Hunter')
             backend._mods = [dict(name='Diamond Sword', enabled=False)]
             backend._coop_inventory_ready = True
             for timer in (backend._party_timer, backend._party_network_timer, backend._addons_timer):
@@ -57,9 +59,7 @@ def main():
             workspace = window.findChild(QObject, 'settingsWorkspace')
             output = args.output.resolve()
             output.mkdir(parents=True, exist_ok=True)
-            shots = [('home', None, None), ('graphics', 'Visuals', 'Display & frame rate'),
-                     ('coop', 'Co-op', 'Seamless co-op'),
-                     ('mods', 'Mods & Patches', 'Installed mods')]
+            shots = [('home', None, None), ('graphics', 'Visuals', 'Display & frame rate')]
             if args.review:
                 import bbport_launcher_backend as model
                 shots = [('home', None, None)]

@@ -9,6 +9,7 @@
 #include "runtime.h"
 #include "runtime_map.h"
 #include "runtime_atlas_state.h"
+#include "network_heap_patch.h"
 #include "gpu/bbgpu.h"
 #if !defined(__x86_64__) || !defined(__GNUC__)
 #error This prototype requires x86-64 GCC or Clang (including MinGW).
@@ -690,6 +691,14 @@ int main(int argc, char **argv) {
     /* The Hunter's Dream backend reads the game's code before the patches change it. */
     bbnet_set_image(image, size);
     if (patch_file) apply_patches(patch_file, segments, ns, relocs, nr);
+    const char *coop = getenv("BB_COOP");
+    const int coop_enabled = coop && !strcmp(coop, "1");
+    if (!cpu_only && coop_enabled) {
+        if (bb_patch_network_heap(image, (size_t)size))
+            puts("Network heap: 14 + 2 MiB in matching memory profiles");
+        else
+            puts("Network heap: unsupported or modified layout; size left as it is");
+    }
 #ifdef _WIN32
     if (!cpu_only) {
         /* Non-16:9 output (aspect_ratio.cpp, Supermedo #12): camera and floating UI. */
@@ -763,8 +772,7 @@ int main(int argc, char **argv) {
     }
     /* Seamless co-op (BB_COOP=1, BBSC): its hooks may write game code directly later on, as
      * shadPS4 keeps the code writable; give it the same. Other launches keep code read-only. */
-    const char *coop = getenv("BB_COOP");
-    const unsigned code_writable = (coop && !strcmp(coop, "1")) ? 2 : 0;
+    const unsigned code_writable = coop_enabled ? 2 : 0;
     if (code_writable) puts("Co-op: game code stays writable for BBSC's hooks");
     int executable_entry = 0;
     for (uint64_t i = 0; i < ns; ++i) {

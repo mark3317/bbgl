@@ -22,4 +22,6 @@ Button prompts and the optional Diamond Sword use binary deltas from `bundled-mo
 
 Commit the intended BBSC changes before updating the parent gitlink. `coop/SOURCE.json` records the mod commit and whether its checkout had local changes; a candidate with local changes is not a reproducible tagged source. Do not publish or push until the user has reviewed the release text. Published tags are immutable.
 
+When building a Git for Windows checkout from MSYS2, use the same line-ending configuration in both environments. If Git for Windows reports a clean checkout but MSYS2 reports only CRLF differences in BBSC dependencies, run the build with `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.autocrlf GIT_CONFIG_VALUE_0=true` in the MSYS2 command environment. Verify that both Git clients report a clean BBSC checkout and that `source_dirty` is false in the final ZIP.
+
 `develop` holds ongoing work; `main` holds release source. The update tag for BBGL 1.3.2 is `v1.3.2`. Previous BBGL tags include `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0` and `v1.3.1`.

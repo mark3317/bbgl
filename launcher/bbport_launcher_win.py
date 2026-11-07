@@ -341,11 +341,9 @@ LODS = [('0', ('As in the game', 'Как в игре')), ('-2', ('Highest (−2)
 # 120 and 144: 90 FPS++ with its values for that rate (scripts/patches.py SCALED_FPS). Unlocked froze
 # at the end of Vicar Amelia's intro; settings saved before 120 was the default keep it
 # (app_settings).
-FPS_MODES = [('120', ('120 FPS (recommended)', '120 FPS (рекомендуется)')), ('144', ('144 FPS',)),
-             ('90', ('90 FPS',)), ('60', ('60 FPS',)),
-             ('uncap', ("Unlocked (frame-time patch; can freeze at the end of Vicar Amelia's intro)",
-                        'Без ограничения (патч; может зависнуть в конце заставки Викарии Амелии)')),
-             ('30', ('30 FPS (as on PS4)', '30 FPS (как на PS4)'))]
+FPS_MODES = [('30', ('30 FPS',)), ('60', ('60 FPS',)), ('90', ('90 FPS',)),
+             ('120', ('120 FPS',)), ('144', ('144 FPS',)),
+             ('uncap', ('Unlocked', 'Без ограничения'))]
 # Fullscreen (BB_FULLSCREEN_MODE; window.cpp, after RafaelHGOliveira's Supermedo PR #68): a
 # borderless window over the desktop, or exclusive (the display switched to its desktop mode).
 FULLSCREEN_MODES = [('borderless', ('Borderless (default)', 'Без рамки (по умолчанию)')),
@@ -381,7 +379,7 @@ READBACKS = [('', ('Relaxed (default)', 'Relaxed (по умолчанию)')), (
              ('2', ('Precise',))]
 # Frame cap of the unlocked mode (BB_FPS_LIMIT). '' leaves the port's own: the display refresh,
 # at most 120, because the game's movement timing breaks above about 120 FPS.
-FRAME_CAPS = [('', ('Auto: display refresh, max 120 (recommended)', 'Авто: частота монитора, макс. 120 (рекомендуется)')),
+FRAME_CAPS = [('', ('Auto (recommended)', 'Авто (рекомендуется)')),
               ('60', ('60',)), ('90', ('90',)), ('120', ('120',)), ('144', ('144  ⚠',)), ('165', ('165  ⚠',)),
               ('240', ('240  ⚠',)), ('0', ('No limit  ⚠', 'Без ограничения  ⚠'))]
 # Mouse camera sensitivity in tenths (bbport.ini mouse_sensitivity; 10 = 900 counts per radian).
@@ -893,7 +891,7 @@ class Launcher:
         box = self.ttk.Combobox(parent, values=[_(*text) for _v, text in options],
                                state='normal' if key == 'output_res' else 'readonly', width=width)
         if var.get() not in values and key != 'output_res':
-            var.set(values[0])
+            var.set(APP_DEFAULTS[key] if key == 'fps_mode' else values[0])
 
         def show(*_args):
             current = var.get()

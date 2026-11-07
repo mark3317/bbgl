@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Opt-in BB_LIVE_GRAPHICS=1 experiment for CUSA03173 1.09.
+ * Live graphics controls for CUSA03173 1.09. BB_LIVE_GRAPHICS=0 disables them.
  * Startup keeps render resources available; guarded hooks mask render decisions.
  * No game instruction bytes are distributed, only site lengths and fingerprints.
  */
@@ -12,15 +12,19 @@ extern void bbgpu_setting_set(const char *, int);
 static const char *keys[] = {"effect_chromatic_aberration", "effect_dof", "effect_motion_blur", "effect_ssao", "effect_game_aa", "effect_dynamic_shadows", "effect_ssr", "model_lod", "object_motion"};
 static int current[9];
 static unsigned long long visits[8];
+static int diagnostics;
+static void record_visit(int index) {
+    if (diagnostics) __atomic_fetch_add(&visits[index], 1, __ATOMIC_RELAXED);
+}
 static int value(int index) { return __atomic_load_n(&current[index], __ATOMIC_RELAXED); }
 /* cmp byte,0 with a zero operand: PF=ZF=1; CF=AF=SF=OF=0. */
 static void mask(BbRegs *r, int index) {
-    __atomic_fetch_add(&visits[index], 1, __ATOMIC_RELAXED);
+    record_visit(index);
     if (!value(index)) r->flags = (r->flags & ~0x8d5ull) | 0x44;
 }
-static BB_GUEST_ABI void ca(BbRegs *r) { __atomic_fetch_add(&visits[0], 1, __ATOMIC_RELAXED); if (!value(0)) r->rax = 0; }
+static BB_GUEST_ABI void ca(BbRegs *r) { record_visit(0); if (!value(0)) r->rax = 0; }
 static BB_GUEST_ABI void dof(BbRegs *r) { mask(r, 1); }
-static BB_GUEST_ABI void lod(BbRegs *r) { __atomic_fetch_add(&visits[7], 1, __ATOMIC_RELAXED); int v = value(7); if (v) r->rcx = (uint32_t)v; }
+static BB_GUEST_ABI void lod(BbRegs *r) { record_visit(7); int v = value(7); if (v) r->rcx = (uint32_t)v; }
 static BB_GUEST_ABI void ssao(BbRegs *r) { mask(r, 3); }
 static BB_GUEST_ABI void blur(BbRegs *r) { mask(r, 2); }
 static BB_GUEST_ABI void aa(BbRegs *r) { mask(r, 4); }
@@ -51,7 +55,7 @@ static void report(void) {
     for (int i = 0; i < 9; ++i) {
         int v = 0; bbgpu_setting_get(keys[i], &v);
         __atomic_store_n(&current[i], v, __ATOMIC_RELAXED);
-        if (v != last[i]) {
+        if (diagnostics && v != last[i]) {
             printf("Live graphics: %s = %d (hook %s, visits=%llu)\n", keys[i], v,
                    (mask_ready & (1 << i)) ? "ready" : "unavailable",
                    i < 8 ? __atomic_load_n(&visits[i], __ATOMIC_RELAXED) : 0ull);
@@ -62,10 +66,12 @@ static void report(void) {
 int bb_live_graphics_install(void) {
     const char *enabled = getenv("BB_LIVE_GRAPHICS");
     if (enabled && !strcmp(enabled, "0")) return 0;
+    const char *logging = getenv("BB_DIAGNOSTICS");
+    diagnostics = logging && !strcmp(logging, "1");
     /* Validate the entire set BEFORE changing anything. Other patches may own these sites. */
     for (size_t i = 0; i < sizeof(sites)/sizeof(*sites); ++i) {
         if (!bb_code_is(bb_guest(sites[i].address), sites[i].code)) {
-            fprintf(stderr, "Live graphics: unsupported/modified site 0x%llx; experiment refused\n",
+            fprintf(stderr, "Live graphics: unsupported/modified site 0x%llx; controls not installed\n",
                     (unsigned long long)(sites[i].address + 0x400000));
             /* Startup omitted effect patches: refusing must never masquerade as a working test. */
             exit(1);
@@ -86,6 +92,8 @@ int bb_live_graphics_install(void) {
     for (int i = 0; i < 9; ++i) last[i] = -999;
     report();
     bb_on_main_frame(report);
-    printf("Live graphics: EXPERIMENT active, %d hooks, mask=0x%x; SSR remains a startup setting\n", hooks, mask_ready);
+    if (diagnostics) {
+        printf("Live graphics: %d hooks, mask=0x%x; SSR remains a startup setting\n", hooks, mask_ready);
+    }
     return hooks;
 }

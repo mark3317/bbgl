@@ -1,14 +1,22 @@
 # BBGL 1.3.0
 
-BBGL 1.3.0 includes BBSC-GL 1.3.0. Hunters in the same party can travel independently, meet again and continue playing together.
+BBGL 1.3.0 includes BBSC-GL 1.3.0. **Independent travel is a headline feature. Every hunter can light and use lamps, travel on their own while staying in the party, and meet up again.**
 
 ## Co-op
 
-- Use lamps, Hunter’s Dream headstones and Chalice altars independently during a session. The game handles travel and recreates the other hunters when their paths cross again. Lit lamps are shared. Each hunter uses their own Hunter’s Dream, including their workshop and shops.
+- Travel independently using lamps, Hunter’s Dream headstones and Chalice altars. Lit lamps are shared. Each hunter keeps their own Dream, workshop and shops.
+- Each hunter keeps their own Chalices, altars and dungeon layouts. Root Chalices use the game’s full random generation. Guests can enter the owner’s generated layout, help clear layers and bosses, and earn their own loot and eligible rewards.
 - NPC activity, movement and damage use the game’s network handling. The mod no longer scans the entire game memory after joining to rebuild enemy state. Enemy and boss HP scaling uses the game’s existing stat update.
-- In the host’s Chalice Dungeon, the party sees the same lamp destinations. Lamps lit by a guest reach the host’s altar menu even while the host is elsewhere. First-layer progress persists when the party returns to the dungeon in the tested scenario.
+- In a shared Chalice Dungeon, the party sees the same lamp destinations. Lamps lit by a guest reach the host’s altar menu even while the host is elsewhere. First-layer progress persists when the party returns to the dungeon in the tested scenario.
 - The party can gather in the Hunter’s Dream for the finale. After a shared ending, each hunter starts in their own Central Yharnam. In the tested transition, the party closed during loading and the logs showed no connection-loss notification.
 - The game now delivers main-game and DLC boss rewards without a second shared reward queue. Also included are corrections for lamp selection after death, Blood Echo stains when a guest dies alone, returning to the title menu, and the guest’s jump to Rom.
+
+### What guests can do independently
+
+- Open eligible doors and gates, operate levers and elevators, and use local map interactions with the usual game requirements.
+- Talk to NPCs and advance their own quests, use shops and the workshop, and pick up their own map items and scripted rewards.
+- Take either Lecture Building exit to the Nightmare Frontier or Nightmare of Mensis. Guests can also use Micolash’s body in Yahar’gul, take the Amygdala routes to the Lecture Building or Hunter’s Nightmare, and ride the carriage from Hemwick to Cainhurst when the game’s requirements are met.
+- Use their own Chalice altars and visit an existing dungeon at the host’s altar. Replacing or removing the host’s ritual, starting the shared ending, and closing the whole party remain host actions.
 
 ## Launcher and port
 
@@ -30,15 +38,23 @@ The two-player tests confirmed reunion visibility, the tested NPC movement and c
 
 ## Русский
 
-В BBGL 1.3.0 входит BBSC-GL 1.3.0. Охотники в одной группе могут перемещаться по отдельности, снова встретиться и продолжить игру вместе.
+В BBGL 1.3.0 входит BBSC-GL 1.3.0. **Одна из главных возможностей релиза — независимые перемещения. Каждый охотник может зажигать и использовать лампы, уходить в другую локацию без выхода из группы и снова встречаться с напарниками.**
 
 ### Совместная игра
 
-- В общей сессии можно по отдельности пользоваться лампами, надгробиями и алтарями чаш. Переходы выполняет игра, а при новой встрече она снова создаёт персонажей напарников. Зажжённые лампы общие. У каждого охотника свой Сон с личной мастерской и магазинами.
+- Игроки могут по отдельности пользоваться лампами, надгробиями Сна охотника и алтарями чаш. Зажжённые лампы общие. У каждого охотника свой Сон с личной мастерской и магазинами.
+- У каждого охотника свои чаши, алтари и созданные подземелья. Корневые чаши используют полную штатную случайную генерацию. Гости могут войти в ту же раскладку, что и владелец чаши, помочь пройти слои и победить боссов, получить собственную добычу и положенные им награды.
 - ИИ, движение и урон NPC используют сетевую логику игры. Убран полный обход памяти при подключении для восстановления состояния врагов. Масштабирование HP врагов и боссов использует штатный пересчёт характеристик.
-- В подземелье хоста у группы общий список ламп. Лампа, зажжённая гостем, появляется у алтаря хоста, даже когда хост находится в другой локации. В проверенном сценарии прогресс первого слоя сохраняется при возвращении в чашу.
+- В совместном подземелье у группы общий список ламп. Лампа, зажжённая гостем, появляется у алтаря хоста, даже когда хост находится в другой локации. В проверенном сценарии прогресс первого слоя сохраняется при возвращении в чашу.
 - Перед финалом группу можно собрать в Сне охотника. После общей концовки каждый начинает в своём Центральном Ярнаме. В проверенном переходе сессия закрылась во время загрузки. В журналах нет записи об уведомлении о потере связи.
 - Награды боссов основной игры и DLC выдаёт сама игра. Убрана вторая общая очередь наград. Также уточнён выбор лампы возрождения, исправлены проверенные сценарии пятна крови при смерти гостя в одиночку, выхода в главное меню и прыжка гостя к Ром.
+
+### Что гости теперь могут делать сами
+
+- Открывать доступные двери и ворота, пользоваться рычагами, лифтами и другими объектами локации при выполнении условий игры.
+- Разговаривать с NPC и продвигать свои задания, пользоваться магазинами и мастерской, подбирать предметы на карте и получать личные награды событий.
+- Выходить из Лекционного корпуса на Границу Кошмара или в Кошмар Менсиса, перемещаться через тело Миколаша в Яаар’гуле, пользоваться переходами через Амигдалу в Лекционный корпус или Кошмар охотника и ехать на карете из Хемвика в Кейнхёрст при выполнении условий игры.
+- Пользоваться личными алтарями чаш и входить в уже созданную чашу у алтаря хоста. Замена или удаление ритуала хоста, запуск общей концовки и завершение всей сессии остаются действиями хоста.
 
 ### Лаунчер и порт
 

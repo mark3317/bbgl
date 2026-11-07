@@ -10,7 +10,11 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-In **1.3.0**, hunters can travel independently and meet again in the same party. The update also reworks native NPC synchronization, Chalice lamps and progress, and the transition from a shared ending to separate worlds. [Release notes and known limits](docs/release-1.3.0.md).
+In **1.3.0**, every hunter can light and use lamps, travel independently without leaving the party, and meet up again. Each hunter keeps their own Chalices and altars. Guests can help clear the owner’s randomly generated Root Chalice Dungeon and earn their own rewards. [Release notes and known limits](docs/release-1.3.0.md).
+
+## Party and peer-to-peer networking
+
+BBGL uses **Party**, a decentralized system for exchanging co-op data directly between the players’ PCs. Party runs locally for each player, discovers peers on the same LAN or VPN, and uses the game’s peer-to-peer UDP transport. The player who summons coordinates the game session from their own PC. A separate server, server account or invite code is unnecessary.
 
 ## Co-op: changes from BBSC
 

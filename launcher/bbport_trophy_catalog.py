@@ -10,8 +10,8 @@ BASE_TROPHY_COUNT = 34
 # https://infergames.com/ps4/bloodborne/list-of-trophies
 # https://infergames.com/ps4/bloodborne-the-old-hunters/list-of-trophies
 _TROPHIES = (
-    ("Bloodborne", "Earn every trophy in the base game.",
-     "Bloodborne", "Получите все трофеи основной игры."),
+    ("Bloodborne", "Earn all 39 other trophies, including The Old Hunters.",
+     "Bloodborne", "Получите остальные 39 трофеев, включая The Old Hunters."),
     ("Yharnam Sunrise", "Accept Gehrman's offer and see the morning in Yharnam.",
      "Ярнамский восход", "Примите предложение Германа и встретите рассвет в Ярнаме."),
     ("Honouring Wishes", "Take Gehrman's place as keeper of the Hunter's Dream.",

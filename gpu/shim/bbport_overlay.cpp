@@ -587,6 +587,11 @@ TrophyText TrophyDetails(const BbTrophies::Entry& entry, bool builtin) {
         return BbOverlayText::Russian() ? TrophyText{fallback->name_ru, fallback->detail_ru, false}
                                        : TrophyText{fallback->name_en, fallback->detail_en, false};
     }
+    if (entry.id == 0 && BbTrophies::HasTrophySet(BbTrophyCatalogue::PackId)) {
+        const auto& platinum = BbTrophyCatalogue::Entries[0];
+        return {entry.name.c_str(),
+                BbOverlayText::Russian() ? platinum.detail_ru : platinum.detail_en, false};
+    }
     return {entry.name.c_str(),
             entry.description.empty() ? L("Description unavailable.") : entry.description.c_str(), false};
 }

@@ -492,6 +492,8 @@ std::atomic<BannerDraw> banner_draw{nullptr};
 std::atomic<unsigned> next_seq{1}, prefetched_seq{0}; // the worker decodes in arrival order
 // The toast waits this long at most for its artwork; then it decodes on the present thread.
 constexpr double kPrefetchWaitMs = 250.0;
+constexpr int kBloodbornePlatinumId = 0;
+constexpr double kBeforePlatinumMs = 750.0;
 // More than this many waiting are not worth showing one by one.
 constexpr size_t kQueueLimit = 64;
 ImFont* name_font = nullptr;
@@ -516,6 +518,7 @@ struct Active {
     float fitted_scale = -1.0f;
 } active;
 double next_start = 0.0;
+double platinum_start = 0.0;
 
 std::atomic<double> stat_last{0}, stat_sum{0}, stat_max{0};
 std::atomic<unsigned> stat_frames{0}, stat_vertices{0};
@@ -939,6 +942,8 @@ bool Activate(double now) {
         std::scoped_lock lock{queue_mutex};
         if (queue.empty()) return false;
         const Request& front = queue.front();
+        if (!front.preview && front.id == kBloodbornePlatinumId && now < platinum_start)
+            return false;
         if (front.prefetch && front.seq > prefetched_seq.load() && clock_override.load() < 0.0 &&
             now - front.enqueued < kPrefetchWaitMs)
             return false; // the artwork is still being decoded
@@ -970,6 +975,12 @@ bool Activate(double now) {
     showing = true;
     PlaySound(grade);
     return true;
+}
+
+void Finish(double now) {
+    next_start = now + active.timeline.gap;
+    platinum_start = now + kBeforePlatinumMs;
+    showing = false;
 }
 
 } // namespace
@@ -1115,16 +1126,14 @@ void Draw(float scale) {
     if (active.theme->renderer == Renderer::Banner) {
         const BannerFrame b = EvaluateBanner(tl, ms);
         if (b.done) {
-            showing = false;
-            next_start = now + tl.gap;
+            Finish(now);
             return;
         }
         if (const BannerDraw draw = banner_draw.load()) draw(active.id, active.banner_text.c_str(), b.alpha, b.appear);
     } else {
         const Frame f = Evaluate(tl, active.cinematic ? active.theme->cinematic.settle : 0.0f, ms);
         if (f.phase == Phase::Done) {
-            showing = false;
-            next_start = now + tl.gap;
+            Finish(now);
             return;
         }
         if (active.theme->renderer == Renderer::Corner) DrawCorner(d, f, ms, scale);

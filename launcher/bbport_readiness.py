@@ -119,9 +119,10 @@ def trophy_snapshot(game_dir, user, *, russian=False):
                  if isinstance(entry, dict) and type(entry.get('id')) is int
                  and 0 <= entry['id'] < 128} if isinstance(cached, list) else {}
     has_metadata = cache.get('complete') is True and bool(catalogue)
+    bloodborne = bloodborne_catalogue(_bloodborne_pack_ids(game, pack, pack_size), russian)
     built_in = {}
     if not has_metadata:
-        built_in = bloodborne_catalogue(_bloodborne_pack_ids(game, pack, pack_size), russian)
+        built_in = bloodborne
         if built_in:
             catalogue = built_in
     ids = catalogue.keys() or (unlocked or {}).keys()
@@ -131,6 +132,8 @@ def trophy_snapshot(game_dir, user, *, russian=False):
         entry = catalogue.get(trophy_id, {})
         when = unlocked.get(trophy_id) if unlocked is not None else None
         name, description = entry.get('name'), entry.get('description')
+        if trophy_id == 0 and bloodborne:
+            description = bloodborne[0]['description']
         has_name = isinstance(name, str) and bool(name.strip()) and name != f'Trophy #{trophy_id}'
         secret = entry.get('hidden') is True and when is None
         entries.append({

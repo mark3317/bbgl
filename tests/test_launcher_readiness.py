@@ -43,12 +43,25 @@ class LauncherReadinessTests(unittest.TestCase):
                     entries = {entry['id']: entry for entry in snapshot['entries']}
                     self.assertEqual(entries[5]['name'], 'Сущность охотника')
                     self.assertTrue(entries[5]['description'])
+                    self.assertEqual(entries[0]['description'],
+                                     'Получите остальные 39 трофеев, включая The Old Hunters.')
                     self.assertEqual((entries[14]['name'], entries[14]['description'], entries[14]['secret']),
                                      ('', '', True))
                     self.assertEqual(34 in entries, total == 40)
             user.mkdir()
             (user / 'trophies.txt').write_text('14 1728000000\n', encoding='utf-8')
             self.assertEqual(trophy_snapshot(game, user)['entries'][0]['name'], 'Father Gascoigne')
+            cache = user / 'trophy_cache/metadata.json'
+            cache.parent.mkdir()
+            cache.write_text(json.dumps({
+                'source_size': pack.stat().st_size, 'complete': True,
+                'entries': [{'id': 0, 'name': 'Bloodborne', 'description': 'Original description'}],
+            }), encoding='utf-8')
+            snapshot = trophy_snapshot(game, user)
+            self.assertFalse(snapshot['builtIn'])
+            self.assertEqual(snapshot['entries'][0]['description'],
+                             'Earn all 39 other trophies, including The Old Hunters.')
+            cache.unlink()
             binding.write_bytes(b'NPWR00000_00')
             snapshot = trophy_snapshot(game, user)
             self.assertFalse(snapshot['builtIn'])

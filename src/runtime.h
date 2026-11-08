@@ -86,7 +86,7 @@ void runtime_pad_report(void);
 uintptr_t runtime_rtc_resolve(const char *name);
 const char *runtime_file_user_dir(void);
 void runtime_trophy_configure(void);
-int runtime_trophy_unlock(int id);
+int runtime_trophy_unlock(int id, int32_t *platinum);
 void runtime_savedata_configure(const char *title);
 uintptr_t runtime_savedata_resolve(const char *name);
 void runtime_savedata_report(void);

@@ -44,8 +44,8 @@ PATCH_VERSION = '01.09'
 MAX_LOG_LINES = 6000
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 # This fork's build; the release tag includes this version.
-VERSION = '1.4.2'
-CURRENT_RELEASE_TAG = 'v1.4.2'
+VERSION = '1.4.3'
+CURRENT_RELEASE_TAG = 'v1.4.3'
 HERO_ART = PORT_DIR / 'launcher' / 'art' / 'hero.png'
 STRIP_ART = PORT_DIR / 'launcher' / 'art' / 'strip.png'
 RELEASES_API = 'https://api.github.com/repos/mark3317/bbgl/releases/latest'

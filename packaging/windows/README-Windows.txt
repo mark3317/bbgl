@@ -1,4 +1,4 @@
-Bloodborne Game Launcher 1.4.2 — mark3317
+Bloodborne Game Launcher 1.4.3 — mark3317
 
 Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
 For P2P co-op, connect every PC to the same VPN or LAN.
@@ -28,5 +28,5 @@ Use the profile-folder button in the launcher. Custom save folders stay where se
 Keep your profile and user mods when updating; never distribute your working installation as a release.
 Game files and saves are not included in the ZIP.
 
-See README.md, README.ru.md and docs/release-1.4.2.md.
+See README.md, README.ru.md and docs/release-1.4.3.md.
 Updates: https://github.com/mark3317/bbgl/releases

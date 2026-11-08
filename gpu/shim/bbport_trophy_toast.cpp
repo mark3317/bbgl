@@ -22,6 +22,20 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
+#endif
+
 #include <SDL3/SDL.h>
 #include "imgui_internal.h"
 #include "bbport_trophies.h"
@@ -171,8 +185,39 @@ float Flash(float t) {
 // Options (notifications.ini) and paths.
 
 fs::path TrophyDir() {
+#ifdef _WIN32
+    const wchar_t* user = _wgetenv(L"BB_GPU_USER_DIR");
+    return fs::path(user && *user ? user : L"user") / "custom_trophy";
+#else
     const char* user = std::getenv("BB_GPU_USER_DIR");
     return fs::path(user && *user ? user : "user") / "custom_trophy";
+#endif
+}
+
+// Hold a shared lock for the game process. The launcher takes an exclusive lock
+// only while replacing the INI, so it cannot race the overlay's asynchronous writer.
+void LockOptionsForGame() {
+    static const bool locked = [] {
+        std::error_code ec;
+        fs::create_directories(TrophyDir(), ec);
+        const fs::path path = TrophyDir() / "notifications.lock";
+#ifdef _WIN32
+        HANDLE file = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) return false;
+        OVERLAPPED offset{};
+        if (LockFileEx(file, 0, 0, 1, 0, &offset)) return true;
+        CloseHandle(file);
+#else
+        const int file = open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0666);
+        if (file < 0) return false;
+        if (flock(file, LOCK_SH) == 0) return true;
+        close(file);
+#endif
+        return false;
+    }();
+    if (!locked) std::printf("Trophy notifications: could not lock the profile options\n");
 }
 
 std::string ReadText(const fs::path& path) {
@@ -199,9 +244,15 @@ void WriteOptions(const Options& o) {
     {
         std::ofstream out(part, std::ios::binary | std::ios::trunc);
         out << FormatOptions(o);
+        out.close();
         if (!out) return;
     }
+#ifdef _WIN32
+    if (!MoveFileExW(part.c_str(), file.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        std::printf("Trophy notifications: could not replace the profile options (%lu)\n", GetLastError());
+#else
     fs::rename(part, file, ec);
+#endif
 }
 
 // Pictures, loaded once at start on the ImGui thread (never during a toast):
@@ -942,6 +993,7 @@ void Start(ImFontAtlas* atlas, IconSource icons, IconPrefetch prefetch, BannerDr
     icon_source = icons;
     icon_prefetch = prefetch;
     banner_draw = banner;
+    LockOptionsForGame();
     LoadOptions();
     if (atlas) {
         // Fonts: <custom_trophy>/font.ttf (and font-light.ttf for the second line) when the player

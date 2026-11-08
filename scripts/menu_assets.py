@@ -35,7 +35,7 @@ MESSAGE_FILE = 'menu.msgbnd.dcx'
 # rows at most. The names and row counts must match src/pc_menu.c.
 # Graphics keeps six visible widget slots; the native list scrolls the logical records.
 # No fixed Defaults-only slot: Defaults scrolls with the rest of the list.
-SECTION_ROWS = [('PCGraphics', 117020, 6), ('PCAchieve', 128020, 6)]
+SECTION_ROWS = [('PCGraphics', 117020, 6)]
 NATIVE_SECTIONS = SECTION_ROWS
 SECTIONS = [(name, title, 383 + i, rows, ['Item_6_0'] if name == 'PCGraphics' else [])
             for i, (name, title, rows) in enumerate(NATIVE_SECTIONS)]
@@ -500,68 +500,6 @@ def add_scrollbar(b, list_name, ax, ay, name='ScrollBarV'):
     return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, sprite) + b[le:])
 
 
-def edit_sprite_matrices(b, cid, changes):
-    """Edit selected depths on every frame, preserving PLACE2/PLACE3 attributes."""
-    found = find_sprite(b, cid)
-    if not found:
-        raise Fail(f'no sprite {cid}')
-    head, start, end = found
-    out = bytearray(b[start:start + 4])
-    changed = set()
-    for code, h, a, z in tags(b, start + 4, end):
-        if code not in (PLACE2, PLACE3):
-            out += b[h:z]
-            continue
-        depth, _char, _mat, _name = placement(b, code, a)
-        if depth not in changes or not b[a] & 4:
-            out += b[h:z]
-            continue
-        pos = a + (4 if code == PLACE3 else 3)
-        if code == PLACE3 and (b[a + 1] & 8 or (b[a + 1] & 16 and b[a] & 2)):
-            _class, pos = cstr(b, pos)
-        if b[a] & 2:
-            pos += 2
-        mat, after = read_matrix(b, pos)
-        changes[depth](mat)
-        out += tag_bytes(code, b[a:pos] + write_matrix(mat) + b[after:z])
-        changed.add(depth)
-    if changed != set(changes):
-        raise Fail(f'sprite {cid}: missing layout depths {set(changes) - changed}')
-    return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, out) + b[end:])
-
-
-def move_y(pixels):
-    def apply(mat):
-        mat.ty += round(pixels * 20)
-    return apply
-
-
-def expand_system_frame(b):
-    """Expand only System's frame, leaving the option sections' shared art alone.
-
-    The two ornaments and two rules are separate placements. Move them instead
-    of stretching their artwork; only the translucent panel is stretched. Keep
-    the footer below the last command, including Exit Game in the world.
-    """
-    # These are the 1.09 Top/frame sprites. Verify their relationship before editing.
-    top = find_sprite(b, 150)
-    if not top or not any(c in (PLACE2, PLACE3) and
-                          placement(b, c, a)[1] == 145
-                          for c, _h, a, _z in tags(b, top[1] + 4, top[2])):
-        raise Fail('unexpected System frame')
-    def panel(mat):
-        # Original panel bounds are -31.8..493.75 px. Anchor its new top.
-        scale = (493.75 + SYSTEM_FRAME_BOTTOM - (-31.8 + SYSTEM_FRAME_TOP)) / (493.75 - (-31.8))
-        mat.has_scale = True
-        mat.sa = 65536
-        mat.sc = round(scale * 65536)
-        mat.sn = max(sbits(mat.sa), sbits(mat.sc))
-        mat.ty += round((SYSTEM_FRAME_TOP + 31.8 * (scale - 1)) * 20)
-    b = edit_sprite_matrices(b, 145, {1: panel, 11: move_y(SYSTEM_FRAME_TOP),
-                                    17: move_y(SYSTEM_FRAME_BOTTOM), 23: move_y(SYSTEM_FRAME_TOP), 27: move_y(SYSTEM_FRAME_BOTTOM)})
-    return edit_sprite_matrices(b, 150, {66: move_y(SYSTEM_FRAME_BOTTOM), 69: move_y(SYSTEM_FRAME_TOP)})
-
-
 def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
     """Give a command list enough visible slots, including every animation frame.
 
@@ -620,13 +558,7 @@ def fit_command_list(b, list_name, count, pitch=None, offset_y=0):
     return set_size(b[:head] + tag_bytes(DEFINE_SPRITE, out) + b[le:])
 
 
-# The world adds Exit Game to the five front-end native commands.
-SYSTEM_VISIBLE_ROWS = 5 + len(NATIVE_SECTIONS)
 TITLE_VISIBLE_ROWS = 8  # native commands + online/offline variant + Information + Quit Game
-SYSTEM_ROW_PITCH = 67.65
-SYSTEM_ROW_OFFSET = -70
-SYSTEM_FRAME_TOP = -70
-SYSTEM_FRAME_BOTTOM = 72.35
 
 
 def name_dropdown_parts(b):
@@ -679,10 +611,9 @@ def build_option_movie(source):
         movie = add_option_section(movie, name, title, depth, defaults_slot, drop)
     # One persistent value widget per logical row; native labels retain six visible cells.
     movie = fit_command_list(movie, 'PCGraphics', 15, pitch=57.15)
-    movie = add_scrollbar(movie, 'PCGraphics', *SCROLLBAR_AT)
-    movie = fit_command_list(movie, 'Top', SYSTEM_VISIBLE_ROWS,
-                             pitch=SYSTEM_ROW_PITCH, offset_y=SYSTEM_ROW_OFFSET)
-    return expand_system_frame(movie)
+    # Graphics takes the slot freed by the runtime's removal of Network.
+    # System keeps the original five slots and frame.
+    return add_scrollbar(movie, 'PCGraphics', *SCROLLBAR_AT)
 
 
 # --- Messages --------------------------------------------------------------------------------

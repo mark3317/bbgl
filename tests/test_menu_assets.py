@@ -51,11 +51,12 @@ class FormatTests(unittest.TestCase):
         import re
         runtime = (ROOT / 'src/pc_menu.c').read_text(encoding='utf-8')
         rows = m.read_messages()
-        self.assertEqual(m.SECTION_ROWS, [('PCGraphics', 117020, 6), ('PCAchieve', 128020, 6)])
+        self.assertEqual(m.SECTION_ROWS, [('PCGraphics', 117020, 6)])
         self.assertEqual(m.NATIVE_SECTIONS, m.SECTION_ROWS)
         self.assertIn('MAX_ROWS = 16', runtime)
         self.assertIn('bbgpu_output_live_supported', runtime)
-        self.assertIn('add_command(builder, ROW_RESTART', runtime)
+        self.assertNotIn('add_command(builder, ROW_RESTART', runtime)
+        self.assertNotIn('ROW_ACHIEVEMENTS', runtime)
         template = re.search(r'g_graphics_template\[\] = \{(.*?)\n\};', runtime, re.S).group(1)
         ids = [int(i) for i in re.findall(r'_ROW\("\w+", (\d+)', template)]
         self.assertEqual(len(ids), 15)
@@ -64,7 +65,7 @@ class FormatTests(unittest.TestCase):
         ru = m.read_messages(m.MESSAGES.with_name('pc_menu_messages_ru.tsv'))
         self.assertEqual(ru.keys(), rows.keys())
         self.assertEqual(ru[110007][0], 'Графика')
-        self.assertEqual(ru[110018][0], 'Достижения')
+        self.assertNotIn(110018, rows)
         for mid in ids:
             self.assertTrue(ru[mid][1], mid)
 
@@ -81,6 +82,7 @@ class RealGameTests(unittest.TestCase):
         movie = self.files[m.MOVIE]
         self.assertEqual(int.from_bytes(movie[4:8], 'little'), len(movie))
         names = placed_names(movie)
+        self.assertNotIn('PCAchieve', names)
         for name, title, *_ in m.SECTIONS:
             self.assertEqual(names.count(name), 1)
             self.assertIn(f'StaticText_{title}'.encode(), movie)
@@ -88,7 +90,7 @@ class RealGameTests(unittest.TestCase):
         before = [s for code, _h, s, _e in m.tags(source, m.body_start(source), len(source)) if code == m.DEFINE_SPRITE]
         self.assertEqual(len(sprites), len(before) + 2 * len(m.SECTIONS))  # each: the section and its title
         self.assertEqual(len(m.symbol_classes(movie)), len(m.symbol_classes(source)) + len(m.SECTIONS))
-        # The System list has room for every command; a scrollbar is unnecessary.
+        # The runtime replaces Network with Graphics in the original five-slot list.
         top = next(m.placement(movie, code, s) for code, _h, s, _e in m.tags(movie, m.body_start(movie), len(movie))
                    if code in (m.PLACE2, m.PLACE3) and m.placement(movie, code, s)[3] == 'Top')
         head, s, e = m.find_sprite(movie, top[1])
@@ -96,8 +98,8 @@ class RealGameTests(unittest.TestCase):
                   if code in (m.PLACE2, m.PLACE3)]
         self.assertNotIn('ScrollBarV', inside)
         self.assertEqual({name for name in inside if name and name.startswith('Item_')},
-                         {f'Item_{i}_0' for i in range(m.SYSTEM_VISIBLE_ROWS)})
-        self.assert_row_animation(movie, top[1], m.SYSTEM_VISIBLE_ROWS, m.SYSTEM_ROW_PITCH * 20)
+                         {f'Item_{i}_0' for i in range(5)})
+        self.assert_row_animation(movie, top[1], 5, 1353)
 
     def test_graphics_has_persistent_widget_slots_and_native_scrollbar(self):
         movie = self.files[m.MOVIE]
@@ -110,37 +112,11 @@ class RealGameTests(unittest.TestCase):
         self.assertNotIn('PCDisplay', placed_names(movie))
         self.assertNotIn('PCSetting', placed_names(movie))
 
-    def test_system_frame_and_footer_enclose_all_thirteen_rows(self):
+    def test_system_keeps_its_original_frame_and_footer(self):
         movie = self.files[m.MOVIE]
         source = (GAME / m.MOVIE).read_bytes()
-        def frames(data, cid):
-            _h, a, z = m.find_sprite(data, cid)
-            current, result = {}, []
-            for code, _h, s, e in m.tags(data, a + 4, z):
-                if code in (m.PLACE2, m.PLACE3):
-                    depth, _char, mat, _name = m.placement(data, code, s)
-                    if mat:
-                        current[depth] = mat
-                if code == m.SHOW_FRAME:
-                    result.append(current.copy())
-            return result
-        self.assertEqual(m.SYSTEM_VISIBLE_ROWS, 7)  # six native in-world, six PC, Restart
-        for before, after in zip(frames(source, 145), frames(movie, 145), strict=True):
-            for depth, shift in ((11, m.SYSTEM_FRAME_TOP), (17, m.SYSTEM_FRAME_BOTTOM), (23, m.SYSTEM_FRAME_TOP), (27, m.SYSTEM_FRAME_BOTTOM)):
-                self.assertEqual(after[depth][5] - before[depth][5], shift * 20)
-                self.assertEqual(after[depth][:4], before[depth][:4])  # ornaments keep their shape
-        for frame in frames(movie, 150):
-            # Row text baseline comes 50.7 px below its placement. The header and
-            # divider/footer must leave at least 40 px after the last row text.
-            first_y = frame[31][5] / 20 + 50.7
-            last_y = first_y + (m.SYSTEM_VISIBLE_ROWS - 1) * m.SYSTEM_ROW_PITCH
-            self.assertGreater(first_y, frame[69][5] / 20 + 40)
-            divider = frame[3][5] / 20 + (15799 / 20 + m.SYSTEM_FRAME_BOTTOM)
-            help_y = frame[66][5] / 20 + 4662 / 20
-            self.assertLess(last_y + 40, divider)
-            self.assertGreater(help_y, divider)
-        # Other sections share StatusBar/backdrop art: those sprites stay byte-identical.
-        for cid in (19, 37, 107, 115, 126, 134, 138):
+        # Keep Top, its frame and the shared StatusBar/backdrop art byte-identical.
+        for cid in (19, 37, 107, 115, 126, 134, 138, 145, 150):
             _h, a, z = m.find_sprite(source, cid)
             _h2, a2, z2 = m.find_sprite(movie, cid)
             self.assertEqual(source[a:z], movie[a2:z2])

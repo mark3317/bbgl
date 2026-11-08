@@ -26,7 +26,6 @@
  * BB_PAD_CENTER_CAL=0 disables the measurement. */
 #define _GNU_SOURCE
 #include "runtime.h"
-#include "runtime_atlas_release.h"
 #include "mouse_camera.h"
 #include "menu_pointer.h"
 #include "gpu/bbgpu.h"
@@ -292,7 +291,6 @@ static SDL_Gamepad *current_gamepad(void) {
     }
     return gamepad;
 }
-static uint32_t host_mouse_buttons; /* the pad bits only mouse bindings set (sample_host) */
 static void sample_host(PadData *d) {
     memset(d,0,sizeof(*d));
     d->left_x=d->left_y=d->right_x=d->right_y=128;
@@ -300,8 +298,6 @@ static void sample_host(PadData *d) {
     d->connected=1; d->connected_count=connected_count ? connected_count : 1;
     d->timestamp=now_us();
     SDL_Gamepad *g=current_gamepad();
-    /* Sampled even while the settings menu or Hunter's Atlas's map owns input: the map reads
-     * it (bbgpu_atlas_route_pad), and sample_game hands the game neutral input afterwards. */
     int nkeys=0;
     const bool *k=SDL_WasInit(SDL_INIT_VIDEO) ? SDL_GetKeyboardState(&nkeys) : NULL;
     if (g) {
@@ -409,8 +405,6 @@ static void sample_host(PadData *d) {
     d->buttons|=bb_menu_pointer_buttons();
     BindOutput o;
     bb_bindings_apply(k,nkeys,mouse,&o);
-    /* What only the mouse holds (left click is R1, attack): neither gamepad nor key gives it. */
-    host_mouse_buttons=o.mouse_buttons & ~d->buttons;
     if (o.any) {
         d->buttons|=o.buttons;
         if (o.buttons & BTN_L2) d->l2=255;
@@ -547,10 +541,14 @@ static void replay_sample(PadData *d) {
     d->left_x=s->axes[0]; d->left_y=s->axes[1]; d->right_x=s->axes[2]; d->right_y=s->axes[3];
     d->l2=s->l2; d->r2=s->r2;
 }
-/* After the menu, the map or the text dialog closes, buttons, sticks and triggers still held
- * (the Cross that accepted a name) stay hidden until released: the game would take them as a
- * new press. (Hunter's Atlas, runtime_atlas_release.h.) */
-static BbAtlasRelease atlas_release;
+/* Keep inputs held during an overlay or text dialog suppressed until released. */
+static uint32_t captured_buttons;
+static unsigned captured_axes, captured_triggers;
+
+static int axis_held(uint8_t value) {
+    return value < 110 || value > 146;
+}
+
 /* The buttons the game was last given (runtime_pad_buttons: the in-game PC menu's paging). */
 static volatile uint32_t delivered_buttons;
 uint32_t runtime_pad_buttons(void) { return delivered_buttons; }
@@ -572,25 +570,27 @@ static void sample_game(PadData *d) {
     if (injected.buttons & BTN_R2) d->r2=255;
     uint8_t *axes[4]={&d->left_x,&d->left_y,&d->right_x,&d->right_y};
     for (int i=0;i<4;++i) if (injected.stick[i]>=0) *axes[i]=(uint8_t)injected.stick[i];
-    const uint32_t raw_buttons=d->buttons;
-    uint8_t sampled_axes[4]={d->left_x,d->left_y,d->right_x,d->right_y},sampled_triggers[2]={d->l2,d->r2};
-    const int capture_before=bbgpu_overlay_captures_input();
-    /* Hunter's Atlas: the quick menu's Map tile and the open map take the buttons they use. The
-     * open map handles the mouse itself (drag to pan, click a lamp to travel), so the buttons
-     * the mouse's bindings hold stay out of its pad input: a left click is R1, which the map
-     * reads as the next lamp, and every drag or travel click also moved the selection (#41). */
-    const uint32_t routed_in=capture_before ? d->buttons & ~host_mouse_buttons : d->buttons;
-    d->buttons=bbgpu_atlas_route_pad(routed_in,d->left_x,d->left_y,d->right_x,d->right_y);
-    if (capture_before || bbgpu_overlay_captures_input()) {
-        bb_atlas_remember(&atlas_release,raw_buttons,sampled_axes,sampled_triggers);
+    uint8_t *triggers[2]={&d->l2,&d->r2};
+    if (bbgpu_overlay_captures_input()) {
+        captured_buttons |= d->buttons;
+        for (unsigned i=0;i<4;++i) if (axis_held(*axes[i])) captured_axes |= 1u<<i;
+        for (unsigned i=0;i<2;++i) if (*triggers[i]>32) captured_triggers |= 1u<<i;
         d->buttons=0; d->left_x=d->left_y=d->right_x=d->right_y=128; d->l2=d->r2=0; d->touch_count=0;
         return;
     }
-    const uint32_t routed=d->buttons;
-    bb_atlas_release_filter(&atlas_release,raw_buttons,&d->buttons,sampled_axes,sampled_triggers);
-    if (d->buttons!=routed) d->touch_count=0;
-    d->left_x=sampled_axes[0]; d->left_y=sampled_axes[1]; d->right_x=sampled_axes[2]; d->right_y=sampled_axes[3];
-    d->l2=sampled_triggers[0]; d->r2=sampled_triggers[1];
+    captured_buttons &= d->buttons;
+    d->buttons &= ~captured_buttons;
+    if (captured_buttons) d->touch_count=0;
+    for (unsigned i=0;captured_axes && i<4;++i) {
+        if (!(captured_axes & (1u<<i))) continue;
+        if (axis_held(*axes[i])) *axes[i]=128;
+        else captured_axes &= ~(1u<<i);
+    }
+    for (unsigned i=0;captured_triggers && i<2;++i) {
+        if (!(captured_triggers & (1u<<i))) continue;
+        if (*triggers[i]>32) *triggers[i]=0;
+        else captured_triggers &= ~(1u<<i);
+    }
     runtime_stamina_tick(d->buttons);
 }
 

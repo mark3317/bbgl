@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_overlay.h"
 #include "bbport_overlay_text.h"
-#include "bbport_map.h"
-#include "bbport_map_art.h"
-#include "bbport_atlas_menu.h"
-#include "bbport_atlas_paths.h"
 
 #include <algorithm>
 #include <atomic>
+#include <string_view>
 #include <array>
 #include <cfloat>
 #include <chrono>
@@ -29,6 +26,7 @@
 
 #include <SDL3/SDL.h>
 #include "bbport_settings.h"
+#include "bbport_trophy_catalogue.h"
 #include "bbport_trophies.h"
 #include "bbport_trophy_toast.h"
 #include "imgui.h"
@@ -80,10 +78,31 @@ std::atomic<bool> initialized{false};
 std::atomic<bool> menu_open{false};
 std::atomic<std::int64_t> menu_opened_ms{0};
 bool l3_down = false, r3_down = false;
-int active_tab = 0; // Hunt, Trophy gallery, Image tools, Gameplay extras
+enum GuideTab { HuntTab, TrophiesTab, NotificationsTab, ExtrasTab, GuideTabCount };
+int active_tab = HuntTab;
 // Where the controller's focus was last frame: on a rail icon, or on the page beside it.
 bool rail_focused_last = false, page_focused_last = false;
 bool dirty = false; // settings changed while open: saved on close
+unsigned char* cheat_flags = nullptr; // guarded by imgui_mutex
+
+consteval int CheatEffect(std::string_view key) {
+    for (int e = 0; e < BbSettings::EffectCount; ++e) {
+        if (key == BbSettings::Effects[e].key) return e;
+    }
+    throw "Unknown cheat setting";
+}
+
+struct LiveCheat {
+    int effect;
+    const char* label;
+    unsigned offset;
+};
+constexpr LiveCheat live_cheats[] = {
+    {CheatEffect("cheat_no_death"), "Never die (minimum 1 HP)", 0},
+    {CheatEffect("cheat_one_hit_kill"), "Every hit kills", 1},
+    {CheatEffect("cheat_stealth"), "Enemies cannot see you", 6},
+    {CheatEffect("cheat_silent"), "Enemies cannot hear you", 7},
+};
 // The game's text dialog (SetTextEntry), guarded by imgui_mutex. The flag is atomic:
 // RoutePad reads it on the game's pad thread without that lock.
 std::atomic<bool> text_entry_active{false};
@@ -238,7 +257,7 @@ void SetOpen(bool value) {
     }
     // WindowSDL owns the silver hardware cursor, also used by native menus.
     if (value) {
-        active_tab = 0;
+        active_tab = HuntTab;
         menu_opened_ms = ClockMs();
         // The pointer shows at once where the mouse is, not only after it next moves.
         if (SDL_Window* window = SDL_GetMouseFocus()) {
@@ -428,19 +447,6 @@ void NoteF(ImU32 color, const char* format, ...) {
     va_end(args);
     Note(text, color);
 }
-// A row that only reports something: label and value.
-void InfoRow(const char* label, const char* format, ...) {
-    char value[256];
-    va_list args;
-    va_start(args, format);
-    std::vsnprintf(value, sizeof(value), format, args);
-    va_end(args);
-    RowLabel(label, ImGui::GetTextLineHeight());
-    ImGui::PushStyleColor(ImGuiCol_Text, Vec(Ink::Dim));
-    ImGui::TextUnformatted(value);
-    ImGui::PopStyleColor();
-}
-
 // A switch: crimson when on. The whole switch is the (navigable) button.
 bool Switch(const char* id, bool* value) {
     const float w = Px(42.0f), h = Px(24.0f);
@@ -536,40 +542,25 @@ bool NativePcMenuAvailable() {
            (!enabled || std::strcmp(enabled, "0") != 0);
 }
 
-void ImageToolsTab() {
-    auto& s = BbSettings::Get();
-    PageTitle(L("Image diagnostics"));
-    Note(L("Graphics, display, effects and the FPS counter are in Pause > System. These tools are "
-         "diagnostics beyond the game menu."));
-    // Hunter's Atlas: the map's keys and shortcuts, while the launcher has it on.
-    if (BbMap::Enabled()) BbMap::Settings();
-    Section(L("Current image"));
-    InfoRow(L("Scene resolution"), "%d x %d", s.active_render_width.load(),
-            s.active_render_height.load());
-    Section(L("Debug views"));
-    int view = s.debug_view;
-    if (ChoiceRow(L("Normal image"), view == BbSettings::DebugNone))
-        s.debug_view = BbSettings::DebugNone;
-    if (ChoiceRow(L("Reactive mask view"), view == BbSettings::DebugReactive))
-        s.debug_view = BbSettings::DebugReactive;
-    if (ChoiceRow(L("Motion vector view"), view == BbSettings::DebugMotion))
-        s.debug_view = BbSettings::DebugMotion;
-    Hint(L("Debug views are temporary diagnostics; return to Normal image to play."));
-}
-
 void GameplayTab() {
     auto& s = BbSettings::Get();
     PageTitle(L("Gameplay extras"));
     Note(L("These settings apply immediately. Other gameplay options are in the launcher."));
-    // These two cheats are read each frame by runtime_stamina.c; all patch-based
-    // cheats and enhancements belong in the launcher because they require a restart.
-    for (int e = 0; e < BbSettings::EffectCount; ++e) {
-        const char* key = BbSettings::Effects[e].key;
-        if (!std::strcmp(key, "cheat_no_stamina"))
-            Checkbox(L("No stamina use"), s.effects[e]);
-        else if (!std::strcmp(key, "cheat_stamina_out_of_combat"))
-            Checkbox(L("No stamina use out of combat"), s.effects[e]);
+    if (!cheat_flags) Note(L("Some cheats are unavailable on this game build."));
+    OpenRows();
+    ImGui::BeginDisabled(!cheat_flags);
+    for (const auto& cheat : live_cheats) {
+        auto& setting = s.effects[cheat.effect];
+        bool enabled = setting.load();
+        if (Toggle(L(cheat.label), &enabled) && cheat_flags) {
+            // One byte per cheat: the same block holds the stamina flag and other game flags.
+            std::atomic_ref(cheat_flags[cheat.offset]).store(enabled, std::memory_order_relaxed);
+            Store(setting, enabled, true);
+        }
     }
+    ImGui::EndDisabled();
+    Checkbox(L("No stamina use"), s.effects[CheatEffect("cheat_no_stamina")]);
+    Checkbox(L("No stamina use out of combat"), s.effects[CheatEffect("cheat_stamina_out_of_combat")]);
 }
 
 std::string UnlockDate(std::int64_t timestamp) {
@@ -582,93 +573,111 @@ std::string UnlockDate(std::int64_t timestamp) {
     return date;
 }
 
-void AchievementRow(const BbTrophies::Entry& entry) {
-    const bool gallery = NativePcMenuAvailable();
-    const float h = (gallery ? 72.0f : 98.0f) * base_scale;
-    const bool earned = entry.unlocked_at > 0;
-    ImGui::PushID(entry.id);
-    ImGui::Selectable("##achievement", false, 0, ImVec2(0, h));
-    const ImVec2 min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
-    ImDrawList* draw = ImGui::GetWindowDrawList();
-    const float icon = (gallery ? 46.0f : 52.0f) * base_scale;
-    const ImVec2 icon_min(min.x + 9.0f * base_scale, min.y + (h - icon) * .5f);
-    const ImVec2 icon_max(icon_min.x + icon, icon_min.y + icon);
-    const auto texture = IconRef(entry.id);
-    const ImU32 tint = earned ? IM_COL32_WHITE : IM_COL32(105, 112, 110, 255);
-    if (texture._TexData || texture._TexID != ImTextureID_Invalid)
-        draw->AddImageRounded(texture, icon_min, icon_max, ImVec2(0, 0), ImVec2(1, 1),
-                              tint, 8.0f * base_scale);
-    else
-        draw->AddRectFilled(icon_min, icon_max, IM_COL32(40, 48, 46, 255), 8.0f * base_scale);
-    const ImVec2 center(icon_min.x + icon * .5f, icon_min.y + icon * .5f);
-    draw->AddCircle(center, icon * .51f, GradeColor(entry.grade, earned ? 1.0f : .45f),
-                    0, 2.0f * base_scale);
-    const float text_x = icon_max.x + 14.0f * base_scale;
-    const float right_x = max.x - 64.0f * base_scale;
-    const bool secret = entry.hidden && !earned;
-    const std::string name = secret ? L("Secret trophy") : entry.name;
-    const std::string detail = secret ? L("Unlock to reveal this achievement") : entry.description;
-    const std::string score = secret || entry.score < 0 ? "??G" :
-                              std::to_string(entry.score) + "G";
-    const ImVec4 name_clip(text_x, min.y, right_x - 7.0f * base_scale, max.y);
-    const float name_y = gallery ? min.y + (h - ImGui::GetFontSize()) * 0.5f : min.y + 10.0f * base_scale;
-    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(text_x, name_y),
-                  earned ? Ink::Text : Ink::Dim, name.c_str(), nullptr, 0.0f, &name_clip);
-    const char* state = gallery ? (earned ? L("Earned") : L("Locked")) : score.c_str();
-    draw->AddText(ImVec2(max.x - ImGui::CalcTextSize(state).x - 4.0f * base_scale, name_y),
-                  earned ? Ink::Good : Ink::Faint, state);
-    if (!gallery && !detail.empty())
-        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * .83f,
-                      ImVec2(text_x, min.y + 34.0f * base_scale),
-                      earned ? IM_COL32(180, 192, 183, 255) : IM_COL32(112, 122, 115, 255),
-                      detail.c_str(), nullptr, right_x - text_x - 7.0f * base_scale);
-    if (!gallery && earned) {
-        const auto date = UnlockDate(entry.unlocked_at);
-        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * .78f,
-                      ImVec2(text_x, min.y + 76.0f * base_scale),
-                      IM_COL32(137, 209, 145, 255), date.c_str());
+struct TrophyText {
+    const char* name;
+    const char* description;
+    bool secret;
+};
+
+TrophyText TrophyDetails(const BbTrophies::Entry& entry, bool builtin) {
+    const auto* fallback = builtin ? &BbTrophyCatalogue::Entries[entry.id] : nullptr;
+    const bool secret = entry.unlocked_at <= 0 && (fallback ? fallback->hidden : entry.hidden);
+    if (secret) return {L("Secret trophy"), L("Unlock to reveal this achievement"), true};
+    if (fallback) {
+        return BbOverlayText::Russian() ? TrophyText{fallback->name_ru, fallback->detail_ru, false}
+                                       : TrophyText{fallback->name_en, fallback->detail_en, false};
     }
-    Rule(draw, min.x, max.x, max.y - 1.0f);
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::TextUnformatted(name.c_str());
-        if (!detail.empty()) ImGui::TextWrapped("%s", detail.c_str());
-        ImGui::EndTooltip();
-    }
-    ImGui::PopID();
+    return {entry.name.c_str(),
+            entry.description.empty() ? L("Description unavailable.") : entry.description.c_str(), false};
 }
 
-// A section title that opens and closes with a chevron; `hint` shows on the right while closed.
-bool FoldSection(const char* title, const char* hint, bool* open) {
-    CloseRows();
-    ImGui::Dummy(ImVec2(0, Px(18.0f)));
-    const float h = ImGui::GetTextLineHeight() + Px(6.0f);
-    if (ImGui::InvisibleButton(title, ImVec2(ImGui::GetContentRegionAvail().x, h))) *open = !*open;
+void TrophyArtwork(const BbTrophies::Entry& entry, ImVec2 min, float size, bool secret,
+                   bool has_details) {
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 max(min.x + size, min.y + size);
+    const ImVec2 center(min.x + size * .5f, min.y + size * .5f);
+    const bool earned = entry.unlocked_at > 0;
+    if (!secret && (earned || has_details)) {
+        const auto texture = IconRef(entry.id);
+        if (texture._TexData || texture._TexID != ImTextureID_Invalid) {
+            draw->AddImageRounded(texture, min, max, ImVec2(0, 0), ImVec2(1, 1),
+                                  earned ? IM_COL32_WHITE : IM_COL32(158, 154, 149, 255), Px(4.0f));
+            return;
+        }
+    }
+    draw->AddRectFilled(min, max, Ink::SurfaceHover, Px(4.0f));
+    const float glyph = std::min(size * .53f, Px(42.0f));
+    if (!secret) {
+        TrophyGlyph(draw, center, glyph, .65f);
+        return;
+    }
+    const float r = glyph * .23f;
+    draw->PathArcTo(ImVec2(center.x, center.y - r * .52f), r, IM_PI, 2.0f * IM_PI);
+    draw->PathStroke(Ink::Dim, 0, Px(1.8f));
+    draw->AddRect(ImVec2(center.x - r * 1.42f, center.y - r * .5f),
+                  ImVec2(center.x + r * 1.42f, center.y + r * 1.65f),
+                  Ink::Dim, Px(2.0f), 0, Px(1.8f));
+}
+
+bool AchievementRow(const BbTrophies::Entry& entry, bool selected, bool builtin, bool has_details) {
+    const float h = Px(54.0f);
+    const bool earned = entry.unlocked_at > 0;
+    const auto text = TrophyDetails(entry, builtin);
+    ImGui::PushID(entry.id);
+    const bool pressed = ImGui::Selectable("##achievement", selected, 0, ImVec2(0, h));
+    // With keyboard or gamepad navigation active, IsItemHovered follows the focused row.
+    const bool inspect = pressed || ImGui::IsItemHovered();
     const ImVec2 min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    const ImU32 ink = ImGui::IsItemHovered() || ImGui::IsItemFocused() ? Ink::Text : Ink::Dim;
-    const float s = Px(4.5f);
-    const ImVec2 c(min.x + s, (min.y + max.y) * .5f);
-    // Pointing down when open, right when closed.
-    const ImVec2 down[3] = {ImVec2(c.x - s, c.y - s * .45f), ImVec2(c.x, c.y + s * .55f), ImVec2(c.x + s, c.y - s * .45f)};
-    const ImVec2 right[3] = {ImVec2(c.x - s * .45f, c.y - s), ImVec2(c.x + s * .55f, c.y), ImVec2(c.x - s * .45f, c.y + s)};
-    draw->AddPolyline(*open ? down : right, 3, ink, 0, Px(1.7f));
-    const float text_y = min.y + (h - ImGui::GetTextLineHeight()) * .5f;
-    draw->AddText(ImVec2(min.x + s * 3.2f, text_y), ink, L(title));
-    if (!*open && hint && ImGui::CalcTextSize(title).x + ImGui::CalcTextSize(hint).x + Px(32.0f) < max.x - min.x)
-        draw->AddText(ImVec2(max.x - ImGui::CalcTextSize(hint).x, text_y), Ink::Faint, hint);
-    Rule(draw, min.x, max.x, max.y + Px(8.0f));
-    ImGui::Dummy(ImVec2(0, Px(6.0f)));
-    return *open;
+    if (selected)
+        draw->AddRectFilled(min, ImVec2(min.x + Px(3.0f), max.y), Ink::Accent);
+    const float icon = Px(36.0f);
+    TrophyArtwork(entry, ImVec2(min.x + Px(9.0f), min.y + (h - icon) * .5f), icon,
+                  text.secret, has_details);
+    const char* status = earned ? L("Earned") : L("Not earned");
+    const float status_x = max.x - ImGui::CalcTextSize(status).x - Px(9.0f);
+    const float text_x = min.x + icon + Px(20.0f);
+    const float text_width = std::max(Px(12.0f), status_x - text_x - Px(9.0f));
+    ImFont* name_font = guide_serif_font ? guide_serif_font : ImGui::GetFont();
+    const float name_size = Px(19.0f);
+    const float name_h = name_font->CalcTextSizeA(name_size, FLT_MAX, text_width, text.name).y;
+    const ImVec4 clip(text_x, min.y, status_x - Px(6.0f), max.y - Px(1.0f));
+    draw->AddText(name_font, name_size,
+                  ImVec2(text_x, min.y + std::max(Px(3.0f), (h - name_h) * .5f)),
+                  Ink::Text, text.name, nullptr, text_width, &clip);
+    draw->AddText(ImVec2(status_x, min.y + (h - ImGui::GetFontSize()) * .5f),
+                  earned ? Ink::Good : Ink::Dim, status);
+    Rule(draw, min.x, max.x, max.y - 1.0f, Ink::LineStrong);
+    ImGui::PopID();
+    return inspect;
+}
+
+void TrophyDetail(const BbTrophies::Entry& entry, bool builtin, bool has_details) {
+    const auto text = TrophyDetails(entry, builtin);
+    const bool earned = entry.unlocked_at > 0;
+    const ImVec2 available = ImGui::GetContentRegionAvail();
+    const float icon = std::min({Px(132.0f), available.x, available.y * .45f});
+    TrophyArtwork(entry, ImGui::GetCursorScreenPos(), icon, text.secret, has_details);
+    ImGui::Dummy(ImVec2(icon, icon));
+    const auto date = earned ? UnlockDate(entry.unlocked_at) : std::string{};
+    const char* status = earned ? L("Earned") : L("Not earned");
+    ImGui::PushStyleColor(ImGuiCol_Text, Vec(earned ? Ink::Good : Ink::Dim));
+    ImGui::Text("%s%s%s", status, date.empty() ? "" : "  ·  ", date.c_str());
+    ImGui::PopStyleColor();
+    ImGui::PushFont(guide_serif_font, 27.0f);
+    ImGui::TextWrapped("%s", text.name);
+    ImGui::PopFont();
+    Note(text.description);
+    if (!text.secret && entry.score >= 0)
+        ImGui::TextDisabled("%dG", entry.score);
 }
 
 // Trophy notifications: theme, sound and timing, and previews that go through the same queue,
 // renderer and sounds as a real unlock (nothing is unlocked or saved). The texts, pictures and
 // animations come from files in user/custom_trophy (README.md).
-void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
+void TrophyNotificationsTab() {
     using BbToast::Theme;
-    static bool open = false; // closed: the page opens on the trophy list
-    if (!FoldSection(L("TROPHY NOTIFICATIONS"), L("Theme, sound and previews"), &open)) return;
+    PageTitle(L("Trophy notifications"));
     auto o = BbToast::GetOptions();
     bool changed = false;
     // The four looks, all in sight: one row each.
@@ -702,6 +711,7 @@ void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
     CloseRows();
 
     ImGui::Dummy(ImVec2(0, Px(6.0f)));
+    const auto entries = BbTrophies::Entries();
     ImGui::BeginDisabled(entries.empty());
     // A real trophy of the grade (a visible one when there is one), shown as an unlock would be.
     // Without the trophy key no trophy has a grade: the first one is shown as that grade.
@@ -739,38 +749,89 @@ void ToastSection(const std::vector<BbTrophies::Entry>& entries) {
 }
 
 void AchievementsTab() {
-    const bool gallery = NativePcMenuAvailable();
-    auto entries = BbTrophies::Entries();
-    const int total = int(entries.size());
-    int earned = 0;
-    for (const auto& entry : entries) earned += entry.unlocked_at > 0;
-    const int score = BbTrophies::EarnedScore();
-    PageTitle(gallery ? L("Trophy gallery") : L("Trophies"));
-    if (gallery)
-        Note(L("Trophy artwork. Full details, dates and Gamerscore are in Pause > System > Achievements."));
-    else {
-        if (BbTrophies::TotalScore() == 1000)
-            ImGui::Text(L("Gamerscore: %d / 1000G"), score);
-        else
-            ImGui::Text("%s", L("Gamerscore: -- / 1000G"));
-        ImGui::Text(L("%d of %d unlocked"), earned, total);
-        ImGui::ProgressBar(total ? float(earned) / total : 0.0f,
-                           ImVec2(-1, 9.0f * base_scale), "");
-    }
-    ToastSection(entries);
-    if (!BbTrophies::HasMetadata())
-        Note(L("Names and scores need the trophy key from your own PS4. Icons and local unlock history still work."));
-    ImGui::Dummy(ImVec2(0, Px(8.0f)));
+    const auto entries = BbTrophies::Entries();
+    const int pack_size = int(entries.size());
+    PageTitle(L("Trophies"));
     if (entries.empty()) {
         Note(L("No trophy pack in the selected game folder."), Ink::Faint);
         return;
     }
-    ImGuiListClipper clipper;
-    clipper.Begin(total, (gallery ? 72.0f : 98.0f) * base_scale + ImGui::GetStyle().ItemSpacing.y);
-    while (clipper.Step())
-        for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
-            AchievementRow(entries[i]);
-    if (!gallery) ImGui::TextDisabled("%s", L("Local achievements only. No online account is connected."));
+    const bool native_details = BbTrophies::HasMetadata();
+    bool builtin = !native_details &&
+                   (pack_size == BbTrophyCatalogue::BaseCount ||
+                    pack_size == int(std::size(BbTrophyCatalogue::Entries))) &&
+                   BbTrophies::HasTrophySet(BbTrophyCatalogue::PackId);
+    static int selected_id = -1;
+    const BbTrophies::Entry* selected = nullptr;
+    std::array<const BbTrophies::Entry*, 128> earned_rows, locked_rows;
+    std::array<bool, 128> seen{};
+    int earned = 0, locked = 0, expected_id = 0;
+    for (const auto& entry : entries) {
+        builtin = builtin && entry.id == expected_id;
+        ++expected_id;
+        // Cache data can repeat an ID. Each visible row must have a unique navigation ID.
+        if (seen[entry.id]) continue;
+        seen[entry.id] = true;
+        if (entry.id == selected_id) selected = &entry;
+        if (entry.unlocked_at > 0) earned_rows[earned++] = &entry;
+        else locked_rows[locked++] = &entry;
+    }
+    const int total = earned + locked;
+    if (!selected) {
+        selected = earned > 0 ? earned_rows[0] : locked_rows[0];
+        selected_id = selected->id;
+    }
+    const bool has_details = native_details || builtin;
+    ImGui::Text(L("%d of %d unlocked"), earned, total);
+    if (BbTrophies::TotalScore() == 1000) {
+        ImGui::SameLine();
+        ImGui::Text(L("Gamerscore: %d / 1000G"), BbTrophies::EarnedScore());
+    }
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, Vec(Ink::Accent));
+    ImGui::ProgressBar(float(earned) / total, ImVec2(-1, Px(5.0f)), "");
+    ImGui::PopStyleColor();
+    if (!has_details)
+        Note(L("Names and descriptions are unavailable for this trophy pack."));
+    Note(L("Local achievements only. No online account is connected."), Ink::Faint);
+
+    const ImVec2 available = ImGui::GetContentRegionAvail();
+    const float gap = Px(18.0f);
+    const float list_width = std::floor((available.x - gap) * .55f);
+    const float list_height = std::max(1.0f, std::floor(available.y - ImGui::GetStyle().ItemSpacing.y));
+    bool selection_changed = false;
+    if (ImGui::BeginChild("##trophy_list", ImVec2(list_width, list_height), ImGuiChildFlags_NavFlattened)) {
+        if (ImGui::GetIO().MouseWheel != 0.0f && ImGui::IsWindowHovered())
+            ImGui::SetNavCursorVisible(false);
+        ImGui::PushStyleColor(ImGuiCol_Header, Vec(Ink::AccentSoft));
+        ImGuiListClipper clipper;
+        clipper.Begin(total, Px(54.0f) + ImGui::GetStyle().ItemSpacing.y);
+        while (clipper.Step()) {
+            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                const auto* entry = i < earned ? earned_rows[i] : locked_rows[i - earned];
+                if (AchievementRow(*entry, entry == selected, builtin, has_details)) {
+                    selection_changed = selected != entry;
+                    selected = entry;
+                    selected_id = entry->id;
+                }
+            }
+        }
+        ImGui::PopStyleColor();
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine(0.0f, gap);
+    if (selection_changed) ImGui::SetNextWindowScroll(ImVec2(0, 0));
+    const float detail_width = available.x - list_width - gap;
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, Vec(Ink::Surface));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(Px(16.0f), Px(16.0f)));
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, Px(1.0f));
+    if (ImGui::BeginChild("##trophy_detail", ImVec2(detail_width, list_height),
+                          ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened |
+                              ImGuiChildFlags_AlwaysUseWindowPadding))
+        TrophyDetail(*selected, builtin, has_details);
+    ImGui::EndChild();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor();
 }
 
 // Line icons, the launcher's set (launcher/qml/NavIcon.qml) on its 24 × 24 grid.
@@ -786,15 +847,17 @@ void Glyph(ImDrawList* draw, const char* kind, ImVec2 center, float size, ImU32 
         poly({12, 1.5f, 12, 22.5f}, false);
         poly({3.5f, 12, 20.5f, 12}, false);
         poly({12, 5, 15, 12, 12, 19, 9, 12}, true);
+    } else if (!std::strcmp(kind, "bell")) {
+        draw->PathLineTo(P(4, 17));
+        draw->PathLineTo(P(6, 14));
+        draw->PathLineTo(P(6, 10));
+        draw->PathBezierCubicCurveTo(P(6, 2), P(18, 2), P(18, 10));
+        draw->PathLineTo(P(18, 14));
+        draw->PathLineTo(P(20, 17));
+        draw->PathStroke(ink, ImDrawFlags_Closed, stroke);
+        draw->AddLine(P(12, 2), P(12, 4), ink, stroke);
+        draw->AddCircleFilled(P(12, 20), 1.5f * k, ink);
         poly({9.5f, 20, 12, 22.5f, 14.5f, 20}, false);
-    } else if (!std::strcmp(kind, "gear")) {
-        draw->AddCircle(P(12, 12), 3.2f * k, ink, 0, stroke);
-        draw->AddCircle(P(12, 12), 6.4f * k, ink, 0, stroke);
-        for (int a = 0; a < 8; ++a) {
-            const float t = float(a) * 3.14159265f / 4.0f;
-            draw->AddLine(P(12 + 6.4f * std::cos(t), 12 + 6.4f * std::sin(t)),
-                          P(12 + 9.0f * std::cos(t), 12 + 9.0f * std::sin(t)), ink, stroke);
-        }
     } else if (!std::strcmp(kind, "puzzle")) { // a jigsaw piece, knobs on top and right
         draw->PathClear();
         draw->PathLineTo(P(4, 7.5f));
@@ -820,16 +883,16 @@ struct GuideSection {
     const char* icon;
     const char* label;
 };
-GuideSection GuideSectionOf(int tab, bool native) {
+GuideSection GuideSectionOf(int tab) {
     switch (tab) {
-    case 0: return {"hunter", L("The Hunt")};
-    case 1: return {"trophy", native ? L("Trophy gallery") : L("View trophies")};
-    case 2: return {"gear", L("Image diagnostics")};
+    case HuntTab: return {"hunter", L("The Hunt")};
+    case TrophiesTab: return {"trophy", L("View trophies")};
+    case NotificationsTab: return {"bell", L("Trophy notifications")};
     default: return {"puzzle", L("Gameplay extras")};
     }
 }
 void SectionGlyph(ImDrawList* draw, int tab, ImVec2 center, float size, ImU32 ink) {
-    const GuideSection section = GuideSectionOf(tab, NativePcMenuAvailable());
+    const GuideSection section = GuideSectionOf(tab);
     if (!std::strcmp(section.icon, "trophy")) {
         TrophyGlyph(draw, center, size * 1.05f, float((ink >> IM_COL32_A_SHIFT) & 0xFF) / 255.0f * 0.85f);
         return;
@@ -841,7 +904,6 @@ void SectionGlyph(ImDrawList* draw, int tab, ImVec2 center, float size, ImU32 in
 bool hunt_row_hovered_last = false, hunt_row_focused_last = false;
 
 void HomeTab() {
-    const bool native = NativePcMenuAvailable();
     const auto entries = BbTrophies::Entries();
     const int earned = int(std::count_if(entries.begin(), entries.end(),
                                          [](const auto& e) { return e.unlocked_at > 0; }));
@@ -882,32 +944,32 @@ void HomeTab() {
     // The sections as rows: icon, serif label, chevron. The focused row (or the one under the
     // mouse) has the crimson outline.
     bool any_hovered = false, any_focused = false;
-    for (int i = 1; i <= 3; ++i) {
+    for (int i = TrophiesTab; i < GuideTabCount; ++i) {
         ImGui::PushID(i);
         const float h = 70.0f * s;
         const ImVec2 min = ImGui::GetCursorScreenPos();
         if (ImGui::InvisibleButton("##guide_section", ImVec2(width, h), ImGuiButtonFlags_EnableNav)) active_tab = i;
-        if (i == 1 && ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
+        if (i == TrophiesTab && ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
         const bool hovered = ImGui::IsItemHovered();
         any_hovered |= hovered;
         const bool focused = ImGui::IsItemFocused();
         any_focused |= focused;
         const bool selected = hovered || (focused && !hunt_row_hovered_last) ||
-                              (i == 1 && !hunt_row_hovered_last && !hunt_row_focused_last);
+                              (i == TrophiesTab && !hunt_row_hovered_last && !hunt_row_focused_last);
         const ImVec2 max(min.x + width, min.y + h);
         draw->AddRectFilled(min, max, selected ? IM_COL32(22, 25, 29, 250) : IM_COL32(17, 20, 24, 245), 6.0f * s);
         draw->AddRect(min, max, selected ? Ink::Accent : Ink::Line, 6.0f * s, 0, selected ? 1.6f * s : 1.0f * s);
         SectionGlyph(draw, i, ImVec2(min.x + 40.0f * s, min.y + h * 0.5f), 28.0f * s, IM_COL32(222, 217, 209, 255));
         ImFont* serif = guide_serif_font ? guide_serif_font : ImGui::GetFont();
         draw->AddText(serif, 23.0f * s, ImVec2(min.x + 84.0f * s, min.y + (h - 23.0f * s) * 0.5f - 1.0f * s),
-                      Ink::Text, GuideSectionOf(i, native).label);
+                      Ink::Text, GuideSectionOf(i).label);
         Glyph(draw, "chevron", ImVec2(max.x - 30.0f * s, min.y + h * 0.5f), 18.0f * s, IM_COL32(207, 202, 194, 255), 1.8f * s);
         ImGui::Dummy(ImVec2(0, 4.0f * s));
         ImGui::PopID();
     }
     hunt_row_hovered_last = any_hovered;
     hunt_row_focused_last = any_focused;
-    if (native) {
+    if (NativePcMenuAvailable()) {
         ImGui::Dummy(ImVec2(0, 6.0f * s));
         Note(L("The game's own options, and the PC settings, are in Pause > System."), Ink::Faint);
     }
@@ -939,7 +1001,7 @@ void Menu() {
     frame->AddRectFilled(ImVec2(panel_pos.x + panel_width - 1.0f, panel_pos.y),
                          ImVec2(panel_pos.x + panel_width, panel_pos.y + panel_h), Ink::LineStrong);
 
-    // The rail: the four sections as icons, the open one marked in teal.
+    // The rail: section icons, with the open section marked in teal.
     ImGui::SetCursorPos(ImVec2(0, 0));
     // The rail, the page and its content share one navigation space (NavFlattened), so the D-pad
     // moves from a section icon straight into its rows and back.
@@ -950,7 +1012,6 @@ void Menu() {
     rail->AddRectFilled(rail_pos, ImVec2(rail_pos.x + rail_width, rail_pos.y + panel_h), Ink::Rail);
     rail->AddRectFilled(ImVec2(rail_pos.x + rail_width - 1.0f, rail_pos.y),
                         ImVec2(rail_pos.x + rail_width, rail_pos.y + panel_h), Ink::Line);
-    const bool native = NativePcMenuAvailable();
     // Console-style movement: along the rail the page follows the focus; Right enters the page at
     // its first option and Left, from anywhere on the page, returns to the section's icon (not
     // whichever icon happens to sit level with the option). The page is off the left-hand
@@ -964,12 +1025,12 @@ void Menu() {
         pressed(ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadLStickLeft, ImGuiKey_LeftArrow);
     // The rail ends at its first and last icon rather than dropping into the page.
     if (rail_focused_last &&
-        ((active_tab == 3 && pressed(ImGuiKey_GamepadDpadDown, ImGuiKey_GamepadLStickDown, ImGuiKey_DownArrow)) ||
-         (active_tab == 0 && pressed(ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadLStickUp, ImGuiKey_UpArrow))))
+        ((active_tab == ExtrasTab && pressed(ImGuiKey_GamepadDpadDown, ImGuiKey_GamepadLStickDown, ImGuiKey_DownArrow)) ||
+         (active_tab == HuntTab && pressed(ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadLStickUp, ImGuiKey_UpArrow))))
         ImGui::NavMoveRequestCancel();
     if (to_rail) ImGui::NavMoveRequestCancel();
     bool rail_focused = false;
-    for (int i = 0; i < 4; ++i) {
+    for (int i = HuntTab; i < GuideTabCount; ++i) {
         ImGui::SetCursorPos(ImVec2(16.0f * s, (50.0f + 104.0f * i) * s));
         ImGui::PushID(i);
         if (ImGui::InvisibleButton("##rail", ImVec2(rail_width - 32.0f * s, 96.0f * s), ImGuiButtonFlags_EnableNav))
@@ -986,7 +1047,7 @@ void Menu() {
             if (!to_page) active_tab = i;
         }
         ImGui::PopID();
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", GuideSectionOf(i, native).label);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", GuideSectionOf(i).label);
         const bool selected = active_tab == i;
         const bool hot = ImGui::IsItemHovered() || ImGui::IsItemFocused();
         const ImVec2 min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
@@ -1049,8 +1110,11 @@ void Menu() {
     Rule(main, main_pos.x + pad, main_pos.x + main_size.x - pad, main_pos.y + 112.0f * s);
 
     ImGui::SetCursorPos(ImVec2(pad, 142.0f * s));
-    ImGui::BeginChild("##guide_content", ImVec2(main_size.x - 2.0f * pad,
-                      std::max(100.0f * s, main_size.y - 272.0f * s)), ImGuiChildFlags_NavFlattened);
+    const bool trophies_page = active_tab == TrophiesTab;
+    ImGui::BeginChild(trophies_page ? "##guide_trophies" : "##guide_content",
+                      ImVec2(main_size.x - 2.0f * pad, std::max(100.0f * s, main_size.y - 272.0f * s)),
+                      ImGuiChildFlags_NavFlattened,
+                      trophies_page ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse : 0);
     rows_id = 0;
     if (to_page) {
         // The page's first option, as Tab would reach it (SetKeyboardFocusHere would also press it).
@@ -1062,10 +1126,10 @@ void Menu() {
         ImGui::SetNavCursorVisible(true);
     }
     switch (active_tab) {
-    case 0: HomeTab(); break;
-    case 1: AchievementsTab(); break;
-    case 2: ImageToolsTab(); break;
-    case 3: GameplayTab(); break;
+    case HuntTab: HomeTab(); break;
+    case TrophiesTab: AchievementsTab(); break;
+    case NotificationsTab: TrophyNotificationsTab(); break;
+    case ExtrasTab: GameplayTab(); break;
     }
     CloseRows();
     ImGui::EndChild();
@@ -1243,26 +1307,6 @@ void ConfigureContext() {
             guide_serif_font = io.Fonts->AddFontFromFileTTF(georgia.string().c_str(), 28.0f);
     }
 #endif
-    // Hunter's Atlas: the map's serif, made from the player's own menu font by its generator.
-    if (BbMap::Enabled()) {
-        const auto map_font = BbAtlasPath("BB_MAP_FONT", BbAtlasPath("BB_MAP_DIR", "navigation-map/maps")
-                                                             .parent_path() / "fonts/bloodborne-native.ttf");
-        std::ifstream face_file(map_font, std::ios::binary | std::ios::ate);
-        if (face_file) {
-            const auto bytes = face_file.tellg();
-            if (bytes > 0 && bytes < 16 * 1024 * 1024) {
-                void* data = IM_ALLOC(size_t(bytes));
-                face_file.seekg(0);
-                face_file.read(static_cast<char*>(data), bytes);
-                if (face_file) {
-                    if (auto* face = io.Fonts->AddFontFromMemoryTTF(data, int(bytes), 24.0f))
-                        BbMap::SetTitleFont(face);
-                } else {
-                    IM_FREE(data);
-                }
-            }
-        }
-    }
     // Trophy notifications: their fonts, options, pictures and sounds (decoded now, not at the
     // first toast).
     BbToast::Start(io.Fonts, &IconRef, &PrefetchIcon, &TrophyBanner);
@@ -1304,17 +1348,11 @@ void DrawWindows(float display_height) {
         base_scale = scale;
     }
 
-    if (menu_open) {
-        Menu();
-        if (BbMap::IsOpen()) BbMap::Close();
-    }
-    // Hunter's Atlas: the open map, or the Map tile beside the game's quick menu.
-    if (BbMap::IsOpen()) BbMap::Draw();
-    if (!menu_open && !text_entry_active && !BbMap::IsOpen()) BbAtlasMenu::Draw();
-    // Use the same silver SDL cursor in the guide, Atlas and native menus.
+    if (menu_open) Menu();
+    // Use the same silver SDL cursor in the guide and native menus.
     // Visibility/capture stays on the window thread; no second ImGui arrow.
     ImGui::GetIO().MouseDrawCursor = false;
-    if (BbSettings::Get().show_fps && !menu_open && !BbMap::IsOpen()) {
+    if (BbSettings::Get().show_fps && !menu_open) {
         FpsCounter();
     }
     if (text_entry_active) {
@@ -1326,6 +1364,15 @@ void DrawWindows(float display_height) {
 }
 
 } // namespace
+
+void BindCheatFlags(unsigned char* flags) {
+    std::scoped_lock lock{imgui_mutex};
+    cheat_flags = flags;
+    // The launcher's patches ran before this, so show the active flags on first open.
+    for (const auto& cheat : live_cheats) {
+        BbSettings::Get().effects[cheat.effect] = flags[cheat.offset] != 0;
+    }
+}
 
 void SetShaderProgress(int percent) { shader_progress = percent; }
 
@@ -1376,8 +1423,6 @@ void Init(const Vulkan::Instance& instance, vk::Format format, u32 image_count) 
         return;
     }
     initialized = true;
-    BbMapArt::Init();
-    BbMap::Init();
     std::printf("Overlay: menu ready (Insert or L3+R3)\n");
 }
 
@@ -1402,18 +1447,13 @@ bool HandleEvent(const SDL_Event& event) {
         return false;
     }
     ImGuiIO& io = ImGui::GetIO();
-    // Hunter's Atlas first: the Map tile's mouse, and the open map's keys and mouse.
-    BbAtlasMenu::Suppress(menu_open || text_entry_active);
-    if (!text_entry_active && BbAtlasMenu::HandleMouse(event)) return true;
-    if (!text_entry_active && BbMap::HandleEvent(event)) return true;
-    const bool is_open = menu_open || BbMap::IsOpen();
+    const bool is_open = menu_open;
     switch (event.type) {
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP: {
         const bool down = event.type == SDL_EVENT_KEY_DOWN;
         if (down && !event.key.repeat &&
             (event.key.key == SDLK_INSERT || (is_open && event.key.key == SDLK_ESCAPE))) {
-            if (BbMap::IsOpen()) BbMap::Close();
             SetOpen(event.key.key == SDLK_INSERT ? !menu_open : false);
             return true;
         }
@@ -1445,14 +1485,14 @@ bool HandleEvent(const SDL_Event& event) {
             return false;
         }
         if (button == SDL_GAMEPAD_BUTTON_EAST && down) {
-            if (active_tab == 0) SetOpen(false);
-            else active_tab = 0;
+            if (active_tab == HuntTab) SetOpen(false);
+            else active_tab = HuntTab;
             return true;
         }
         if (button == SDL_GAMEPAD_BUTTON_LEFT_SHOULDER ||
             button == SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER) {
             if (down) active_tab = (active_tab +
-                (button == SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER ? 1 : 3)) % 4;
+                (button == SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER ? 1 : GuideTabCount - 1)) % GuideTabCount;
             return true;
         }
         if (const ImGuiKey key = KeyFromGamepad(button); key != ImGuiKey_None) {
@@ -1520,24 +1560,11 @@ bool HandleEvent(const SDL_Event& event) {
 
 bool Visible() {
     return initialized && (shader_progress >= 0 || menu_open || text_entry_active || BbSettings::Get().show_fps ||
-                           BbMap::IsOpen() || BbAtlasMenu::Visible() || BbAtlasMenu::Animating() ||
                            BbToast::Busy());
 }
 
 bool CapturesInput() {
-    return menu_open || text_entry_active || BbMap::CapturesInput();
-}
-
-uint32_t RoutePad(uint32_t buttons, uint8_t lx, uint8_t ly, uint8_t rx, uint8_t ry) {
-    // Runs on the game's pad read. Not under imgui_mutex: the present thread holds it for a
-    // whole overlay frame (the open map's drawing included), which stalled the game.
-    // BbAtlasMenu and BbMap guard their own state.
-    if (!initialized || menu_open || text_entry_active) return buttons;
-    return BbAtlasMenu::RoutePad(buttons, lx, ly, rx, ry);
-}
-
-bool ReleasesMouse() {
-    return CapturesInput() || BbAtlasMenu::Interacting();
+    return menu_open || text_entry_active;
 }
 
 void SetTextEntry(bool active, const std::string& prompt, const std::string& text) {
@@ -1597,15 +1624,6 @@ void NotePresent() {
 }
 
 void Render(vk::CommandBuffer cmdbuf, vk::ImageView view, vk::Extent2D extent) {
-    {
-        std::scoped_lock lock{imgui_mutex};
-        if (initialized) {
-            BbMap::PollTestCommands();
-            BbMap::Tick();
-            BbAtlasMenu::Suppress(menu_open || text_entry_active);
-            BbAtlasMenu::Tick();
-        }
-    }
     const float ms = last_present_ms;
     if (!Visible()) {
         return;

@@ -13,7 +13,6 @@
 
 static int capture;
 int bbgpu_overlay_captures_input(void) { return capture; }
-uint32_t bbgpu_atlas_route_pad(uint32_t b, uint8_t lx, uint8_t ly, uint8_t rx, uint8_t ry) { (void)lx; (void)ly; (void)rx; (void)ry; return b; }
 uint32_t bbgpu_mouse_wheel_take(void) { return 0; }
 int bb_menu_pointer_owns_mouse(void) { return 0; }
 void bb_menu_pointer_click(void) {}
@@ -76,6 +75,17 @@ int main(void) {
     assert(pad_read_state(1,&data)==0 && data.touches[0].id!=first_touch_id);
     inject(path,"");
     assert(pad_read_state(1,&data)==0 && data.touch_count==0);
+
+    inject(path,"l2 lx=255");
+    capture=1;
+    assert(pad_read_state(1,&data)==0 && data.buttons==0 && data.l2==0 && data.left_x==128);
+    capture=0;
+    assert(pad_read_state(1,&data)==0 && data.buttons==0 && data.l2==0 && data.left_x==128);
+    inject(path,"");
+    assert(pad_read_state(1,&data)==0 && data.buttons==0 && data.l2==0 && data.left_x==128);
+    inject(path,"l2 lx=255");
+    assert(pad_read_state(1,&data)==0 && data.buttons==BTN_L2 && data.l2==255 && data.left_x==255);
+    inject(path,"");
 
     SDL_VirtualJoystickTouchpadDesc touch={.nfingers=2};
     SDL_VirtualJoystickDesc desc;

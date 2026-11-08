@@ -108,6 +108,7 @@ class VpnUiTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             with patch.object(core, 'PORT_DIR', root), patch.object(core, 'DATA_DIR', root), \
+                    patch.object(core, 'CONFIG_DIR', root), \
                     patch.object(core, 'CONFIG_FILE', root / 'settings.json'), \
                     patch.object(LauncherBackend, 'start_background_checks'), \
                     patch.object(LauncherBackend, 'coopCheckConnection'), \
@@ -124,7 +125,8 @@ class VpnUiTests(unittest.TestCase):
                                          ('wizard', 'SetupWizard { anchors.fill: parent; Component.onCompleted: step = 2 }'),
                                          ('home', 'HomePage { anchors.fill: parent }')]:
                         backend.app['coop_connection'] = 'auto'
-                        backend._coop_networks_finished([], [])
+                        backend._coop_inventory_ready = False
+                        backend._coop_vpns = []
                         self.assertEqual(backend.coopConnection, 'lan')
                         self.assertEqual([x['value'] for x in backend.coopConnections], ['lan'])
                         engine = QQmlApplicationEngine()
@@ -159,19 +161,20 @@ Window {
                             picker = find_item(window.contentItem(), 'coopNetworkPicker')
                             self.assertIsNotNone(picker)
                             popup = window.property('networkPopup')
+                            self.assertFalse(picker.property('enabled'))
+                            backend._coop_networks_finished([], [])
+                            app.processEvents()
                             self.assertTrue(picker.property('enabled'))
                             install.reset_mock()
                             popup.setProperty('visible', True)
                             backend._coop_networks_loading = True
-                            backend.coopNetworksChanged.emit()
                             app.processEvents()
-                            self.assertFalse(picker.property('enabled'))
-                            self.assertFalse(popup.property('visible'))
+                            self.assertTrue(picker.property('enabled'))
+                            self.assertTrue(popup.property('visible'))
                             picker.activated.emit(1)
                             install.assert_not_called()
                             self.assertEqual(backend.coopConnection, 'lan')
-                            backend._coop_networks_loading = False
-                            backend.coopNetworksChanged.emit()
+                            backend._coop_networks_finished([], [])
                             app.processEvents()
                             self.assertTrue(picker.property('enabled'))
                             popup.setProperty('visible', True)

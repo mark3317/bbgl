@@ -31,6 +31,7 @@ constexpr int kCacheVersion = 1;
 std::mutex mutex;
 std::vector<Entry> entries;
 bool complete_metadata = false;
+std::string trophy_set;
 std::array<std::int64_t, 128> unlocks{};
 
 int Weight(Grade grade) {
@@ -280,11 +281,13 @@ void Configure(const fs::path& game_dir, const fs::path& user_dir, int language)
     std::scoped_lock lock{mutex};
     entries.clear();
     complete_metadata = false;
+    trophy_set.clear();
     try {
         const auto trp = TrpPath(game_dir);
         if (trp.empty()) return;
         const auto size = fs::file_size(trp);
         const auto modified = fs::last_write_time(trp).time_since_epoch().count();
+        trophy_set = NpCommId(game_dir);
         const auto cache_dir = user_dir / "trophy_cache";
         const auto cache_file = cache_dir / "metadata.json";
         bool has_key = false;
@@ -325,7 +328,7 @@ void Configure(const fs::path& game_dir, const fs::path& user_dir, int language)
         const auto directory = ReadDirectory(file, size);
         if (directory.empty()) return;
         entries = Extract(file, directory, cache_dir, language, key, has_key,
-                          NpCommId(game_dir), complete_metadata);
+                          trophy_set, complete_metadata);
         AttachUnlocks(entries);
         std::error_code ec;
         fs::create_directories(cache_dir, ec);
@@ -372,6 +375,10 @@ Entry Find(int id) {
     return fallback;
 }
 bool HasMetadata() { std::scoped_lock lock{mutex}; return complete_metadata; }
+bool HasTrophySet(std::string_view pack_id) {
+    std::scoped_lock lock{mutex};
+    return trophy_set == pack_id;
+}
 int EarnedScore() {
     std::scoped_lock lock{mutex};
     int score = 0;

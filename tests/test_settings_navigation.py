@@ -22,6 +22,9 @@ class SettingsNavigationTests(unittest.TestCase):
             'DLSS': ('Visuals', 'Upscaling', 'upscaler'),
             'save folder': ('Game & Saves', 'Game files', 'user_dir'),
             'button prompts': ('Controls', 'Button prompts', ''),
+            'load order': ('Mods', 'Installed mods', ''),
+            'enable mods': ('Mods', 'Installed mods', 'mods_enabled'),
+            'external patches folder': ('Mods & Patches', 'Mod settings', 'patches_dir'),
         }
         for query, destination in expected.items():
             with self.subTest(query=query):

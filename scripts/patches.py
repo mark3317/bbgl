@@ -297,7 +297,6 @@ EFFECTS={
     'debug_menu':(None,'Restore Debug Menu (READ NOTES)'),
     # Cheats and gameplay tweaks (launcher "Cheats" page).
     'cheat_no_death':(None,'Player No Dead (Read note)'),
-    # After No Dead: its 4-byte write clears the byte this one sets.
     'cheat_one_hit_kill':(None,'Player One-Hit Kill (Read note)'),
     'cheat_stealth':(None,'Player Stealth (Read note)'),
     'cheat_silent':(None,'Player Silent (Read note)'),

@@ -9,6 +9,7 @@
 #include <windows.h>
 #endif
 
+#define GAME_BUILD_GUARD_RVA 0x18db3c0
 #define STAMINA_FLAG_RVA 0x553e88a
 #define PLAYER_DATA_RVA 0x553b130
 #define COMBAT_MS 8000u
@@ -49,8 +50,8 @@ static int player_hp(void) {
 void runtime_stamina_bind(void *image, uint64_t size) {
     flag = NULL; base = 0; written = 0; last_hp = -1; combat_until = 0;
     if (!image || size < 0x553e880) return;
-#include "map_build_guard.inc"
-    if (!bb_code_is((unsigned char *)image + BB_MAP_GUARD_OFFSET, bb_map_guard)) return;
+    const BbCode build_guard = {64, 0xc28b9e0746daa709ull}; /* CUSA00207 1.09 */
+    if (!bb_code_is((unsigned char *)image + GAME_BUILD_GUARD_RVA, build_guard)) return;
     base = (uintptr_t)image;
     flag = (volatile unsigned char *)image + STAMINA_FLAG_RVA;
 }

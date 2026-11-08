@@ -22,6 +22,7 @@ ApplicationWindow {
 
     function openWizard(step) { wizardStep = step; page = "Setup" }
     function openSettings(category, section) { page = "Settings"; settings.openAt(category || "", section || "") }
+    function openMods(section, key) { page = "Mods"; mods.openAt(section, key) }
     function primaryAction() {
         if (gameBlocked) openWizard(0)
         else if (savesBlocked) openWizard(0)
@@ -70,7 +71,7 @@ ApplicationWindow {
             Rectangle { width: parent.width; height: 1; color: Theme.line }
             Flow {
                 width: parent.width; spacing: 12
-                GlassButton { objectName: "modWarningSettings"; text: launcher.tr("Mod settings"); highlighted: true; width: (parent.width - 12) / 2; onClicked: { modWarning.close(); window.openSettings("Mods & Patches", "Installed mods") } }
+                GlassButton { objectName: "modWarningSettings"; text: launcher.tr("View mods"); highlighted: true; width: (parent.width - 12) / 2; onClicked: { modWarning.close(); window.openMods() } }
                 GlassButton { objectName: "modWarningLaunch"; text: launcher.tr("Launch game"); width: (parent.width - 12) / 2; onClicked: { modWarning.close(); launcher.playUnsynchronized() } }
             }
         }
@@ -89,7 +90,18 @@ ApplicationWindow {
         savesBlocked: window.savesBlocked
         onlineBlocked: window.onlineBlocked
         onPrimaryRequested: window.primaryAction()
+        onTrophiesRequested: window.page = "Trophies"
         onOpenSettings: (category, section) => window.openSettings(category, section)
+    }
+
+    Loader {
+        anchors.fill: parent; active: page === "Trophies"
+        sourceComponent: TrophiesPage {}
+    }
+
+    ModsPage {
+        id: mods; anchors.fill: parent; visible: page === "Mods"
+        onOpenModSettings: window.openSettings("Mods & Patches", "Mod settings")
     }
 
     // First-time setup: the wizard on a panel, the workshop art beside it.
@@ -121,13 +133,18 @@ ApplicationWindow {
         id: settings; anchors.fill: parent; visible: page === "Settings"
         onBackToLauncher: page = "Home"
         onOpenSetup: (step) => openWizard(step)
+        onOpenMods: (section, key) => window.openMods(section, key)
     }
 
     Rail {
         height: parent.height
         current: page
         locked: page === "Setup"
-        onNavigate: (target) => { if (target === "Settings") openSettings("", ""); else page = target }
+        onNavigate: (target) => {
+            if (target === "Settings") openSettings("", "")
+            else if (target === "Mods") openMods()
+            else page = target
+        }
     }
 
     // What the last action did (Home shows it in its status line): a short-lived message at the
@@ -160,7 +177,7 @@ ApplicationWindow {
         Connections {
             target: launcher
             function onNoticeChanged() {
-                if (page !== "Settings" || launcher.notice === "" || launcher.notice === launcher.tr("Ready to hunt.")) return
+                if ((page !== "Settings" && page !== "Mods") || launcher.notice === "" || launcher.notice === launcher.tr("Ready to hunt.")) return
                 toast.message = launcher.notice
                 toast.opacity = 1
                 toastTimer.restart()

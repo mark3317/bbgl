@@ -43,6 +43,11 @@ Canvas {
             line([7, 3.5, 17, 3.5, 16.5, 11, 14, 14, 10, 14, 7.5, 11, 7, 3.5])
             line([7, 6, 3.5, 6, 4.5, 10, 7.6, 11.4]); line([17, 6, 20.5, 6, 19.5, 10, 16.4, 11.4])
             line([12, 14, 12, 18]); line([8, 20.5, 16, 20.5]); line([9.5, 18, 14.5, 18]); break
+        case "lock":
+            rect(6, 10, 12, 10)
+            c.beginPath(); c.moveTo(8, 10); c.lineTo(8, 7)
+            c.arc(12, 7, 4, Math.PI, 2 * Math.PI); c.lineTo(16, 10); c.stroke()
+            line([12, 14, 12, 16]); break
         case "puzzle": case "mods": case "mods-and-patches": // a jigsaw piece with a knob on top and right
             c.beginPath(); c.moveTo(4, 7.5); c.lineTo(9.2, 7.5)
             c.bezierCurveTo(8.2, 5.8, 8.6, 3.5, 11, 3.5); c.bezierCurveTo(13.4, 3.5, 13.8, 5.8, 12.8, 7.5)

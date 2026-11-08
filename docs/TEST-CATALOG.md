@@ -1,6 +1,6 @@
 # Каталог проверок BBGL / BBSC-GL — 04.11.2026
 
-230 тестовых и вспомогательных файлов из обоих Git-деревьев; third_party/vendor/externals исключены. Все файлы прочитаны для статической инвентаризации структуры, assertions, импортов и точек запуска. Это не свидетельство прохождения всех тестов или построчное доказательство полноты покрытия. Ручная проверка и изменения сосредоточены на найденных остатках.
+219 тестовых и вспомогательных файлов из обоих Git-деревьев; third_party/vendor/externals исключены. Все файлы прочитаны для статической инвентаризации структуры, assertions, импортов и точек запуска. Это не свидетельство прохождения всех тестов или построчное доказательство полноты покрытия. Ручная проверка и изменения сосредоточены на найденных остатках.
 
 **Не запускать общий discover.** Native harness могут выполнять код при импорте; отдельные скрипты требуют VPS, ELF, Blender или игровых данных. Команды ниже — способы запуска, не обязательный набор. Python без пути — из папки файла; Qt — через out/qt-venv/Scripts/python.exe. Сейвовые/восстановительные методы не входят в стандартный прогон.
 
@@ -72,48 +72,6 @@
 - Запуск: `python test_async_pacing.py`; assertion/check sites: 4.
 - Имена файлов из ссылок исходника (существуют в дереве): `core/libraries/videoout/async_perf_log.h`, `core/libraries/videoout/pacing_diagnostics.h`.
 - Ограничения: исполняемый скрипт: импорт может запускать проверку.
-
-## `tests/test_atlas_features.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_map_features.h, SDL3/SDL.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 25.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_map_features.h`.
-
-## `tests/test_atlas_state.c`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../src/code_check.h, ../src/runtime_atlas_state.h, ../src/runtime_map.h, assert.h, game_code.h, stdint.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 12.
-- Имена файлов из ссылок исходника (существуют в дереве): `../src/code_check.h`, `../src/runtime_atlas_state.h`, `../src/runtime_map.h`, `assert.h`, `game_code.h`.
-
-## `tests/test_bbport_atlas_fade.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_atlas_style.h, ../gpu/shim/bbport_map_art.h, a.c, b.c, box.h, c.c
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 11.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_atlas_style.h`, `../gpu/shim/bbport_map_art.h`.
-
-## `tests/test_bbport_atlas_interiors.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_atlas_interiors.h, c.h, id.c, nlohmann/json.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 22.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_atlas_interiors.h`, `nlohmann/json.h`.
-
-## `tests/test_bbport_atlas_menu_state.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_atlas_menu_state.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 9.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_atlas_menu_state.h`.
-
-## `tests/test_bbport_atlas_style.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_atlas_style.h, d.h, id.c, nlohmann/json.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 39.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_atlas_style.h`, `nlohmann/json.h`.
 
 ## `tests/test_boss_rematches.py`
 
@@ -456,20 +414,6 @@
 - Сценарии: `test_discrete_cards_up_to_4_5_gb`, `test_setting_forces_or_disables_it`, `test_unknown_memory`.
 - Имена файлов из ссылок исходника (существуют в дереве): `run.py`.
 
-## `tests/test_map_controller.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_map_controller.h, e.c
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 39.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_map_controller.h`.
-
-## `tests/test_map_location.c`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../src/code_check.h, ../src/runtime_map.h, assert.h, game_code.h, math.h, stdio.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 30.
-- Имена файлов из ссылок исходника (существуют в дереве): `../src/code_check.h`, `../src/runtime_map.h`, `assert.h`, `game_code.h`.
-
 ## `tests/test_matching2_rejoin_identity.py`
 
 - Решение: Сохранить; статический обзор.
@@ -493,13 +437,6 @@
 - Имена файлов из ссылок исходника (существуют в дереве): `src/pc_menu.c`.
 - Ограничения: строковое извлечение production: чувствителен к переименованиям.
 
-## `tests/test_menu_sound.c`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../src/runtime_menu_sound.h, assert.h, stdio.h, stdlib.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 9.
-- Имена файлов из ссылок исходника (существуют в дереве): `../src/runtime_menu_sound.h`, `assert.h`.
-
 ## `tests/test_mods.py`
 
 - Решение: Сохранить; статический обзор.
@@ -522,13 +459,6 @@
 - Назначение/контракт: info.h, runtime.h, runtime.hw.fs.c, setjmp.h, shader_recompiler/backend/spirv/emit_spirv.h, shader_recompiler/ir/ir_emitter.h
 - Запуск: `CMake: motion-shader-test`; assertion/check sites: 0.
 - Имена файлов из ссылок исходника (существуют в дереве): `info.h`, `runtime.h`, `shader_recompiler/backend/spirv/emit_spirv.h`, `shader_recompiler/ir/ir_emitter.h`.
-
-## `tests/test_navigation_map.cpp`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../gpu/shim/bbport_map.h, ../gpu/shim/bbport_map_direction.h, ../src/runtime_map.h, SDL3/SDL.h, imgui.h, nlohmann/json.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 31.
-- Имена файлов из ссылок исходника (существуют в дереве): `../gpu/shim/bbport_map.h`, `../gpu/shim/bbport_map_direction.h`, `../src/runtime_map.h`, `nlohmann/json.h`.
 
 ## `tests/test_output_settings.cpp`
 
@@ -767,13 +697,6 @@
 - Назначение/контракт: test_runtime_contracts, test_recursive_guard_fails_explicitly, test_stack_corruption_is_not_ignored, test_tls_bounds_are_checked, test_rwlock_lifecycle_and_ownership, test_rwlock_multiple_readers_exclude_writer, test_rwlock_timeouts_use_orbis_errors
 - Запуск: `unittest discover -s tests -p test_runtime.py`; assertion/check sites: 11.
 - Сценарии: `test_runtime_contracts`, `test_recursive_guard_fails_explicitly`, `test_stack_corruption_is_not_ignored`, `test_tls_bounds_are_checked`, `test_rwlock_lifecycle_and_ownership`, `test_rwlock_multiple_readers_exclude_writer`, `test_rwlock_timeouts_use_orbis_errors`.
-
-## `tests/test_runtime_menu_mix.c`
-
-- Решение: Сохранить; статический обзор.
-- Назначение/контракт: ../src/runtime_audio.c, assert.h
-- Запуск: `native harness/helper; flags in source/caller`; assertion/check sites: 26.
-- Имена файлов из ссылок исходника (существуют в дереве): `../src/runtime_audio.c`, `assert.h`.
 
 ## `tests/test_runtime_network_settings.py`
 

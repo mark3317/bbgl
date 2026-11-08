@@ -47,7 +47,8 @@ class SettingsCleanupTests(unittest.TestCase):
             self.assertEqual(b.value(key), b.app[key])
         sections = dict(SETTINGS_SECTIONS['Mods & Patches'])
         self.assertNotIn('Mod folders', sections)
-        self.assertTrue({'mods_enabled', 'mods_dir', 'patches_dir'} <= set(sections['Installed mods']))
+        self.assertNotIn('Cheats', sections)
+        self.assertEqual(sections['Mod settings'], ['mods_dir', 'patches_dir'])
 
     def test_open_profile_uses_active_profile_without_launching_test_profile(self):
         self.backend.app['test_profile_dir'] = str(self.root/'other-profile')

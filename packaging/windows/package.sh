@@ -63,7 +63,7 @@ cp launcher/bloodborne.ico launcher/bloodborne.png "$dest/launcher/"
 cp -r launcher/art "$dest/launcher/"
 cp -r launcher/qml "$dest/launcher/"
 mkdir -p "$dest/launcher/assets"
-cp launcher/assets/hunter-icon.ico launcher/assets/hunter-icon.png "$dest/launcher/assets/"
+cp launcher/assets/hunter-icon.ico "$dest/launcher/assets/"
 cp -r launcher/assets/ui "$dest/launcher/assets/"
 # The executables without debug information (out/ keeps the symbols for crash reports).
 for exe in bb-probe.exe bb-gpu-capabilities.exe; do

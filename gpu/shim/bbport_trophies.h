@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace BbTrophies {
@@ -29,6 +30,7 @@ void Unlock(int id, std::int64_t timestamp);
 std::vector<Entry> Entries();
 Entry Find(int id);
 bool HasMetadata();
+bool HasTrophySet(std::string_view pack_id);
 int EarnedScore();
 int TotalScore();
 

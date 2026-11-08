@@ -9,9 +9,10 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'launcher'), str(ROOT / 'scripts')]
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-from PySide6.QtCore import QObject, QUrl
+from PySide6.QtCore import QObject, QPoint, QUrl, Qt
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 import bbport_launcher_win as core
 from bbport_launcher_backend import LauncherBackend
@@ -23,11 +24,13 @@ class ModWorkspaceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             with patch.object(core, 'PORT_DIR', root), patch.object(core, 'DATA_DIR', root), \
+                 patch.object(core, 'CONFIG_DIR', root), \
                  patch.object(core, 'CONFIG_FILE', root / 'settings.json'), \
                  patch.object(LauncherBackend, 'start_background_checks'), \
                  patch.dict(core.APP_DEFAULTS, ui_language='ru'), \
                  patch.dict(os.environ, BB_CONFIG=str(root / 'bbport.ini')):
                 backend = LauncherBackend()
+                backend.app.update(mods_dir='D:/Games/Bloodborne/mods', patches_dir='D:/Games/Bloodborne/patches')
                 backend._party_timer.stop()
                 backend._party_network_timer.stop()
                 backend._addons_timer.stop()
@@ -45,7 +48,7 @@ class ModWorkspaceTests(unittest.TestCase):
                 self.assertEqual(rows[1]['status'], 'missing')
                 warnings_emitted = []
                 backend.modSyncWarning.connect(lambda: warnings_emitted.append(True))
-                backend.app['play_mode'] = 'coop'
+                backend.app.update(play_mode='coop', coop_name='Hunter')
                 with patch.object(backend, 'refresh_addons'), patch.object(backend, 'coopPlay') as launch:
                     backend.playSelected()
                     launch.assert_not_called()
@@ -67,42 +70,89 @@ class ModWorkspaceTests(unittest.TestCase):
                 engine.rootContext().setContextProperty('launcher', backend)
                 warnings = []
                 engine.warnings.connect(lambda rows: warnings.extend(str(row) for row in rows))
-                qml = b'''import QtQuick
-import QtQuick.Window
-Window { width: 1280; height: 1100; visible: true
-SettingsWorkspace { anchors.fill: parent; category: "Mods & Patches"; section: "Installed mods" }
-}'''
-                engine.loadData(qml, QUrl.fromLocalFile(str(ROOT / 'launcher/qml/ModSharePreview.qml')))
+                engine.load(QUrl.fromLocalFile(str(ROOT / 'launcher/qml/Main.qml')))
                 self.assertTrue(engine.rootObjects())
-                window = engine.rootObjects()[0]
+                window: QQuickWindow = engine.rootObjects()[0]
+                window.resize(1200, 760)
+                window.setProperty('page', 'Home')
+
+                def click(item):
+                    self.assertTrue(item.isVisible() and item.isEnabled())
+                    point = item.mapToScene(item.boundingRect().center())
+                    QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, QPoint(round(point.x()), round(point.y())))
+                    QTest.qWait(100)
+
+                def items(root):
+                    yield root
+                    for child in root.childItems():
+                        yield from items(child)
+
+                def find(name):
+                    item = next((item for item in items(window.contentItem()) if item.objectName() == name), None)
+                    if item is None:
+                        item = window.findChild(QObject, name)
+                    self.assertIsNotNone(item, name)
+                    return item
+
                 try:
-                    for _ in range(30):
-                        app.processEvents()
+                    QTest.qWait(200)
+                    trophy, rail_mods = find('railTrophies'), find('railMods')
+                    self.assertEqual(rail_mods.y(), trophy.y() + trophy.height())
+                    click(rail_mods)
+                    self.assertEqual(window.property('page'), 'Mods')
+                    QTest.mouseMove(window, QPoint(window.width() - 15, window.height() - 15))
+                    QTest.qWait(100)
                     target = ROOT / 'out/mods-ui-preview.png'
                     self.assertTrue(window.grabWindow().save(str(target)))
-                    table = window.findChild(QObject, 'installedModsTable')
-                    self.assertIsNotNone(table)
-                    for width in (1280, 1024):
+                    table = find('installedModsTable')
+                    self.assertTrue(table.isVisible())
+                    mods_switch = find('modsEnabledSwitch')
+                    self.assertTrue(mods_switch.property('checked'))
+                    click(mods_switch)
+                    self.assertFalse(backend.modsEnabled)
+                    self.assertTrue(backend.modTableRows[0]['enabled'])
+                    backend.setValue('mods_enabled', True)
+                    self.assertTrue(mods_switch.property('checked'))
+                    for width in (1280, 1050):
                         window.setWidth(width)
-                        for _ in range(10):
-                            app.processEvents()
+                        QTest.qWait(50)
                         self.assertGreater(table.property('nameWidth'), 160)
                         self.assertGreater(table.property('height'), 80)
                     self.assertTrue(window.grabWindow().save(str(ROOT/'out/mods-ui-preview-narrow.png')))
-                    main = QQmlApplicationEngine()
-                    main.rootContext().setContextProperty('launcher', backend)
-                    main.warnings.connect(lambda rows: warnings.extend(str(row) for row in rows))
-                    main.load(QUrl.fromLocalFile(str(ROOT / 'launcher/qml/Main.qml')))
-                    self.assertTrue(main.rootObjects())
-                    main_window = main.rootObjects()[0]
+                    window.setWidth(1200)
+                    click(find('cheatsTab'))
+                    self.assertFalse(table.isVisible())
+                    self.assertEqual(find('modsPage').property('section'), 'Cheats')
+                    self.assertTrue(window.grabWindow().save(str(ROOT/'out/mods-cheats-preview.png')))
+                    click(find('installedModsTab'))
+                    click(find('modsSettingsButton'))
+                    self.assertEqual(window.property('page'), 'Settings')
+                    settings = find('settingsWorkspace')
+                    self.assertEqual(settings.property('section'), 'Mod settings')
+                    self.assertFalse(table.isVisible())
+                    self.assertFalse(mods_switch.isVisible())
+                    self.assertEqual(backend.categorySections('Mods & Patches'), ['Mod settings', 'Built-in enhancements'])
+                    self.assertTrue(window.grabWindow().save(str(ROOT/'out/mods-settings-preview.png')))
+                    search = next(item for item in items(settings)
+                                  if item.property('placeholderText') == backend.tr('Find a setting'))
+                    search.setProperty('text', 'free camera')
+                    QTest.qWait(100)
+                    cheat = backend.searchSettings('free camera')[0]
+                    self.assertEqual(cheat['category'], 'Mods')
+                    result = next(item for item in items(settings) if item.isVisible() and item.property('label') == cheat['label'])
+                    click(result)
+                    self.assertEqual(window.property('page'), 'Mods')
+                    self.assertEqual(find('modsPage').property('section'), 'Cheats')
+                    self.assertGreater(find('modsScroll').property('contentY'), 0)
+                    window.setProperty('page', 'Home')
                     backend.modSyncWarning.emit()
-                    for _ in range(15):
-                        app.processEvents()
-                    dialog = main_window.findChild(QObject, 'modSyncWarningDialog')
+                    QTest.qWait(100)
+                    dialog = find('modSyncWarningDialog')
                     self.assertTrue(dialog.property('visible'))
-                    self.assertTrue(main_window.grabWindow().save(str(ROOT/'out/mods-warning-preview.png')))
-                    main_window.close()
-                    main.deleteLater()
+                    self.assertTrue(window.grabWindow().save(str(ROOT/'out/mods-warning-preview.png')))
+                    click(find('modWarningSettings'))
+                    self.assertEqual(window.property('page'), 'Mods')
+                    self.assertTrue(table.isVisible())
                     errors = [w for w in warnings if any(s in w for s in ('ReferenceError', 'TypeError', 'Binding loop', 'Cannot assign'))]
                     self.assertEqual(errors, [])
                 finally:

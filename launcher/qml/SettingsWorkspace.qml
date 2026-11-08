@@ -8,18 +8,19 @@ Item {
     objectName: "settingsWorkspace"
     signal backToLauncher()
     signal openSetup(int step)
+    signal openMods(string section, string key)
     property string category: "Visuals"
     property string section: ""
     property string targetKey: ""
     property string query: ""
     function sections() { return launcher.categorySections(category).filter(s => s !== "Join a host") }
     property var categories: [
-        {name: "Visuals", icon: "visuals", tile: "tile-visuals", detail: launcher.tr("Graphics, display & frame rate")},
-        {name: "Controls", icon: "controls", tile: "tile-controls", detail: launcher.tr("Prompts, mouse & keyboard")},
-        {name: "Game & Saves", icon: "folder", tile: "tile-game-and-saves", detail: launcher.tr("Game files, saves & language")},
-        {name: "Co-op", icon: "online", tile: "tile-online", detail: launcher.tr("Play with friends")},
-        {name: "Mods & Patches", icon: "puzzle", tile: "tile-mods-and-patches", detail: launcher.tr("Mods, enhancements & tweaks")},
-        {name: "System", icon: "system", tile: "tile-system", detail: launcher.tr("Startup, updates & diagnostics")}
+        {name: "Visuals", icon: "visuals", detail: launcher.tr("Graphics, display & frame rate")},
+        {name: "Controls", icon: "controls", detail: launcher.tr("Prompts, mouse & keyboard")},
+        {name: "Game & Saves", icon: "folder", detail: launcher.tr("Game files, saves & language")},
+        {name: "Co-op", icon: "online", detail: launcher.tr("Play with friends")},
+        {name: "Mods & Patches", icon: "puzzle", detail: launcher.tr("Mods, enhancements & tweaks")},
+        {name: "System", icon: "system", detail: launcher.tr("Startup, updates & diagnostics")}
     ]
     property var current: categories.find(c => c.name === category) || categories[0]
     property real listWidth: width < 1200 ? 262 : 300
@@ -144,7 +145,10 @@ Item {
                 model: launcher.settingsRevision < 0 || workspace.query === "" ? [] : launcher.searchSettings(workspace.query)
                 delegate: MenuRow {
                     width: content.width; label: modelData.label; value: launcher.tr(modelData.category) + "  ›  " + launcher.tr(modelData.section)
-                    onClicked: workspace.openAt(modelData.category, modelData.section, modelData.key)
+                    onClicked: {
+                        if (modelData.category === "Mods") workspace.openMods(modelData.section, modelData.key)
+                        else workspace.openAt(modelData.category, modelData.section, modelData.key)
+                    }
                 }
             }
         }
@@ -185,50 +189,7 @@ Item {
             visible: workspace.query === "" && (is("Visuals", "Display & frame rate") || is("Visuals", "Image effects"))
             y: header.y + header.height + 4
             width: parent.width - 14; height: visible ? presetBox.height + 26 : 0
-            Column {
-                id: presetBox; y: 18; width: parent.width; spacing: 10
-                Text { text: launcher.tr("Preset"); color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12 }
-                Item {
-                    width: parent.width; height: 56
-                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
-                    Row {
-                    anchors.fill: parent; spacing: 0
-                    Repeater {
-                        model: ["low", "high", "ultra", "custom"]
-                        delegate: Button {
-                            id: presetButton
-                            property bool selected: launcher.graphicsPreset === modelData
-                            width: presetBox.width / 4; height: 56
-                            hoverEnabled: true
-                            text: launcher.presetLabel(modelData)
-                            contentItem: Text {
-                                text: presetButton.text; color: presetButton.selected || presetButton.hovered || presetButton.activeFocus ? Theme.text : Theme.textDim
-                                font.family: Theme.serif; font.pixelSize: 16
-                                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                                wrapMode: Text.WordWrap
-                            }
-                            background: Rectangle {
-                                color: "transparent"
-                                Rectangle {
-                                    visible: presetButton.selected || presetButton.activeFocus
-                                    height: presetButton.selected ? 2 : 1; width: parent.width - 28
-                                    anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                                    color: presetButton.selected ? Theme.accentHover : Theme.lineStrong
-                                }
-                            }
-                            ToolTip.visible: hovered && launcher.recommendedPreset === modelData
-                            ToolTip.text: launcher.tr("Recommended")
-                            onClicked: launcher.applyGraphicsPreset(modelData)
-                        }
-                    }
-                    }
-                }
-                Text {
-                    width: parent.width; wrapMode: Text.WordWrap; lineHeight: 1.3
-                    color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12
-                    text: launcher.presetDescription(launcher.graphicsPreset)
-                }
-            }
+            GraphicsPresetPicker { id: presetBox; y: 18; width: parent.width }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
         }
 
@@ -254,14 +215,13 @@ Item {
                 // Actions beside the task that calls for them.
                 Column {
                     width: parent.width; spacing: 12; topPadding: 20
-                    Flow { width: parent.width; visible: is("Controls", "Button prompts"); spacing: 10
-                        Repeater {
-                            model: ["PlayStation", "Xbox", "Keyboard"]
-                            delegate: GlassButton { text: launcher.tr(modelData); width: 180; height: 48; highlighted: launcher.promptChoice === modelData; onClicked: launcher.setPrompt(modelData) }
-                        }
-                    }
-                    Note { visible: is("Controls", "Button prompts"); text: launcher.tr("Sets the button icons shown in game menus. Keyboard also applies matching key bindings.") }
+                    ControlIconsPicker { width: parent.width; visible: is("Controls", "Button prompts") }
                     FsrAssets { width: parent.width; visible: is("Visuals", "Upscaling") }
+                    Loader {
+                        width: parent.width; active: workspace.visible && is("System", "Trophy notifications")
+                        visible: active
+                        sourceComponent: TrophyNotifications {}
+                    }
                     Repeater {
                         model: is("Game & Saves", "Game files") ? [launcher.readiness[0], launcher.readiness[2]] : []
                         delegate: Note { text: modelData.detail; color: modelData.level === "error" ? Theme.warn : Theme.textDim }
@@ -272,25 +232,15 @@ Item {
                         GlassButton { text: launcher.tr("Download game"); enabled: !launcher.setupRunning && !launcher.running && launcher.readiness[0].level === "error"; onClicked: launcher.downloadGame() }
                         GlassButton { text: launcher.tr("Setup wizard"); width: 180; onClicked: workspace.openSetup(0) }
                     }
-                    Flow { visible: is("Game & Saves", "Advanced"); width: parent.width; spacing: 10
-                        GlassButton { text: launcher.tr("Import trophy keys"); width: 180; onClicked: launcher.importTrophyKeys() }
-                    }
                     CoopConnection {
                         width: parent.width; visible: is("Co-op", "Seamless co-op")
                         onAttentionRequested: (target) => { if (workspace.visible) detailScroll.contentY = Math.max(0, Math.min(target.mapToItem(detailColumn, 0, 0).y - 24, detailScroll.contentHeight - detailScroll.height)) }
                     }
-                    Note { visible: is("Mods & Patches", "Cheats"); text: launcher.tr("Optional gameplay changes. All are off by default and apply the next time the game starts.") }
-                    ModsTable {
-                        width: parent.width; visible: is("Mods & Patches", "Installed mods")
-                        mods: launcher.modTableRows
-                    }
-                    Note { visible: is("Mods & Patches", "Installed mods"); text: launcher.tr("The mod list updates automatically. Changes apply at the next game start. Lower mods override earlier ones.") }
-                    Note { visible: is("Mods & Patches", "Installed mods") && launcher.contentMods.length === 0; text: launcher.tr("Put each mod in its own folder. Mods shared by players appear in this table automatically.") }
-                    Flow { width: parent.width; visible: is("Mods & Patches", "Installed mods"); spacing: 10
+                    Flow { width: parent.width; visible: is("Mods & Patches", "Mod settings"); spacing: 10
                         GlassButton { text: launcher.tr("Open mods folder"); width: 180; height: 48; onClicked: launcher.action("openMods") }
                     }
-                    Note { visible: is("Mods & Patches", "Installed mods") && launcher.modsDownloading; text: launcher.tr("Downloading mods… Please wait.") }
-                    Repeater { model: is("Mods & Patches", "Installed mods") ? launcher.patches : []
+                    Note { visible: is("Mods & Patches", "Mod settings") && launcher.patches.length > 0; text: launcher.tr("External patches") }
+                    Repeater { model: is("Mods & Patches", "Mod settings") ? launcher.patches : []
                         delegate: GlassSwitch { text: modelData.name; checked: modelData.enabled; onToggled: launcher.setPatch(modelData.name, checked) }
                     }
                     Column { visible: is("System", "System"); width: parent.width; spacing: 14

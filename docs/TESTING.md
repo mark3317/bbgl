@@ -1,6 +1,6 @@
 # Проверки BBGL и BBSC-GL
 
-[Каталог всех 230 тестовых/вспомогательных файлов](TEST-CATALOG.md) и
+[Каталог тестовых и вспомогательных файлов](TEST-CATALOG.md) и
 [аудит актуальности](fixes/2026-11-04-full-project-audit.md). Каталог не является списком обязательного запуска.
 
 Unittest-файлы без `unittest.main()` запускать через `python -m unittest discover
@@ -61,7 +61,6 @@ Local Party lifetime: открытый WinError 5 при замене exit-statu
 
 - Русская локализация и переносы Qt: `out/qt-venv/Scripts/python.exe tests/test_localization.py`.
   Не требует игры или профилей; геометрия offscreen не заменяет игровой контроль.
-  `test_menu_assets.FormatTests` пока имеет отдельный FAIL: устаревшее ожидание ROW_RESTART.
 
 - Перед релизом проверять **английский и русский**: `tools/capture_release_screenshots.py
   --language en --review --output out/l10n/en` и аналогично `--language ru`.

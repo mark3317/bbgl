@@ -7,8 +7,6 @@
 #include <inttypes.h>
 #include <cpuid.h>
 #include "runtime.h"
-#include "runtime_map.h"
-#include "runtime_atlas_state.h"
 #include "network_heap_patch.h"
 #include "gpu/bbgpu.h"
 #if !defined(__x86_64__) || !defined(__GNUC__)
@@ -16,6 +14,7 @@
 #endif
 #ifdef _WIN32
 #include <windows.h>
+#include "code_check.h"
 #include "respawn_patch.h"
 #include "menu_heap_patch.h"
 #include "engine_hooks.h"
@@ -390,6 +389,21 @@ static int mapped(Segment *segments, uint64_t count, uint64_t address, uint64_t 
             address - segments[i].address <= segments[i].size - bytes) return 1;
     return 0;
 }
+#ifdef _WIN32
+static void bind_live_cheats(Segment *segments, uint64_t count) {
+    const uint64_t chr_debug = 0x553e888;
+    const uint64_t guard_offset = 0x18db3c0;
+    const BbCode guard = {64, 0xc28b9e0746daa709ull}; /* Bloodborne 1.09 */
+    if (!mapped(segments, count, guard_offset, guard.n) ||
+        !bb_code_is(image + guard_offset, guard)) return;
+    for (uint64_t i = 0; i < count; ++i) {
+        if ((segments[i].flags & 2) && mapped(&segments[i], 1, chr_debug, 8)) {
+            bbgpu_overlay_bind_cheat_flags(image + chr_debug);
+            return;
+        }
+    }
+}
+#endif
 /* BBPATCH2 (patches.py): the patches' image base, then byte writes at image offsets, applied
  * after relocation. A write may replace a whole base-relative pointer slot (60/90 FPS++ swap
  * function pointers): the patch holds the address at the patches' base, rebased here. */
@@ -705,16 +719,8 @@ int main(int argc, char **argv) {
         extern void aspect_ratio_bind_image(void *, uint64_t);
         aspect_ratio_bind_image(image, size);
     }
-    /* Hunter's Atlas (MikeTat1988/HuntersAtlas, GPL-2.0): the map's read-only position and menu
-     * readers and its opt-in lamp travel, only while the launcher turns the map on. */
     if (!cpu_only) {
-        const char *atlas = getenv("BB_ATLAS_ENABLED");
-        if (atlas && !strcmp(atlas, "1")) {
-            runtime_map_bind(image, size);
-            runtime_atlas_state_bind(image, size);
-        }
-    }
-    if (!cpu_only) {
+        bind_live_cheats(segments, ns);
         extern void runtime_stamina_bind(void *, uint64_t);
         runtime_stamina_bind(image, size);
     }

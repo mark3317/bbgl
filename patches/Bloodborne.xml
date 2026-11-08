@@ -1174,7 +1174,7 @@
     </Metadata>
     <Metadata Title="Bloodborne" Name="Player No Dead (Read note)" Note="Can take damage but never drop below 1hp. (baby mode)" Author="Kyo" PatchVer="1.0" AppVer="01.09" AppElf="eboot.bin" isEnabled="false">
         <PatchList>
-            <Line Type="bytes32" Address="0x0593E888" Value="0x00000001"/>
+            <Line Type="bytes" Address="0x0593E888" Value="01"/>
         </PatchList>
     </Metadata>
     <Metadata Title="Bloodborne" Name="Player One-Hit Kill (Read note)" Note="Every hit of the player kills (the game's debug flag PlayerExterminate, ChrDbg +1, next to Player No Dead). For making test saves quickly." Author="bbport-coop" PatchVer="1.0" AppVer="01.09" AppElf="eboot.bin" isEnabled="false">

@@ -30,7 +30,8 @@ import bbport_qml_ru
 import bbport_launcher_win as core
 import bbport_startup
 import bbport_game_download
-from bbport_readiness import check_readiness, valid_trophy_key
+import bbport_trophy_notifications as trophy_notifications
+from bbport_readiness import check_readiness, trophy_snapshot
 
 
 # Russian texts (bbport_qml_ru): on when the launcher language is Russian; set by LauncherBackend.
@@ -222,13 +223,17 @@ SETTINGS_SECTIONS = {
         ('Co-op gameplay', ['bbsc_' + item['id'] for item in core.COOP_SETTINGS]),
     ],
     'Mods & Patches': [
-        ('Installed mods', ['mods_enabled', 'mods_dir', 'patches_dir']),
+        ('Mod settings', ['mods_dir', 'patches_dir']),
         ('Built-in enhancements', [key for key, _, _ in core.ENHANCEMENTS]),
+    ],
+    'Mods': [
+        ('Installed mods', ['mods_enabled']),
         ('Cheats', [key for key, _, _ in core.CHEATS] + [key for key, _, _ in core.TWEAKS] + ['debug_camera']),
     ],
     'System': [
         ('System', ['ui_language']),
         ('Advanced system', ['test_profile_dir', 'draw_pipe', 'readbacks', 'extra_env', 'debug_menu', 'diagnostic_logs', 'gpu_logs', 'frame_stats', 'gpu_profile', 'vk_validation']),
+        ('Trophy notifications', []),
         ('Logs', []),
     ],
 }
@@ -246,11 +251,11 @@ SEARCH_ACTIONS = [
     ('Controls', 'Button prompts', 'Xbox and PlayStation prompts', 'button controller'),
     ('Visuals', 'Upscaling', 'Download FSR 4 assets', 'fsr shader'),
     ('Game & Saves', 'Game files', 'Download game', 'game files setup'),
-    ('Game & Saves', 'Game files', 'Import trophy keys', 'keys.json trophies'),
     ('Game & Saves', 'Game files', 'Open saves folder', 'save path'),
-    ('Mods & Patches', 'Installed mods', 'Mods on the network', 'load order'),
+    ('Mods', 'Installed mods', 'Mods on the network', 'load order'),
     ('System', 'System', 'Desktop shortcut', 'start menu'),
     ('System', 'System', 'Open launcher folder', 'folder'),
+    ('System', 'Trophy notifications', 'Notification volume and appearance', 'trophies toast sound platinum'),
     ('System', 'Logs', 'Copy log', 'activity diagnostics'),
     ('System', 'Advanced system', 'Clear shader cache', 'shaders'),
 ]
@@ -292,6 +297,8 @@ class PendingGameOutput:
 
 class LauncherBackend(QObject):
     changed = Signal()
+    trophiesChanged = Signal()
+    trophyNotificationsChanged = Signal()
     logChanged = Signal()
     noticeChanged = Signal()
     runningChanged = Signal()
@@ -312,7 +319,7 @@ class LauncherBackend(QObject):
     _vpnInstallDone = Signal(str)
     _vpnProgress = Signal(str)
     _coopDone = Signal(str)
-    _partyPresenceDone = Signal(str)
+    _partyPresenceDone = Signal(int, str)
     playModeChanged = Signal()
     gameStarted = Signal()
     gameFinished = Signal(int, bool)  # exit code, whether the game got as far as running
@@ -327,6 +334,10 @@ class LauncherBackend(QObject):
         self.app = core.app_settings(core.load_json(core.CONFIG_FILE, {}))
         global RUSSIAN
         RUSSIAN = (self.app.get('ui_language') or core.windows_language()) == 'ru'
+        self._trophy_paths = None
+        self._trophies = {}
+        self._trophy_notifications = dict(trophy_notifications.DEFAULTS)
+        self._refresh_trophies()
         for signal in (self.changed, self.coopChanged):
             signal.connect(self.playModeChanged)
         self._route = dict(route or LAUNCHER_ROUTE)
@@ -376,6 +387,8 @@ class LauncherBackend(QObject):
         # Seamless co-op (bbport_coop): the servers this launcher hosts, and the last message.
         self._party_discovery = None
         self._party_lock = threading.RLock()
+        self._party_revision = 0
+        self._party_discovery_revision = 0
         self._party_polling = False
         self._party_stopping = False
         self._partyPresenceDone.connect(self._party_presence_finished)
@@ -605,6 +618,69 @@ class LauncherBackend(QObject):
         folder = Path(self.app.get('user_dir') or core.DATA_DIR / 'user').name
         return (name + '  ·  ' if name else '') + T('Save profile') + ': ' + folder
 
+    @Property('QVariantMap', notify=trophiesChanged)
+    def trophyProgress(self):
+        return self._trophies['progress']
+
+    @Property('QVariantList', notify=trophiesChanged)
+    def trophyEntries(self):
+        return self._trophies['entries']
+
+    @Property(bool, notify=trophiesChanged)
+    def trophyHasMetadata(self):
+        return self._trophies['hasMetadata']
+
+    def _refresh_trophies(self, force=False):
+        paths = (self.app.get('game_dir'), bbport_startup.saves_folder(self.app, core.DATA_DIR))
+        if not force and paths == self._trophy_paths:
+            return
+        self._trophy_paths = paths
+        snapshot = trophy_snapshot(*paths, russian=self.russian)
+        if snapshot != self._trophies:
+            self._trophies = snapshot
+            self.trophiesChanged.emit()
+
+    def _notification_folder(self):
+        env = core.game_environment(self.app)
+        user = env.get('BB_GPU_USER_DIR', env['BB_USER_DIR']) or 'user'
+        return (core.PORT_DIR / user).resolve() / 'custom_trophy'
+
+    @Property('QVariantMap', notify=trophyNotificationsChanged)
+    def trophyNotifications(self):
+        return self._trophy_notifications
+
+    @Slot()
+    def refreshTrophyNotifications(self):
+        try:
+            self._trophy_notifications = trophy_notifications.load(self._notification_folder())
+        except (OSError, UnicodeError):
+            self._trophy_notifications = dict(trophy_notifications.DEFAULTS)
+            self._set_notice('Could not read trophy notification settings.')
+        self.trophyNotificationsChanged.emit()
+
+    @Slot(str, 'QVariant')
+    def setTrophyNotification(self, key, value):
+        try:
+            if self.running:
+                raise trophy_notifications.ProfileInUse
+            trophy_notifications.save_option(self._notification_folder(), key, value)
+        except trophy_notifications.ProfileInUse:
+            self._set_notice('Close the game using this profile to edit trophy notifications.')
+        except (OSError, UnicodeError, ValueError):
+            self._set_notice('Could not save trophy notification settings.')
+        self.refreshTrophyNotifications()
+
+    @Slot(result=str)
+    def trophySoundFiles(self):
+        try:
+            files = self._notification_folder().iterdir()
+            names = ('trophy', 'bronze', 'silver', 'gold', 'platinum')
+            extensions = ('.wav', '.mp3', '.ogg', '.flac', '.m4a', '.opus')
+            return ', '.join(sorted(path.name for path in files if path.is_file()
+                                    and path.stem in names and path.suffix in extensions))
+        except OSError:
+            return ''
+
     @Property(str, notify=changed)
     def gameFolder(self):
         return str(self.app.get('game_dir', ''))
@@ -627,10 +703,11 @@ class LauncherBackend(QObject):
         return [{**item, 'label': T(item['label']), 'detail': T(item['detail'])}
                 for item in check_readiness(self.app.get('game_dir'),
                                             self.app.get('user_dir') or core.DATA_DIR / 'user',
-                                            core.game_info)]
+                                            core.game_info, built_in_trophies=self._trophies['builtIn'])]
 
     @Slot()
     def refreshReadiness(self):
+        self._refresh_trophies(force=True)
         self.changed.emit()
 
     @Property(str, notify=changed)
@@ -714,6 +791,10 @@ class LauncherBackend(QObject):
     @Property('QVariantList', notify=changed)
     def mods(self):
         return self._mods
+
+    @Property(bool, notify=changed)
+    def modsEnabled(self):
+        return self.checked('mods_enabled')
 
     @staticmethod
     def _is_prompt_mod(name):
@@ -897,6 +978,7 @@ class LauncherBackend(QObject):
         core.save_ini({k: self.ini[k] for k in core.INI_DEFAULTS}, self.ini_lines)
         self.ini, self.ini_lines = core.load_ini()
         self._remember_written()
+        self._refresh_trophies()
         self.changed.emit()
 
     @Slot(str)
@@ -922,13 +1004,18 @@ class LauncherBackend(QObject):
     def setValue(self, key, value):
         if self._mods_downloading and key in ('mods_dir', 'mods_enabled'):
             return
-        if key in ('coop_connection', 'coop_host_address', 'coop_custom_address', 'coop_peer_addresses', 'coop_name'):
+        party_setting = key in ('coop_connection', 'coop_host_address', 'coop_custom_address',
+                                'coop_peer_addresses', 'coop_name')
+        if party_setting:
             if self.running or self._coop_busy:
                 return
             if key == 'coop_connection':
-                if value not in {item['value'] for item in self.coopConnections}:
+                if (not self._coop_inventory_ready or self._vpn_installing or
+                        value == self.app.get(key) or
+                        value not in {item['value'] for item in self.coopConnections}):
                     return
                 self.app['coop_host_address'] = ''
+        party_changed = party_setting and self.value(key) != value
         if key in ('upscaler', 'frame_gen') and str(value) == 'dlss' and not self._dlss_supported:
             return
         if key not in core.APP_DEFAULTS and key not in core.INI_DEFAULTS:
@@ -964,13 +1051,8 @@ class LauncherBackend(QObject):
             if key == 'user_dir' and self._setup_naming:
                 self._update_setup_name()
         self._write()
-        if key in ('coop_connection', 'coop_host_address', 'coop_custom_address', 'coop_peer_addresses', 'coop_name'):
-            self._party_ready = False
-            with self._party_lock:
-                if self._party_discovery:
-                    self._party_discovery.close()
-                    self._party_discovery = None
-            self.coopNetworksChanged.emit()
+        if party_changed:
+            self._invalidate_party(connection_changed=key == 'coop_connection')
             self.coopCheckConnection()
         if key == 'bbsc_scaling':
             self._settings_revision += 1
@@ -982,50 +1064,6 @@ class LauncherBackend(QObject):
         value = self.value(key)
         return value is True or value == '1'
 
-    @Slot()
-    def importTrophyKeys(self):
-        source, _ = QFileDialog.getOpenFileName(
-            None, 'Choose your trophy keys.json', '',
-            'JSON files (*.json)'
-        )
-        if not source:
-            return
-
-        try:
-            data = json.loads(Path(source).read_text(encoding='utf-8-sig'))
-            trophy_key = data['TrophyKeySet']['ReleaseTrophyKey']
-            if not valid_trophy_key(trophy_key):
-                raise ValueError('ReleaseTrophyKey must be 32 hexadecimal characters')
-        except (OSError, ValueError, KeyError, TypeError) as error:
-            QMessageBox.warning(None, 'Invalid trophy keys',
-                                f'This is not a valid trophy keys.json: {error}')
-            return
-
-        user_dir = Path(self.app.get('user_dir') or core.DATA_DIR / 'user')
-        destination = user_dir / 'keys.json'
-
-        if destination.exists():
-            if Path(source).resolve() == destination.resolve():
-                self._set_notice('Trophy keys are already installed.')
-                return
-            answer = QMessageBox.question(
-                None, 'Replace trophy keys?',
-                'This folder already contains keys.json. Replace it?',
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
-            if answer != QMessageBox.StandardButton.Yes:
-                return
-
-        try:
-            user_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination)
-        except OSError as error:
-            QMessageBox.warning(None, 'Import failed', str(error))
-            return
-
-        self._set_notice('Trophy keys installed successfully.')
-        self.changed.emit()
     @Slot(str)
     def browse(self, key):
         if key not in ('test_profile_dir', 'game_dir', 'user_dir', 'dlc_dir', 'mods_dir', 'patches_dir'):
@@ -1040,9 +1078,7 @@ class LauncherBackend(QObject):
                 self.refresh_addons()
 
     def _carry_trophy_keys(self, old_user, new_user):
-        """The game reads keys.json from the saves folder: one imported before the saves folder
-        was changed (the setup wizard asks for it first) stayed behind, and trophy names were
-        missing. It moves along unless the new folder has its own."""
+        """Keep a previously configured keys.json available to the game after a folder change."""
         source, target = old_user / 'keys.json', new_user / 'keys.json'
         if source.is_file() and not target.exists() and source.resolve() != target.resolve():
             try:
@@ -1197,6 +1233,8 @@ class LauncherBackend(QObject):
             self.job = None
         self.runningChanged.emit()
         self._sync_from_disk()  # what the in-game menu changed, shown at once
+        self._refresh_trophies(force=True)
+        self.refreshTrophyNotifications()
         self._remember_written()
         self._settings_revision += 1
         self.presetApplied.emit()  # the pages rebuild their rows with those values
@@ -1256,7 +1294,7 @@ class LauncherBackend(QObject):
         if self._party_stopping or self._mods_polling or self._mods_downloading:
             return
         self.refresh_addons()
-        discovery = self._party_discovery
+        discovery = self._current_party_discovery()
         if not discovery:
             if self._network_mods:
                 self._network_mods = []
@@ -1311,10 +1349,11 @@ class LauncherBackend(QObject):
         self._download_mods(peer_id, None)
 
     def _download_mods(self, peer_id, name):
+        discovery = self._current_party_discovery()
         if (self.running or self._coop_busy or self._coop_launch_pending or
-                self._mods_downloading or not self._party_discovery):
+                self._mods_downloading or not discovery):
             return
-        discovery, share = self._party_discovery, self._mod_share
+        share = self._mod_share
         peer = next((p for p in discovery.offers() if p['id'] == peer_id), None)
         if not peer or peer_id == discovery.offer['id']:
             return
@@ -1720,46 +1759,75 @@ class LauncherBackend(QObject):
         self._vpn_progress(message)
         self.coopRefreshNetworks()
 
-    @Property(str, notify=coopNetworksChanged)
+    @Property(str, notify=coopChanged)
     def coopHostAddress(self):
-        return self._party_discovery.address if self._party_discovery else ''
+        discovery = self._current_party_discovery()
+        return discovery.address if discovery else ''
 
     @Property(bool, notify=coopNetworksChanged)
     def coopNetworksLoading(self):
-        return self._coop_networks_loading or not self._coop_inventory_ready
+        # Once the first inventory is known, the current options stay usable during refreshes.
+        return not self._coop_inventory_ready
 
     @Slot()
     def coopRefreshNetworks(self):
-        if self._coop_networks_loading or self._coop_busy or self.running:
+        if self._party_stopping or self._coop_networks_loading or self._coop_busy or self.running:
             return
         self._coop_networks_loading = True
-        self.coopNetworksChanged.emit()
         def discover():
             self._coopNetworksDone.emit(coop.network_candidates(), coop.installed_vpns())
         threading.Thread(target=discover, daemon=True).start()
 
     @Slot(list, list)
     def _coop_networks_finished(self, networks, vpns):
+        options_changed = not self._coop_inventory_ready or self._coop_vpns != vpns
         self._coop_networks = networks
         self._coop_vpns = vpns
         self._coop_inventory_ready = True
         selected = self.app.get('coop_connection', 'lan')
         if selected != 'lan' and selected not in vpns and not (self.running or self._coop_busy):
             self.app['coop_connection'] = 'lan'
+            self._invalidate_party(connection_changed=True)
+        elif options_changed:
+            self.coopNetworksChanged.emit()
         self._coop_networks_loading = False
-        self.coopNetworksChanged.emit()
         self.coopCheckConnection()
 
+    def _current_party_discovery(self):
+        if self._party_discovery_revision == self._party_revision:
+            return self._party_discovery
+
+    def _invalidate_party(self, *, connection_changed):
+        self._party_revision += 1
+        self._party_ready = False
+        self._coop_status = ''
+        if connection_changed:
+            self._mod_catalog_revision += 1
+            if self._network_mods:
+                self._network_mods = []
+                self.networkModsChanged.emit()
+                self.changed.emit()
+            self.coopNetworksChanged.emit()
+        self.coopChanged.emit()
+
     def _prepare_party(self):
-        address, network = party.choose_network(self._coop_networks, self.coopConnection)
+        revision = self._party_revision
+        connection = self.coopConnection
+        name = str(self.value('coop_name'))
+        if self._party_discovery and self._party_discovery_revision != revision:
+            self._party_discovery.close()
+            self._party_discovery = None
+        address, network = party.choose_network(self._coop_networks, connection)
         targets = party.candidate_addresses(network, coop.tailscale_exe())
+        if revision != self._party_revision:
+            return ''
         from bbport_paths import profile_dir
         if self._party_discovery and self._party_discovery.address != address:
             self._party_discovery.close()
             self._party_discovery = None
         if not self._party_discovery:
-            self._party_discovery = party.Discovery(profile_dir(), address, targets,
-                                                    str(self.value('coop_name')))
+            self._party_discovery = party.Discovery(profile_dir(), address, targets, name)
+            self._party_discovery_revision = revision
         self._party_discovery.targets = targets
         self._party_discovery.mod_share = self._mod_share
         self._party_discovery.publish_runtime_peers()
@@ -1772,27 +1840,33 @@ class LauncherBackend(QObject):
 
     def _poll_party_presence(self):
         # Presence never occupies the launch/UI busy state.
-        if self._party_stopping or self._party_polling or self._coop_networks_loading:
+        if self._party_stopping or self._party_polling or not self._coop_inventory_ready:
             return
         self._party_polling = True
+        revision = self._party_revision
         def poll():
+            message = ''
             try:
                 with self._party_lock:
-                    if self._party_stopping:
+                    if self._party_stopping or revision != self._party_revision:
                         return
                     message = self._prepare_party()
             except Exception as error:
                 message = f"{T('Player search unavailable:')} {T(str(error))}"
             finally:
-                self._partyPresenceDone.emit(locals().get('message', ''))
+                self._partyPresenceDone.emit(revision, message)
         threading.Thread(target=poll, daemon=True).start()
 
-    @Slot(str)
-    def _party_presence_finished(self, message):
+    @Slot(int, str)
+    def _party_presence_finished(self, revision, message):
         self._party_polling = False
-        if not self._coop_busy and not self._party_stopping:
-            self._coop_status = message
-            self.coopChanged.emit()
+        if self._party_stopping or self._coop_busy:
+            return
+        if revision != self._party_revision:
+            self.coopCheckConnection()
+            return
+        self._coop_status = message
+        self.coopChanged.emit()
 
     def _coop_run(self, message, work):
         if self._coop_busy:
@@ -1861,7 +1935,7 @@ class LauncherBackend(QObject):
 
     @Slot()
     def coopPlay(self):
-        if self._mods_downloading:
+        if self._mods_downloading or not self._has_player_name():
             return
         if self.process or self._coop_busy:
             return
@@ -1907,16 +1981,20 @@ class LauncherBackend(QObject):
     def _coop_ready(self):
         return self._party_ready
 
+    def _has_player_name(self):
+        return bool(str(self.value('coop_name') or '').strip())
+
     @Property(bool, notify=playModeChanged)
     def playModeBlocked(self):
-        return False
+        return self.playMode == 'coop' and not self._has_player_name()
 
     @Property(str, notify=playModeChanged)
     @translated
     def playModeSummary(self):
         """One line under PLAY: what it will start."""
-        mode = self.playMode
-        if mode == 'coop':
+        if self.playModeBlocked:
+            return 'Enter a player name to play co-op.'
+        if self.playMode == 'coop':
             return self.coopStatus
         return 'Offline: your own world, no servers.'
 
@@ -1939,7 +2017,7 @@ class LauncherBackend(QObject):
     @Slot()
     def playSelected(self):
         """PLAY: the selected mode."""
-        if self._coop_busy or self._mods_downloading:
+        if self._coop_busy or self._mods_downloading or self.playModeBlocked:
             return
         self._launch_cancelled = False
         if self.playMode == 'coop':
@@ -1953,7 +2031,7 @@ class LauncherBackend(QObject):
 
     @Slot()
     def playUnsynchronized(self):
-        if self.playMode == 'coop' and not self.running and not self._coop_busy:
+        if self.playMode == 'coop' and not self.playModeBlocked and not self.running and not self._coop_busy:
             self._launch_cancelled = False
             self.coopPlay()
 

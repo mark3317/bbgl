@@ -144,6 +144,7 @@ RU = {
     'Controls': 'Управление',
     ' prompts': ' (подсказки)',
     'Button prompts': 'Подсказки кнопок',
+    'Control icons': 'Иконки управления',
     'Game files & saves': 'Файлы игры и сохранения',
     'Game & Saves': 'Игра и сохранения',
     'Your data': 'Ваши данные',
@@ -200,19 +201,10 @@ RU = {
         'Nexus, затем выберите скачанный файл (.zip, .7z или .rar). Клавиатура также назначает клавиши с её '
         'картинок: E — действие, Левый Shift — уклонение, R — флакон крови, Q — предмет, F — трансформация, '
         'кнопки мыши — атака.',
-    "Hunter's Atlas (map)": "Hunter's Atlas (карта)",
-    'Prepare maps': 'Подготовить карты',
-    "Hunter's Atlas by MikeTat1988 (GPL-2.0): a full-screen map with your position, floors, lamps and NPCs. Its "
-    "maps are made from your own game files, once. In the game, open the quick menu and choose Map (the tile "
-    "beside the first row), or click it.":
-        "Hunter's Atlas от MikeTat1988 (GPL-2.0): полноэкранная карта с вашим положением, этажами, лампами и "
-        "NPC. Карты один раз создаются из ваших файлов игры. В игре откройте быстрое меню и выберите «Карта» "
-        "(плитка рядом с первым рядом) или щёлкните по ней.",
     'Upscaling': 'Масштабирование',
     'Download FSR 4 assets': 'Скачать ресурсы FSR 4',
     'Check again': 'Проверить снова',
     'Setup wizard': 'Мастер настройки',
-    'Import trophy keys': 'Импорт ключей трофеев',
     'Open saves folder': 'Открыть папку сохранений',
     'Copy code': 'Скопировать код',
     'Sign in again': 'Войти снова',
@@ -287,7 +279,7 @@ RU = {
     'Maximum': 'Максимум',
     'Custom settings': 'Свои настройки',
     'Your hunt begins here.': 'Здесь начинается ваша охота.',
-    'This wizard will help you choose your game and saves folders, set up co-op and select graphics settings.': 'Мастер поможет выбрать папки игры и сохранений, настроить совместную игру и подобрать графику.',
+    'This wizard will help you choose game and saves folders, set up co-op, and choose control icons and graphics settings.': 'Мастер поможет выбрать папки игры и сохранений, настроить совместную игру, иконки управления и графику.',
     'Co-op is optional. You can change all settings later in the launcher.': 'Совместную игру можно настроить позже. Все параметры доступны в настройках лаунчера.',
     'Add your game files': 'Добавьте файлы игры',
     'Welcome': 'Начало',
@@ -309,6 +301,62 @@ RU = {
         'Для игры нужна папка сохранений, доступная для записи. Ключи трофеев необязательны и добавляют названия '
         'трофеев. Сохранения лежат в папке user лаунчера, если вы не выберете другую.',
     'Trophies': 'Трофеи',
+    'The launcher uses its built-in catalogue for trophy names and descriptions.':
+        'Названия и описания трофеев загружены из встроенного каталога лаунчера.',
+    '%1 of %2': '%1 из %2',
+    '%1 earned': 'Получено: %1',
+    'Progress unavailable': 'Прогресс недоступен',
+    'Secret trophy': 'Скрытый трофей',
+    'Trophy #%1': 'Трофей №%1',
+    'Earned': 'Получен',
+    'Not earned': 'Не получен',
+    'Trophy notifications': 'Уведомления о трофеях',
+    'Notification volume and appearance': 'Громкость и оформление уведомлений',
+    'The launcher and in-game overlay share these settings for the current save profile.':
+        'Лаунчер и игровой оверлей используют эти настройки для текущего профиля сохранений.',
+    'Appearance': 'Оформление',
+    'Notification style': 'Вид уведомления',
+    'Original banner': 'Баннер',
+    'Card': 'Карточка',
+    'Card, cinematic platinum': 'Карточка и платина',
+    'Corner popup': 'В углу',
+    'Platinum light': 'Свечение платины',
+    'Animate the platinum': 'Анимация платины',
+    'Write the grade': 'Показывать тип трофея',
+    'Sound and timing': 'Звук и время',
+    'Mute the sound': 'Без звука',
+    'Volume': 'Громкость',
+    'Time on screen': 'Время на экране',
+    'Theme default': 'По умолчанию',
+    '%1 s': '%1 с',
+    'Preview': 'Предпросмотр',
+    'Bronze': 'Бронза',
+    'Silver': 'Серебро',
+    'Gold': 'Золото',
+    'Platinum': 'Платина',
+    'Trophy unlocked!': 'Трофей получен!',
+    'Achievement preview': 'Проверка уведомления',
+    "Hunter's trophy": 'Трофей охотника',
+    'All four in a row': 'Все по очереди',
+    'Three at once': 'Три сразу',
+    'Visual preview. The game uses the selected sound and volume.':
+        'Предпросмотр показывает оформление. Звук и громкость применяются в игре.',
+    'Custom sounds and pictures': 'Пользовательские звуки и изображения',
+    "Files in the save profile's custom_trophy folder are loaded by the game.":
+        'Игра загружает файлы из папки custom_trophy выбранного профиля.',
+    'No custom sound files found.': 'Пользовательские звуки не найдены.',
+    'Refresh sound files': 'Обновить список звуков',
+    'Close the game using this profile to edit trophy notifications.':
+        'Закройте игру в этом профиле, чтобы изменить уведомления о трофеях.',
+    'Could not read trophy notification settings.': 'Не удалось прочитать настройки уведомлений о трофеях.',
+    'Could not save trophy notification settings.': 'Не удалось сохранить настройки уведомлений о трофеях.',
+    'Names and descriptions are unavailable for this trophy pack.':
+        'Названия и описания для этого набора трофеев недоступны.',
+    'No trophies loaded yet. Launch the game to load the trophy list.':
+        'Список трофеев пока пуст. Запустите игру, чтобы загрузить его.',
+    'The name and requirement are revealed when this trophy is earned.':
+        'Название и условие откроются после получения трофея.',
+    'Description unavailable.': 'Описание недоступно.',
     'Optional': 'Необязательно',
     'Required': 'Обязательно',
     'Your game files and saves are ready. Choose a graphics preset, then start playing or open the launcher.':
@@ -337,7 +385,6 @@ RU = {
     'Mods': 'Моды',
     'Enhancements': 'Улучшения',
     'Built-in enhancements': 'Встроенные улучшения',
-    'Atlas': 'Атлас',
     'Advanced': 'Дополнительно',
     'Diagnostics': 'Диагностика',
     'Overlay': 'Overlay',
@@ -490,14 +537,6 @@ RU = {
     'Lamps: Level Up and Storage at every lit lamp': 'Лампы: повышение уровня и хранилище у каждой зажжённой лампы',
     'Boss rematches at their lamps (experimental; back up your saves)':
         'Повторные бои с боссами у их ламп (экспериментально; сделайте копию сохранений)',
-    "Hunter's Atlas: full-screen map (Map in the game's quick menu)":
-        "Hunter's Atlas: полноэкранная карта («Карта» в быстром меню игры)",
-    'Fast travel to discovered lamps from the map': 'Быстрое перемещение к открытым лампам с карты',
-    "Reveal an area's map only after its boss": 'Показывать карту локации только после её босса',
-    'Pickup markers (vials, Insight, equipment, Coldblood)': 'Метки предметов (флаконы, Озарение, снаряжение, Холодная кровь)',
-    'NPC markers': 'Метки NPC',
-    'All NPCs': 'Все NPC',
-    'Only NPCs with new dialogue': 'Только NPC с новыми репликами',
     'Hidden': 'Скрыты',
     'Launcher language': 'Язык лаунчера',
     'System default': 'Как в системе',
@@ -589,19 +628,12 @@ RU = {
         'Игра установлена. Перед игрой проверьте, что лаунчер показывает версию 1.09.',
     'Getting co-op ready…': 'Подготовка совместной игры…',
     'Graphics card check unavailable': 'Проверка видеокарты недоступна',
-    "Hunter's Atlas maps ready. Turn the map on and play: Map is in the game's quick menu.":
-        "Карты Hunter's Atlas готовы. Включите карту и играйте: «Карта» — в быстром меню игры.",
-    'Import failed': 'Импорт не удался',
     'Installing BBSC…': 'Установка BBSC…',
-    'Invalid trophy keys': 'Неверные ключи трофеев',
     'Invite code copied. Send it to your friend in a private message.':
         'Код приглашения скопирован. Отправьте его другу в личном сообщении.',
     'JSON files (*.json)': 'Файлы JSON (*.json)',
     'Last step: choose where to create the CUSA03173 game folder': 'Последний шаг: выберите, где создать папку игры CUSA03173',
     'Log copied to clipboard.': 'Журнал скопирован в буфер обмена.',
-    'Maps not prepared yet: Prepare maps makes them from your game (5-15 minutes, once).':
-        'Карты ещё не подготовлены: «Подготовить карты» создаст их из вашей игры (5–15 минут, один раз).',
-    'Maps ready.': 'Карты готовы.',
     'Mod change saved. Restart the game to apply it.': 'Изменение модов сохранено. Перезапустите игру, чтобы применить.',
     'No network found. Connect Tailscale, then try again.': 'Сеть не найдена. Подключите Tailscale и попробуйте снова.',
     'Not set up yet: Set up / update BBSC downloads the newest BBSC from its GitHub releases (about 100 MB), or '
@@ -611,13 +643,11 @@ RU = {
     'Offline: your own world, no servers.': 'Офлайн: ваш собственный мир, без серверов.',
     'Online ID must be your account name, not an email address.': 'Онлайн-ID — это имя аккаунта, а не адрес почты.',
     'Online connection test finished.': 'Проверка онлайн-подключения завершена.',
-    'Preparing maps…': 'Подготовка карт…',
     'Preparing the game…': 'Подготовка игры…',
     'Preparing your game files. Keep the launcher open…': 'Подготовка файлов игры. Не закрывайте лаунчер…',
     'Prompt mod download (*.zip *.7z *.rar common.tpf.dcx);;All files (*)':
         'Загрузка мода подсказок (*.zip *.7z *.rar common.tpf.dcx);;Все файлы (*)',
     'ReleaseTrophyKey must be 32 hexadecimal characters': 'ReleaseTrophyKey должен состоять из 32 шестнадцатеричных символов',
-    'Replace trophy keys?': 'Заменить ключи трофеев?',
     'Restarting with the new settings…': 'Перезапуск с новыми настройками…',
     'Seamless co-op: choose a co-op name and password first (Settings → Co-op).':
         'Бесшовная совместная игра: сначала укажите имя и пароль (Настройки → Совместная игра).',
@@ -634,10 +664,7 @@ RU = {
     'Steam was not found on this PC or no account has signed in.': 'Steam не найден на этом ПК, или в нём не выполнен вход.',
     'Stopped hosting.': 'Сервер остановлен.',
     'The game is running.': 'Игра запущена.',
-    'This folder already contains keys.json. Replace it?': 'В этой папке уже есть keys.json. Заменить его?',
-    'Trophy keys are already installed.': 'Ключи трофеев уже установлены.',
     'Trophy keys copied to the new saves folder.': 'Ключи трофеев скопированы в новую папку сохранений.',
-    'Trophy keys installed successfully.': 'Ключи трофеев установлены.',
     'Vulkan graphics card not detected': 'Видеокарта с Vulkan не обнаружена',
     'Wait for the game files to finish installing.': 'Дождитесь окончания установки файлов игры.',
     'Game files not found': 'Файлы игры не найдены',
@@ -669,7 +696,6 @@ RU = {
     'No trophy pack found; achievements can show IDs only.': 'Пакет трофеев не найден; достижения будут показаны только номерами.',
     'Pack and key format found; launch the game to verify decryption.':
         'Пакет и формат ключа найдены; запустите игру, чтобы проверить расшифровку.',
-    'Pack found; import a valid keys.json to show trophy names.': 'Пакет найден; импортируйте правильный keys.json, чтобы видеть названия трофеев.',
     'Save folder is not writable.': 'В папку сохранений нельзя записывать.',
     'Save folder will be created on first launch.': 'Папка сохранений будет создана при первом запуске.',
     'Save path is a file, not a folder.': 'Путь сохранений указывает на файл, а не на папку.',
@@ -736,15 +762,12 @@ PATTERNS = [
     ('Now: the game renders at the output size, {} × {}.', 'Сейчас: игра рисует в выходном разрешении, {0} × {1}.'),
     ('Now: the game renders at {} × {} and upscales it to {} × {}.',
      'Сейчас: игра рисует в {0} × {1} и масштабирует до {2} × {3}.'),
-    ('Preparing maps: {}% · {}', 'Подготовка карт: {0}% · {1}'),
-    ('Preparing the maps failed: {}', 'Не удалось подготовить карты: {0}'),
     ('Seamless co-op: you host on {}; send your friends the invite code.',
      'Бесшовная совместная игра: вы хост на {0}; отправьте друзьям код приглашения.'),
     ('Starting co-op with {}. Host: ring the Beckoning Bell. Guest: ring the Small Resonant Bell.{}',
      'Запуск совместной игры с {0}. Хост: звоните в Зовущий Колокол. Гость: в Малый звонкий колокол.{1}'),
     ('The game could not start (exit code {}). See the log for details.',
      'Игра не запустилась (код выхода {0}). Подробности — в журнале.'),
-    ('This is not a valid trophy keys.json: {}', 'Это не правильный keys.json трофеев: {0}'),
     ('Unexpected installer error: {}', 'Неожиданная ошибка установщика: {0}'),
     ('Update failed: {}', 'Обновление не удалось: {0}'),
     ('You have the latest version ({}).', 'У вас последняя версия ({0}).'),
@@ -912,7 +935,6 @@ RU.update({'Image effects': 'Графика', 'Seamless co-op: host or join': '�
 RU.update({'Sets the button icons shown in game menus. Keyboard also applies matching key bindings.': 'Вид значков кнопок в меню игры. Для клавиатуры также назначаются соответствующие клавиши.',
 'Checks for new launcher versions at startup.': 'Проверяет новые версии лаунчера при запуске.'})
 
-RU['Mods & Patches'] = 'Моды и читы'
 
 RU.update({'Open saves folder': 'Папка сохранений', 'Open mods folder': 'Папка модов', 'Open launcher folder': 'Папка лаунчера', 'Open port folder': 'Папка лаунчера'})
 
@@ -1028,6 +1050,7 @@ RU.update({
 
 RU.update({
     'Finding players automatically…': 'Автоматический поиск игроков…',
+    'Enter a player name to play co-op.': 'Введите имя игрока, чтобы начать совместную игру.',
     'Players online:': 'В сети:',
     'Player search unavailable:': 'Поиск игроков недоступен:',
     'Starting co-op…': 'Запуск совместной игры…',
@@ -1062,5 +1085,6 @@ RU.update({
     'Mods are not synchronized': 'Моды не синхронизированы',
     'Not all player mods are installed or synchronized. Check the mod list before starting co-op, or launch the game anyway.': 'Не все моды игроков установлены или синхронизированы. Проверьте список модов перед совместной игрой или запустите игру без синхронизации.',
     'Mod settings': 'Настройки модов',
+    'View mods': 'Открыть список модов',
     'Launch game': 'Запустить игру',
 })

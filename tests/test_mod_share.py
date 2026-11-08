@@ -145,7 +145,7 @@ class ModShareTests(unittest.TestCase):
             backend._network_mods.append(dict(name='Xbox Prompts (Dommo)', peer=self.a.offer['id'],
                                              status='conflict', enabled=True))
             self.assertFalse(backend._mods_unsynchronized())
-            backend.app['play_mode'] = 'coop'
+            backend.app.update(play_mode='coop', coop_name='Hunter')
             warnings = []
             backend.modSyncWarning.connect(lambda: warnings.append(True))
             with patch.object(backend, 'coopPlay') as launch:

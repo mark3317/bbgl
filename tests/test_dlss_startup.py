@@ -34,5 +34,5 @@ class DlssStartupTests(unittest.TestCase):
         keys=lambda cat,section:[f['key'] for f in backend.sectionFields(cat,section)]
         self.assertIn('skip_intro',keys('Game & Saves','Advanced'))
         self.assertNotIn('skip_intro',keys('Game & Saves','In-game preferences'))
-        self.assertIn('debug_camera',keys('Mods & Patches','Cheats'))
+        self.assertIn('debug_camera',keys('Mods','Cheats'))
         self.assertNotIn('debug_camera',keys('System','System'))

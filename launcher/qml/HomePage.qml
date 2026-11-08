@@ -4,10 +4,11 @@ import QtQuick.Controls
 Item {
     id: home
     signal primaryRequested()
+    signal trophiesRequested()
     signal openSettings(string category, string section)
     property bool gameBlocked: false
     property bool savesBlocked: false
-    property bool onlineBlocked: false
+    property bool onlineBlocked: launcher.playModeBlocked
     property real panelWidth: Math.min(610, width - Theme.railWidth - 32)
     readonly property real contentWidth: panelWidth - 88
     Image { anchors.fill: parent; source: Qt.resolvedUrl("../assets/ui/home-background.png"); fillMode: Image.PreserveAspectCrop; smooth: true }
@@ -49,6 +50,22 @@ Item {
                             text: launcher.profileSummary; color: Theme.text
                             font.family: Theme.serif; font.pixelSize: 18; font.weight: Font.Medium; wrapMode: Text.WordWrap
                         }
+                    }
+                    Button {
+                        id: trophiesButton
+                        width: parent.width; height: implicitContentHeight; padding: 0
+                        Accessible.name: trophyProgress.label + ": " + trophyProgress.count
+                        contentItem: TrophyProgress {
+                            id: trophyProgress
+                            objectName: "homeTrophyProgress"
+                            Accessible.ignored: true
+                        }
+                        background: Rectangle {
+                            color: "transparent"
+                            border.color: trophiesButton.visualFocus ? Theme.accentHover : "transparent"
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        onClicked: home.trophiesRequested()
                     }
                     Column {
                         width: parent.width; spacing: 0
@@ -155,10 +172,15 @@ Item {
             }
             Text {
                 id: noticeText
+                objectName: "playNotice"
+                property bool nameRequired: home.onlineBlocked && !launcher.running && !launcher.coopLaunchPending
                 x: 8; width: noticeArea.width - 16; wrapMode: Text.Wrap
-                text: launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice : launcher.playMode === "coop" ? launcher.coopStatus : ""
+                text: nameRequired ? launcher.playModeSummary
+                    : launcher.notice !== launcher.tr("Ready to hunt.") ? launcher.notice
+                    : launcher.playMode === "coop" ? launcher.coopStatus : ""
                 onTextChanged: noticeArea.contentY = 0
-                color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
+                color: nameRequired ? Theme.warn : Theme.textDim
+                font.family: Theme.sans; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter
             }
         }
     }

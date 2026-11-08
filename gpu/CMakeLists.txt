@@ -99,6 +99,13 @@ add_subdirectory(third_party/fsr-vulkan EXCLUDE_FROM_ALL)
 # Host shaders -> headers (same scheme as shadPS4's host_shaders/CMakeLists.txt).
 set(SHADER_SRC ${CMAKE_CURRENT_SOURCE_DIR}/shadps4/video_core/host_shaders)
 set(SHADER_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/include)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(TROPHY_CATALOGUE_HEADER ${SHADER_INCLUDE}/bbport_trophy_catalogue.h)
+set(TROPHY_CATALOGUE_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/generate-trophy-catalogue.py)
+add_custom_command(OUTPUT ${TROPHY_CATALOGUE_HEADER}
+    COMMAND Python3::Interpreter -B ${TROPHY_CATALOGUE_GENERATOR} ${TROPHY_CATALOGUE_HEADER}
+    DEPENDS ${TROPHY_CATALOGUE_GENERATOR} ${CMAKE_CURRENT_SOURCE_DIR}/../launcher/bbport_trophy_catalog.py
+    VERBATIM)
 set(SHADER_DIR ${SHADER_INCLUDE}/video_core/host_shaders)
 set(SHADER_HEADERS "")
 function(add_host_shader FILENAME SHADER_NAME)
@@ -337,7 +344,8 @@ target_link_libraries(shader-user-data-test PRIVATE fmt::fmt Boost::headers)
 
 # The in-game guide drawn offscreen (tools/overlay_preview.cpp): its own code through ImGui's SDL
 # software renderer, for working on its look without the game.
-add_executable(overlay-preview EXCLUDE_FROM_ALL tools/overlay_preview.cpp
+target_sources(bbgpu PRIVATE ${TROPHY_CATALOGUE_HEADER})
+add_executable(overlay-preview EXCLUDE_FROM_ALL tools/overlay_preview.cpp ${TROPHY_CATALOGUE_HEADER}
     third_party/imgui/backends/imgui_impl_sdlrenderer3.cpp)
 # The guide's source is compiled here as in the library: same definitions, includes and options.
 target_include_directories(overlay-preview PRIVATE $<TARGET_PROPERTY:bbgpu,INCLUDE_DIRECTORIES>)

@@ -12,7 +12,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-**1.4.1** awards the Bloodborne platinum after all 39 other trophies, including The Old Hunters. The game shows the final regular trophy notification in full before showing platinum. [Release notes](docs/release-1.4.1.md).
+**1.4.2** bundles BBSC-GL 1.4.1 with a fix for summoning another guest while the current guest is still joining. [Release notes](docs/release-1.4.2.md).
 
 ## Party and peer-to-peer networking
 
@@ -56,7 +56,7 @@ The interface supports English and Russian. The screenshots show the cooperative
 
 ## Start playing
 
-1. Download `bbgl-1.4.1-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
+1. Download `bbgl-1.4.2-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
 2. Run **Bloodborne.exe**. Use the built-in download button in setup or select an existing Bloodborne **CUSA03173, update 1.09** folder. Game files are not included in the launcher archive.
 3. For co-op, connect every PC to the same VPN or LAN. Choose **Local network**, **Tailscale** or **Radmin**; installed VPNs appear in the list and missing ones have installation buttons. Check connectivity, then start the game. Players can join later. No server or invite code is required.
 4. Use the in-game co-op bells to gather your party. Keep everyone on the same BBGL release.

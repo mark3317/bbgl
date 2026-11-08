@@ -1,4 +1,4 @@
-Bloodborne Game Launcher 1.3.3 — mark3317
+Bloodborne Game Launcher 1.4.0 — mark3317
 
 Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
 For P2P co-op, connect every PC to the same VPN or LAN.
@@ -12,6 +12,9 @@ Each player keeps their own Chalices and altars. Root Chalices use native random
 Guests can help clear the owner’s dungeon and earn their own eligible rewards.
 Additional rites, unusual reward cases and larger-party combinations need broader coverage.
 
+Trophies are local to the selected save profile. The launcher and the in-game overlay share notification settings.
+Open Mods from the sidebar, or press Insert / L3 + R3 in game for the overlay.
+
 Frame rates are listed from 30 to 144 FPS, followed by Unlocked. The default is 120 FPS.
 BBSC-GL and Xbox/keyboard prompts are bundled. Prompts are selected separately from gameplay mods.
 The optional Diamond Sword mod is bundled and disabled by default (10,000 Blood Echoes in game).
@@ -24,5 +27,5 @@ Use the profile-folder button in the launcher. Custom save folders stay where se
 Keep your profile and user mods when updating; never distribute your working installation as a release.
 Game files and saves are not included in the ZIP.
 
-See README.md, README.ru.md and docs/release-1.3.3.md.
+See README.md, README.ru.md and docs/release-1.4.0.md.
 Updates: https://github.com/mark3317/bbgl/releases

@@ -57,16 +57,18 @@ def main():
             window.setWidth(1290)
             window.setHeight(900)
             workspace = window.findChild(QObject, 'settingsWorkspace')
+            mods = window.findChild(QObject, 'modsPage')
+            wizard = window.findChild(QObject, 'setupWizard')
             output = args.output.resolve()
             output.mkdir(parents=True, exist_ok=True)
             shots = [('home', None, None), ('graphics', 'Visuals', 'Display & frame rate')]
             if args.review:
                 import bbport_launcher_backend as model
-                shots = [('home', None, None)]
+                shots = [('home', None, None), ('trophies', 'Trophies', None)]
                 shots += [(f'section-{i}-{j}', category, section)
                           for i, (category, sections) in enumerate(model.SETTINGS_SECTIONS.items())
                           for j, (section, _) in enumerate(sections)]
-                shots += [(f'setup-{step}', 'Setup', step) for step in range(4)]
+                shots += [(f'setup-{step}', 'Setup', step) for step in range(5)]
             sizes = [(1290, 900), (1050, 650)] if args.review else [(1290, 900)]
             metrics = []
             def inspect(item, screen):
@@ -86,10 +88,15 @@ def main():
                     window.setWidth(width)
                     window.setHeight(height)
                     for name, category, section in shots:
-                        window.setProperty('page', 'Setup' if category == 'Setup' else 'Settings' if category else 'Home')
+                        if category in ('Setup', 'Mods', 'Trophies'):
+                            window.setProperty('page', category)
+                        else:
+                            window.setProperty('page', 'Settings' if category else 'Home')
                         if category == 'Setup':
-                            window.findChild(QObject, 'setupWizard').setProperty('step', section)
-                        elif category:
+                            wizard.goToStep(section)
+                        elif category == 'Mods':
+                            mods.openAt(section, '')
+                        elif category and category != 'Trophies':
                             workspace.openAt(category, section, '')
                         QTest.qWait(220 if args.review else 700)
                         suffix = f'-{width}' if args.review else ''

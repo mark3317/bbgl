@@ -14,7 +14,7 @@ The command builds BBSC-GL from `mods-src/BBSC`, builds the port, freezes the la
 
 Staging is recreated at `out/stage/Bloodborne Game Launcher`. The release files are `dist/bbgl-1.4.3-windows-x64.zip` and its `.zip.sha256`. Keep the staging path separate from installed launchers and keep player settings, saves, accounts, logs and game files outside the package.
 
-Button prompts and the optional Diamond Sword use binary deltas from `bundled-mods`, applied to the player's own 1.09 files. No game folder is needed to build the release. Diamond Sword and all cheats are disabled by default. Detailed logging, research, profiling and Vulkan validation are opt-in; see [logging policy](docs/LOGGING.md).
+Button prompts and the optional Diamond Sword use binary deltas from `bundled-mods`. Packaging uses prepared button prompts from `out/vendor/ready-prompts`. If the cache is empty, set `BB_PROMPT_GAME_DIR` to your own original 1.09 game folder to prepare the prompts. Diamond Sword and all cheats are disabled by default. Detailed logging, research, profiling and Vulkan validation are opt-in. See the [logging policy](docs/LOGGING.md).
 
 `SKIP_BUILD=1` skips only the port for verified launcher-only iterations. BBSC is still rebuilt. A release candidate uses the full command without `BB_FAST_DEPLOY=1`; the fast option is for ordinary local deployment and skips release verification.
 

@@ -4,7 +4,7 @@ Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
 For P2P co-op, connect every PC to the same VPN or LAN.
 Choose Local network, Tailscale or Radmin; check connectivity, then Play.
 Players may join later using the game bells. All players need the same BBGL release.
-BBSC-GL 1.4.1 waits for the current guest admission before the next summon.
+BBSC-GL 1.4.2 is included. The current guest admission completes before the next summon.
 Party runs locally on each PC and exchanges co-op data directly between players.
 No separate server, account, mod download or invite code is required for this path.
 A complete main-story co-op playthrough and the transition to NG+ have been tested in game.

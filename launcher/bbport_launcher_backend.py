@@ -1587,6 +1587,8 @@ class LauncherBackend(QObject):
         if QMessageBox.question(None, 'Bloodborne',
                                 f'Install version {version} now? Saves, settings and mods are kept.') != QMessageBox.Yes:
             return
+        download_notice = f'Downloading version {version}…'
+
         def work():
             try:
                 if not core.remove_update_folder():
@@ -1595,8 +1597,18 @@ class LauncherBackend(QObject):
                 archive = core.UPDATE_DIR / 'update.zip'
                 request = urllib.request.Request(url, headers={'User-Agent': 'bbport-launcher'})
                 with urllib.request.urlopen(request, timeout=60) as reply, open(archive, 'wb') as out:
+                    total = reply.length
+                    downloaded = last_percent = 0
+                    if total:
+                        self.workerNotice.emit(f'{download_notice} 0%')
                     while chunk := reply.read(1 << 20):
                         out.write(chunk)
+                        if total:
+                            downloaded += len(chunk)
+                            percent = downloaded * 100 // total
+                            if percent != last_percent:
+                                last_percent = percent
+                                self.workerNotice.emit(f'{download_notice} {percent}%')
                 core.extract_update(archive, core.UPDATE_DIR / 'new')
                 new = next((p.parent for p in (core.UPDATE_DIR / 'new').rglob('Bloodborne.exe')), None)
                 if not new:
@@ -1606,7 +1618,7 @@ class LauncherBackend(QObject):
                 self.closeRequested.emit()
             except (OSError, zipfile.BadZipFile) as error:
                 self.workerNotice.emit(f'Update failed: {error}')
-        self._set_notice(f'Downloading version {version}…')
+        self._set_notice(download_notice)
         threading.Thread(target=work, daemon=True).start()
 
     @Slot()

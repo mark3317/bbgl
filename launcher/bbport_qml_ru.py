@@ -745,6 +745,7 @@ PATTERNS = [
     ('Could not check for updates: {}', 'Не удалось проверить обновления: {0}'),
     ('Could not start: {}', 'Не удалось запустить: {0}'),
     ('Downloading version {}…', 'Загрузка версии {0}…'),
+    ('Downloading version {}… {}%', 'Загрузка версии {0}… {1}%'),
     ('Downloading {}: {}%', 'Загрузка {0}: {1}%'),
     ('Installing BBSC {}…', 'Установка BBSC {0}…'),
     ('Installing {}…', 'Установка {0}…'),

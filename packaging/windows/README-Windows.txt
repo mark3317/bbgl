@@ -28,5 +28,5 @@ Use the profile-folder button in the launcher. Custom save folders stay where se
 Keep your profile and user mods when updating; never distribute your working installation as a release.
 Game files and saves are not included in the ZIP.
 
-See README.md, README.ru.md and docs/release-1.5.0.md.
+See README.md, README.ru.md and docs/release-1.5.3.md.
 Updates: https://github.com/mark3317/bbgl/releases

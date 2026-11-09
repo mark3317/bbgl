@@ -478,6 +478,8 @@ def main():
         if party is not None:
             from run_log import native_output
             party_log, options = native_output(user_dir, env)
+            if env.get('BB_DIAGNOSTICS') == '1':
+                party.attach_run_log(party_log if party_log is not None else sys.stdout)
         game_proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, creationflags=no_console(), **options)
     except BaseException:
         if party_log is not None: party_log.close()

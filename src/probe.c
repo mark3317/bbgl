@@ -169,6 +169,96 @@ static void describe_address(char *out, size_t size, uintptr_t address) {
     }
     snprintf(out,size,"%p",(void *)address);
 }
+static void report_ttd_write_query(uintptr_t field) {
+    fprintf(stderr, "TTD query: dx -g @$cursession.TTD.Memory(0x%" PRIxPTR
+                    ",0x%" PRIxPTR ",\"w\")\n", field, field + 8);
+}
+/* Recover the address of the pointer field, not the bad address it contained.
+ * The objects are allocated anew on each run. */
+static uintptr_t report_teardown_pointer_fault(const EXCEPTION_RECORD *record, const CONTEXT *c) {
+    if (!image || record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION ||
+        record->NumberParameters < 2 || record->ExceptionInformation[0] != 0 ||
+        record->ExceptionInformation[1] != c->Rax + 8) return 0;
+
+    uintptr_t field;
+    const char *kind;
+    const uintptr_t offset = c->Rip - (uintptr_t)image;
+    if (offset == 0x1a74cec) {
+        /* The module destructor loaded its vtable from [rdi]. */
+        field = c->Rdi;
+        kind = "character-module-vtable";
+    } else if (offset == 0x1001727 && c->Rdi == c->Rax &&
+               c->Rbx && c->Rbx <= UINTPTR_MAX - 0x48) {
+        /* This helper has other callers. Match the ESD evaluator destructor. */
+        uintptr_t caller;
+        SIZE_T got;
+        if (!ReadProcessMemory(GetCurrentProcess(), (const void *)(uintptr_t)(c->Rsp + 8),
+                               &caller, sizeof(caller), &got) || got != sizeof(caller) ||
+            caller != (uintptr_t)image + 0x203ab91) return 0;
+        field = c->Rbx + 0x40;
+        kind = "talk-evaluator-link";
+    } else {
+        return 0;
+    }
+    if (!field || field > UINTPTR_MAX - 8) return 0;
+
+    fprintf(stderr, "Teardown pointer: %s field=0x%" PRIxPTR " value=0x%" PRIx64
+                    " guest_base=%p tid=%lu\n",
+            kind, field, (uint64_t)c->Rax, (void *)image, GetCurrentThreadId());
+    report_ttd_write_query(field);
+    return field;
+}
+static uintptr_t report_scaleform_pool_fault(const EXCEPTION_RECORD *record, const CONTEXT *c) {
+    if (!image || c->Rip - (uintptr_t)image != 0xa4509 ||
+        record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION || record->NumberParameters < 2 ||
+        record->ExceptionInformation[0] != 0 || record->ExceptionInformation[1] != 0 || c->Rbx != 0)
+        return 0;
+
+    /* mov rbx, [rax+0x18]; mov rcx, [rbx] */
+    static const unsigned char expected[] = {0x48, 0x8b, 0x58, 0x18, 0x48, 0x8b, 0x0b};
+    unsigned char code[sizeof(expected)];
+    HANDLE process = GetCurrentProcess();
+    SIZE_T got;
+    if (!ReadProcessMemory(process, image + 0xa4505, code, sizeof(code), &got) ||
+        got != sizeof(code) || memcmp(code, expected, sizeof(code)) != 0) return 0;
+
+    struct {
+        uintptr_t next, prev;
+        uint32_t used, unknown14;
+        uintptr_t free_head, owner;
+    } page;
+    struct {
+        uintptr_t full_next, full_prev, available_next, available_prev;
+    } lists;
+    const uintptr_t page_address = c->Rax;
+    const uintptr_t pool_address = c->R15;
+    if (!page_address || page_address > UINTPTR_MAX - sizeof(page)) return 0;
+    const uintptr_t field = page_address + 0x18;
+    const int have_page = ReadProcessMemory(process, (const void *)page_address, &page, sizeof(page), &got) &&
+                          got == sizeof(page);
+    const int have_lists = pool_address && pool_address <= UINTPTR_MAX - 0x10 - sizeof(lists) &&
+                           ReadProcessMemory(process, (const void *)(pool_address + 0x10), &lists, sizeof(lists), &got) &&
+                           got == sizeof(lists);
+
+    /* Other threads can still mutate the pool, so distinguish the fault value from the snapshot. */
+    fprintf(stderr, "Scaleform pool fault: page=0x%" PRIxPTR " pool=0x%" PRIxPTR " field=0x%" PRIxPTR
+                    " fault_head=0x0 guest_base=%p tid=%lu\n",
+            page_address, pool_address, field, (void *)image, GetCurrentThreadId());
+    if (have_page)
+        fprintf(stderr, "Scaleform pool page: next=0x%" PRIxPTR " prev=0x%" PRIxPTR
+                        " used=%" PRIu32 " head_now=0x%" PRIxPTR " owner=0x%" PRIxPTR "\n",
+                page.next, page.prev, page.used, page.free_head, page.owner);
+    else
+        fputs("Scaleform pool page: unavailable\n", stderr);
+    if (have_lists)
+        fprintf(stderr, "Scaleform pool lists: full_next=0x%" PRIxPTR " full_prev=0x%" PRIxPTR
+                        " available_next=0x%" PRIxPTR " available_prev=0x%" PRIxPTR "\n",
+                lists.full_next, lists.full_prev, lists.available_next, lists.available_prev);
+    else
+        fputs("Scaleform pool lists: unavailable\n", stderr);
+    report_ttd_write_query(field);
+    return field;
+}
 static int fatal_reported;
 static LONG fatal_exception(EXCEPTION_POINTERS *info) {
     if (__atomic_exchange_n(&fatal_reported,1,__ATOMIC_ACQ_REL)) { Sleep(INFINITE); }
@@ -184,7 +274,9 @@ static LONG fatal_exception(EXCEPTION_POINTERS *info) {
         fprintf(stderr,"Fault: exception 0x%08lx at %s (thread %lu)\n",record->ExceptionCode,where,GetCurrentThreadId());
     fprintf(stderr,"  rax=%016llx rbx=%016llx rcx=%016llx rdx=%016llx\n  rsi=%016llx rdi=%016llx rbp=%016llx rsp=%016llx\n",
             c->Rax,c->Rbx,c->Rcx,c->Rdx,c->Rsi,c->Rdi,c->Rbp,c->Rsp);
-    if (gpu_enabled) bbgpu_dump_guest_writes(info);
+    uintptr_t pointer_field = report_teardown_pointer_fault(record, c);
+    if (!pointer_field) pointer_field = report_scaleform_pool_fault(record, c);
+    if (gpu_enabled) bbgpu_dump_guest_writes(info, pointer_field);
     /* Return addresses near the top of the stack: system libraries (the C runtime's memcpy)
      * keep no frame pointers, so the rbp chain below can skip their caller. */
     for (int slot=0, shown=0; slot<64 && shown<6; ++slot) {
@@ -298,7 +390,7 @@ static void fault(int sig, siginfo_t *info, void *context) {
     else
         snprintf(line, sizeof(line), "Fault (signal %d) at RIP %p, address %p\n", sig, (void *)rip, info->si_addr);
     { ssize_t written_=write(2, line, strlen(line)); (void)written_; }
-    if (gpu_enabled) bbgpu_dump_guest_writes(context);
+    if (gpu_enabled) bbgpu_dump_guest_writes(context, 0);
     /* Host call chain (frames with unwind info; guest frames end it). */
     void *frames[32];
     int depth = backtrace(frames, 32);

@@ -118,7 +118,7 @@ static std::string Wav() {
 static void TestOptions() {
     const Options defaults = ParseOptions("");
     assert(defaults == Options{});
-    assert(defaults.theme == Theme::Original && defaults.volume == 80 && !defaults.muted);
+    assert(defaults.theme == Theme::Card && defaults.volume == 80 && !defaults.muted);
 
     // Values, clamping, comments, a BOM, CRLF and spaces around '='.
     const Options o = ParseOptions("\xEF\xBB\xBF# comment\r\n"
@@ -133,7 +133,7 @@ static void TestOptions() {
                                    "name_gold=Ouro\n"
                                    "unknown_key=1\n"
                                    "no equals sign here\n");
-    assert(o.theme == Theme::CardCinematic);
+    assert(o.theme == Theme::Card);
     assert(o.volume == 100 && o.muted && Near(o.hold_seconds, 20.0f) && o.cinematic_intensity == 0);
     assert(o.grade_label && !o.platinum_animation && Options{}.platinum_animation);
     assert(o.text_unlocked == "Troféu conquistado!");
@@ -146,7 +146,7 @@ static void TestOptions() {
 
     // What the guide writes reads back the same.
     Options all;
-    all.theme = Theme::Card;
+    all.theme = Theme::Corner;
     all.volume = 35;
     all.muted = true;
     all.hold_seconds = 7.5f;
@@ -154,16 +154,12 @@ static void TestOptions() {
     all.grade_label = true;
     all.platinum_animation = false;
     all.text_unlocked = "Unlocked";
-    all.text_banner = "Done";
     all.grade_names = {"", "B", "S", "G", "P"};
     assert(ParseOptions(FormatOptions(all)) == all);
     assert(ParseOptions(FormatOptions(Options{})) == Options{});
 
     // Texts: the English defaults, or the player's.
     assert(UnlockedText(Options{}) == "Trophy unlocked!");
-    assert(BannerText(Options{}, false) == "Achievement unlocked");
-    assert(BannerText(Options{}, true) == "Achievement preview");
-    assert(BannerText(all, true) == "Done");
     assert(GradeName(Options{}, 4) == "Platinum" && GradeName(all, 1) == "B");
     assert(GradeName(Options{}, 0).empty() && GradeName(Options{}, 9).empty());
     // A text never spans lines and never runs on, and is never cut inside a character: 199 bytes
@@ -174,6 +170,10 @@ static void TestOptions() {
     assert(accented.text_unlocked == std::string(199, 'x'));
     assert(CutUtf8("Troféu", 5) == "Trof" && CutUtf8("Troféu", 6) == "Trof\xC3\xA9" && CutUtf8("ab", 9) == "ab");
 
+    assert(int(Theme::Count) == 2);
+    assert(std::string_view(ThemeLabel(Theme::Card)) == "Card");
+    assert(ParseOptions("theme=corner\ntheme=original\n").theme == Theme::Card);
+    assert(ParseOptions("theme=card\n").theme == Theme::Card);
     for (int t = 0; t < int(Theme::Count); ++t)
         assert(ParseOptions(std::string("theme=") + ThemeKey(Theme(t))).theme == Theme(t));
 }
@@ -267,12 +267,6 @@ static void TestTimeline() {
     const Timeline instant{.hold = 100.0f};
     assert(Evaluate(instant, 0.0f, 0.0f).phase == Phase::Hold && Near(Evaluate(instant, 0.0f, 0.0f).badge, 1.0f));
 
-    // The banner: linear fades over 320 / 420 ms, as the port's first notification.
-    const Timeline banner{.enter = 320.0f, .hold = 5000.0f, .exit = 420.0f};
-    assert(Near(EvaluateBanner(banner, 160.0f).alpha, 0.5f) && Near(EvaluateBanner(banner, 160.0f).appear, 0.5f));
-    assert(Near(EvaluateBanner(banner, 3000.0f).alpha, 1.0f));
-    assert(Near(EvaluateBanner(banner, 5320.0f + 210.0f).alpha, 0.5f));
-    assert(EvaluateBanner(banner, 5740.0f).done);
 }
 
 static void TestMedia(const fs::path& dir) {

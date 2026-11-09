@@ -15,9 +15,7 @@
 namespace BbToast {
 
 enum class Theme : int {
-    Original,      ///< the port's green banner at the bottom (the default)
-    Card,          ///< a dark card at the top right, with the trophy's art and an animated badge
-    CardCinematic, ///< Card, and the platinum is held longer, with light around it
+    Card,   ///< a card at the top right, with a longer, illuminated platinum notification
     Corner,        ///< a popup that rises in the bottom right corner: the artwork, name and detail
     Count
 };
@@ -26,22 +24,21 @@ enum class Theme : int {
 constexpr std::array<const char*, 5> kGradeFileNames{"trophy", "bronze", "silver", "gold", "platinum"};
 
 struct Options {
-    Theme theme = Theme::Original;
+    Theme theme = Theme::Card;
     int volume = 80;              ///< 0..100, the notification sound only
     bool muted = false;
     float hold_seconds = 0.0f;    ///< time fully shown, 0..20; 0 = the theme's own
-    int cinematic_intensity = 70; ///< 0..100, CardCinematic only
+    int cinematic_intensity = 70; ///< 0..100, Card only
     bool grade_label = false;     ///< the grade's name before the second line ("Gold  ·  ...")
     bool platinum_animation = true; ///< false: the platinum shows its own artwork, like the others
     // Texts (empty: the built-in English). The player's own words, in any language (UTF-8).
     std::string text_unlocked;          ///< the card's second line, "Trophy unlocked!"
-    std::string text_banner;            ///< the banner's first line, "Achievement unlocked"
     std::array<std::string, 5> grade_names; ///< by grade, for grade_label (index 0 unused)
 
     bool operator==(const Options&) const = default;
 };
 
-const char* ThemeKey(Theme theme);   ///< in notifications.ini: original, card, card_cinematic, corner
+const char* ThemeKey(Theme theme);   ///< in notifications.ini: card_cinematic, corner
 const char* ThemeLabel(Theme theme); ///< in the guide
 /// notifications.ini's text: unknown keys, bad values and comments are ignored, so a hand-edited
 /// file never stops the game; a missing key keeps its default.
@@ -52,7 +49,6 @@ std::string FormatOptions(const Options& options);
 std::string CutUtf8(std::string_view text, size_t max_bytes);
 /// The text a toast shows: the option, else the English default.
 std::string UnlockedText(const Options& options);
-std::string BannerText(const Options& options, bool preview);
 std::string GradeName(const Options& options, int grade);
 
 /// <name>_anim.ini, beside an animation file. frames > 0 makes <name>_anim.png a sheet of that
@@ -104,13 +100,5 @@ struct Frame {
 /// Everything follows from the time since the toast started, so a toast looks the same at 30,
 /// 60, 120 or 144 FPS. settle: how far the card comes down as it enters (0: it does not).
 Frame Evaluate(const Timeline& timeline, float settle, float ms);
-
-/// The banner (theme Original): linear fades, as the port's first notification had them.
-struct BannerFrame {
-    bool done;
-    float alpha;
-    float appear; ///< 0 -> 1 over the fade in; the banner rises as it grows
-};
-BannerFrame EvaluateBanner(const Timeline& timeline, float ms);
 
 } // namespace BbToast

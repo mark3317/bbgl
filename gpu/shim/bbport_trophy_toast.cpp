@@ -54,7 +54,7 @@ namespace fs = std::filesystem;
 
 // Themes. Lengths are fractions of the card's height, times are in ms.
 
-enum class Renderer { Card, Banner, Corner };
+enum class Renderer { Card, Corner };
 
 struct Style {
     float height;             // px at 1080p
@@ -86,7 +86,7 @@ struct Cinematic {
 
 struct ThemeDef {
     Renderer renderer;
-    const Style* style; // the card's layout (Card themes only)
+    const Style* style; // the card's layout
     Timeline normal, platinum;
     Cinematic cinematic;
 };
@@ -118,8 +118,6 @@ constexpr Cinematic kPlatinumCinematic{
     /*sweep_at*/ 3400.0f, /*sweep_len*/ 1100.0f,
     /*glint_at*/ 3800.0f, /*glint_len*/ 700.0f,
     /*light*/ IM_COL32(196, 222, 255, 255)};
-// The banner keeps the port's first notification: 320 ms in, 5 s, 420 ms out.
-constexpr Timeline kBannerTimeline{.enter = 320.0f, .hold = 5000.0f, .exit = 420.0f};
 // The corner popup rises in 250 ms, stays 5 s and sinks in 300 ms.
 constexpr Timeline kCornerTimeline{.enter = 250.0f, .hold = 5000.0f, .exit = 300.0f, .gap = 250.0f};
 
@@ -137,8 +135,6 @@ constexpr CornerStyle kCorner{
     /*edge*/ IM_COL32(255, 255, 255, 22), /*name*/ IM_COL32(240, 242, 245, 255), /*sub*/ IM_COL32(150, 158, 170, 255)};
 
 const ThemeDef kThemes[int(Theme::Count)] = {
-    {Renderer::Banner, nullptr, kBannerTimeline, kBannerTimeline, kNoCinematic},
-    {Renderer::Card, &kCardStyle, kCardTimeline, kCardTimeline, kNoCinematic},
     {Renderer::Card, &kCardStyle, kCardTimeline, kCinematicTimeline, kPlatinumCinematic},
     {Renderer::Corner, nullptr, kCornerTimeline, kCornerTimeline, kNoCinematic},
 };
@@ -488,7 +484,6 @@ std::atomic<double> clock_override{-1.0};
 // Set by Start on the present thread; Enqueue (any thread) and the worker read them.
 std::atomic<IconSource> icon_source{nullptr};
 std::atomic<IconPrefetch> icon_prefetch{nullptr};
-std::atomic<BannerDraw> banner_draw{nullptr};
 std::atomic<unsigned> next_seq{1}, prefetched_seq{0}; // the worker decodes in arrival order
 // The toast waits this long at most for its artwork; then it decodes on the present thread.
 constexpr double kPrefetchWaitMs = 250.0;
@@ -510,7 +505,7 @@ struct Active {
     float intensity = 0.0f;
     bool grade_label = false;
     bool platinum_art = false; // the platinum's animation (or drawn trophy), not its artwork
-    std::string title, detail, unlocked_text, banner_text, grade_name;
+    std::string title, detail, unlocked_text, grade_name;
     // The title (and the corner's detail) cut to the toast at the last scale (computed once per
     // toast and scale).
     std::string fitted;
@@ -927,10 +922,9 @@ Theme ShownTheme(const Options& o) {
 }
 
 // Whether a toast of this grade draws the trophy's own artwork (so its icon is worth decoding
-// ahead): not the banner, not a grade with an animation, not the card's drawn platinum. A
-// platinum without its animation (platinum_animation=0) always shows its artwork.
+// ahead). Animations and the card's drawn platinum replace the artwork. Turning off
+// platinum_animation makes platinum show its artwork in either style.
 bool UsesArtwork(Theme theme, Grade grade, bool platinum_animation) {
-    if (Def(theme).renderer == Renderer::Banner) return false;
     if (grade == Grade::Platinum && !platinum_animation) return true;
     if (animated_grades.load() >> unsigned(grade) & 1u) return false;
     return !(grade == Grade::Platinum && Def(theme).renderer == Renderer::Card);
@@ -969,7 +963,6 @@ bool Activate(double now) {
     active.title = entry.name;
     active.detail = CutUtf8(entry.description, 300);
     active.unlocked_text = UnlockedText(o);
-    active.banner_text = BannerText(o, request.preview);
     active.grade_name = GradeName(o, int(grade));
     active.fitted_scale = -1.0f;
     showing = true;
@@ -994,16 +987,15 @@ void SetOptions(const Options& o) {
     {
         std::scoped_lock lock{options_mutex};
         options = o;
-        if (int(options.theme) < 0 || int(options.theme) >= int(Theme::Count)) options.theme = Theme::Original;
+        if (int(options.theme) < 0 || int(options.theme) >= int(Theme::Count)) options.theme = Theme::Card;
     }
     Post(ApplyGain);
     PostSave();
 }
 
-void Start(ImFontAtlas* atlas, IconSource icons, IconPrefetch prefetch, BannerDraw banner) {
+void Start(ImFontAtlas* atlas, IconSource icons, IconPrefetch prefetch) {
     icon_source = icons;
     icon_prefetch = prefetch;
-    banner_draw = banner;
     LockOptionsForGame();
     LoadOptions();
     if (atlas) {
@@ -1123,22 +1115,13 @@ void Draw(float scale) {
     const Timeline& tl = active.timeline;
     ImDrawList* d = ImGui::GetForegroundDrawList();
     const int before = d->VtxBuffer.Size;
-    if (active.theme->renderer == Renderer::Banner) {
-        const BannerFrame b = EvaluateBanner(tl, ms);
-        if (b.done) {
-            Finish(now);
-            return;
-        }
-        if (const BannerDraw draw = banner_draw.load()) draw(active.id, active.banner_text.c_str(), b.alpha, b.appear);
-    } else {
-        const Frame f = Evaluate(tl, active.cinematic ? active.theme->cinematic.settle : 0.0f, ms);
-        if (f.phase == Phase::Done) {
-            Finish(now);
-            return;
-        }
-        if (active.theme->renderer == Renderer::Corner) DrawCorner(d, f, ms, scale);
-        else DrawCard(d, f, ms, scale);
+    const Frame f = Evaluate(tl, active.cinematic ? active.theme->cinematic.settle : 0.0f, ms);
+    if (f.phase == Phase::Done) {
+        Finish(now);
+        return;
     }
+    if (active.theme->renderer == Renderer::Corner) DrawCorner(d, f, ms, scale);
+    else DrawCard(d, f, ms, scale);
     stat_vertices = unsigned(d->VtxBuffer.Size - before);
     const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
     stat_last = us;

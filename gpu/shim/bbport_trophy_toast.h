@@ -2,8 +2,7 @@
 // bbport: trophy unlock notifications (the toast drawn over the game), their themes, timeline,
 // sounds and the player's own pictures and animations. Real unlocks and the guide's previews go
 // through the same queue and renderer. Everything the player can change is in
-// <user>/custom_trophy (README.md, Custom trophy notifications); without any file the port's
-// original banner shows and no sound plays.
+// <user>/custom_trophy (README.md, Custom trophy notifications). The card is the default style.
 
 #pragma once
 
@@ -21,12 +20,10 @@ void SetOptions(const Options& options);
 using IconSource = ImTextureRef (*)(int id);
 /// Decodes the artwork ahead of the toast (worker thread), so IconSource only uploads it.
 using IconPrefetch = void (*)(int id);
-/// Theme Original: the guide draws its banner. alpha: opacity; appear: 0 -> 1 as it comes in.
-using BannerDraw = void (*)(int id, const char* first_line, float alpha, float appear);
 
 /// Once, with the ImGui context: reads the options, loads the fonts, pictures and animations,
 /// then decodes the sounds and opens the audio stream on the worker thread (never during a toast).
-void Start(ImFontAtlas* atlas, IconSource icons, IconPrefetch prefetch, BannerDraw banner);
+void Start(ImFontAtlas* atlas, IconSource icons, IconPrefetch prefetch);
 /// Decodes the sound files again (after the player replaced them). Pictures and animations are
 /// read when the game starts.
 void ReloadSounds();

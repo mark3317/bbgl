@@ -7,7 +7,7 @@ Column {
     objectName: "trophyNotifications"
     spacing: 12
     readonly property var options: launcher.trophyNotifications
-    readonly property bool modern: options.theme !== "original"
+    readonly property bool cardTheme: options.theme === "card_cinematic"
     readonly property var grades: ["bronze", "silver", "gold", "platinum"]
     readonly property var gradeLabels: ["Bronze", "Silver", "Gold", "Platinum"]
     property var previewGrades: [3]
@@ -107,25 +107,23 @@ Column {
                 width: parent.width; textRole: "text"
                 Accessible.name: launcher.tr("Notification style")
                 model: [
-                    {key: "original", text: launcher.tr("Original banner")},
-                    {key: "card", text: launcher.tr("Card")},
-                    {key: "card_cinematic", text: launcher.tr("Card, cinematic platinum")},
+                    {key: "card_cinematic", text: launcher.tr("Card")},
                     {key: "corner", text: launcher.tr("Corner popup")}
                 ]
                 currentIndex: model.findIndex(item => item.key === page.options.theme)
                 onActivated: (index) => launcher.setTrophyNotification("theme", model[index].key)
             }
             OptionSlider {
-                visible: page.options.theme === "card_cinematic"; width: parent.width
+                visible: page.cardTheme; width: parent.width
                 optionKey: "cinematic_intensity"; label: launcher.tr("Platinum light")
             }
             GlassSwitch {
-                visible: page.modern; text: launcher.tr("Animate the platinum")
+                text: launcher.tr("Animate the platinum")
                 checked: page.options.platinum_animation
                 onToggled: launcher.setTrophyNotification("platinum_animation", checked)
             }
             GlassSwitch {
-                visible: page.modern; text: launcher.tr("Write the grade")
+                text: launcher.tr("Write the grade")
                 checked: page.options.grade_label
                 onToggled: launcher.setTrophyNotification("grade_label", checked)
             }
@@ -162,10 +160,9 @@ Column {
                 Rectangle { anchors.fill: parent; color: "#500b0d10" }
                 Column {
                     id: toasts
-                    width: page.options.theme === "original" ? parent.width - 16 : Math.min(238, parent.width - 16)
+                    width: Math.min(238, parent.width - 16)
                     x: parent.width - width - 8
-                    y: page.options.theme === "card" || page.options.theme === "card_cinematic"
-                        ? 8 : parent.height - height - 8
+                    y: page.cardTheme ? 8 : parent.height - height - 8
                     spacing: 4
                     Repeater {
                         model: page.previewGrades
@@ -178,8 +175,8 @@ Column {
                                 || launcher.tr(page.gradeLabels[modelData])
                             width: toasts.width; height: Math.max(43, caption.implicitHeight + 12)
                             radius: 4
-                            color: page.options.theme === "original" ? "#23382c" : Theme.surface
-                            border.color: page.options.theme === "card_cinematic" && modelData === 3
+                            color: Theme.surface
+                            border.color: page.cardTheme && modelData === 3
                                 ? Qt.lighter(Theme.accent, 1 + page.options.cinematic_intensity / 70)
                                 : Theme.lineStrong
                             NumberAnimation {
@@ -188,7 +185,7 @@ Column {
                             Connections {
                                 target: page
                                 function onPreviewRevisionChanged() {
-                                    if (toast.modelData !== 3 || !page.modern || page.options.platinum_animation)
+                                    if (toast.modelData !== 3 || page.options.platinum_animation)
                                         entrance.restart()
                                 }
                             }
@@ -211,9 +208,8 @@ Column {
                                 }
                                 Text {
                                     width: parent.width; wrapMode: Text.Wrap; textFormat: Text.PlainText
-                                    text: page.modern
-                                        ? (page.options.grade_label ? toast.grade + "  ·  " : "") + (page.options.text_unlocked || launcher.tr("Trophy unlocked!"))
-                                        : page.options.text_banner || launcher.tr("Achievement preview")
+                                    text: (page.options.grade_label ? toast.grade + "  ·  " : "")
+                                        + (page.options.text_unlocked || launcher.tr("Trophy unlocked!"))
                                     color: Theme.textDim; font.family: Theme.sans; font.pixelSize: 11
                                 }
                             }

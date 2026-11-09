@@ -16,4 +16,4 @@ void Note(std::uint64_t address, const void* data, std::uint64_t size, Source so
 void NoteIntent(std::uint64_t address, const void* data, std::uint64_t size, Source source);
 }
 
-extern "C" void bbgpu_dump_guest_writes(void* ucontext);
+extern "C" void bbgpu_dump_guest_writes(void* ucontext, std::uintptr_t pointer_field);

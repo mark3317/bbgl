@@ -102,8 +102,8 @@ int main(int argc, char** argv) {
         }
     }
     // A trophy toast alone (the guide closed): BB_PREVIEW_TOAST=1..4 (bronze..platinum) or
-    // BB_PREVIEW_TOAST_ID, BB_PREVIEW_TOAST_MS its time since it started, BB_PREVIEW_THEME original,
-    // card, card_cinematic or corner, BB_PREVIEW_FPS the frame rate that time is reached at (frames drawn
+    // BB_PREVIEW_TOAST_ID, BB_PREVIEW_TOAST_MS its time since it started, BB_PREVIEW_THEME
+    // card_cinematic or corner, BB_PREVIEW_FPS the frame rate that time is reached at (frames drawn
     // on the way), BB_PREVIEW_BENCH=1 every frame of the whole toast at that rate, then the draw
     // cost. Pictures and sounds come from BB_GPU_USER_DIR/custom_trophy, as in the game.
     const char* toast_grade = std::getenv("BB_PREVIEW_TOAST");

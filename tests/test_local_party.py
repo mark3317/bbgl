@@ -117,33 +117,34 @@ class LocalPartyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'existing profile'):
             local.profiles(self.root)
 
-    def test_individual_player_bell_after_third_game_exits(self):
-        import base64
+    def start_individual(self, index, path):
         import runpy
         from compat import start_from_environment
-        cfg, path = local.configuration(self.root)
         entry_main = runpy.run_path(str(ROOT/'scripts/local_party.py'))['main']
 
         class Core:
             app_settings = staticmethod(dict)
             game_environment = staticmethod(lambda settings: {})
 
-        def start(index):
-            profile = self.root/f'{local.PROFILE} Player {index}'
-            def run_game(*args, **kwargs):
-                return start_from_environment(dict(os.environ), self.root/'install')
-            with patch.dict(os.environ, {'LOCALAPPDATA':str(self.root),
-                                         'BBGL_PROFILE_DIR':str(profile)}), \
-                 patch.object(sys,'argv',['local_party.py','--player',str(index),'--config',str(path)]), \
-                 patch.object(runpy,'run_path',side_effect=run_game):
-                os.environ.pop('BB_LOCAL_PARTY_RUN',None)
-                return entry_main(Core())
+        profile = self.root/f'{local.PROFILE} Player {index}'
+        def run_game(*args, **kwargs):
+            return start_from_environment(dict(os.environ), self.root/'install')
+        with patch.dict(os.environ, {'LOCALAPPDATA':str(self.root),
+                                     'BBGL_PROFILE_DIR':str(profile)}), \
+             patch.object(sys,'argv',['local_party.py','--player',str(index),'--config',str(path)]), \
+             patch.object(runpy,'run_path',side_effect=run_game):
+            os.environ.pop('BB_LOCAL_PARTY_RUN',None)
+            return entry_main(Core())
 
-        guest = start(1)
+    def test_individual_player_bell_after_third_game_exits(self):
+        import base64
+        cfg, path = local.configuration(self.root)
+
+        guest = self.start_individual(1, path)
         self.addCleanup(guest.close)
-        host = start(2)
+        host = self.start_individual(2, path)
         self.addCleanup(host.close)
-        start(3).close()
+        self.start_individual(3, path).close()
         self.assertEqual(host.control('/party/acquire',{}),1)
         self.assertEqual(host.e.member['p2p'],cfg['members'][1]['p2p'])
         native = dict(state=0, loading=False, alive=True, members=1, fresh=True, bell=True)
@@ -165,6 +166,33 @@ class LocalPartyTests(unittest.TestCase):
         room = host.np_command(101,dict(max_slots=5))['room_id']
         host.http_call('/summon_messenger/request',{'TargetUserId':host.game_ids[guest.e.id]}, {})
         self.assertEqual(guest.np_command(102,dict(room_id=room))['details']['room_data']['room_id'],room)
+
+    def test_individual_restarts_keep_running_third_player_reachable(self):
+        import base64
+        from contextlib import closing
+
+        _, path = local.configuration(self.root)
+        with closing(self.start_individual(3, path)) as guest:
+            with closing(self.start_individual(1, path)), closing(self.start_individual(2, path)) as host:
+                original_group = host.e.cfg['group']
+            cfg = json.loads(path.read_bytes())
+            local.write_json(path, dict(cfg, secret=local.secrets.token_hex(32)))
+            with closing(self.start_individual(1, path)) as first, closing(self.start_individual(2, path)) as host:
+                self.assertEqual(host.e.cfg['group'], original_group)
+                self.assertEqual(first.e.rpc(guest.e.id, {'kind':'presence'})['body'], {'sign':None})
+                self.assertEqual(host.control('/party/acquire', {}), 1)
+                native = dict(state=0, loading=False, alive=True, members=1, fresh=True, bell=False, responder=True)
+                guest.control('/party/native', native)
+                guest.http_call('/summon_messenger/create', {'UserId':guest.game_ids[guest.e.id],
+                                'SummonData':base64.b64encode(bytes(224)).decode()}, {})
+                deadline = time.monotonic()+5
+                while not host.http_call('/summon_messenger/get', {}, {})['SummonDataList']:
+                    if time.monotonic() >= deadline:
+                        self.fail('Restarted Player 2 did not discover the running Player 3')
+                    time.sleep(.05)
+                room = host.np_command(101, dict(max_slots=5))['room_id']
+                host.http_call('/summon_messenger/request', {'TargetUserId':host.game_ids[guest.e.id]}, {})
+                self.assertEqual(guest.np_command(102, dict(room_id=room))['details']['room_data']['room_id'], room)
 
     def test_child_cannot_inherit_another_players_paths(self):
         env=local.child_environment(self.root/'player',{'BB_CONFIG':'wrong','BB_P2P_PORT':'wrong',

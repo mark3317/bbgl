@@ -12,9 +12,8 @@ namespace BbToast {
 
 namespace {
 
-constexpr std::array<const char*, int(Theme::Count)> kThemeKeys{"original", "card", "card_cinematic", "corner"};
-constexpr std::array<const char*, int(Theme::Count)> kThemeLabels{"Original banner", "Card",
-                                                                  "Card, cinematic platinum", "Corner popup"};
+constexpr std::array<const char*, int(Theme::Count)> kThemeKeys{"card_cinematic", "corner"};
+constexpr std::array<const char*, int(Theme::Count)> kThemeLabels{"Card", "Corner popup"};
 constexpr std::array<const char*, 5> kGradeNames{"", "Bronze", "Silver", "Gold", "Platinum"};
 
 std::string_view Trim(std::string_view s) {
@@ -91,6 +90,8 @@ Options ParseOptions(std::string_view text) {
         float f = 0.0f;
         bool b = false;
         if (key == "theme") {
+            // Both retired styles now use the card with the platinum effect.
+            if (value == "original" || value == "card") value = ThemeKey(Theme::Card);
             for (int t = 0; t < int(Theme::Count); ++t)
                 if (value == kThemeKeys[t]) o.theme = Theme(t);
         } else if (key == "volume") {
@@ -107,8 +108,6 @@ Options ParseOptions(std::string_view text) {
             if (ToBool(value, b)) o.platinum_animation = b;
         } else if (key == "text_unlocked") {
             o.text_unlocked = TextValue(value);
-        } else if (key == "text_banner") {
-            o.text_banner = TextValue(value);
         } else {
             for (int g = 1; g < 5; ++g)
                 if (key == std::string("name_") + kGradeFileNames[g]) o.grade_names[g] = TextValue(value);
@@ -123,34 +122,27 @@ std::string FormatOptions(const Options& o) {
     out << "# Trophy notifications. The guide (Insert / L3+R3 > Achievements) writes this file;\n"
         << "# it can also be edited by hand while the game is closed. Sounds, pictures and\n"
         << "# animations go beside it, see README.md (Custom trophy notifications).\n"
-        << "# theme: original, card, card_cinematic, corner\n"
+        << "# theme: card_cinematic (default), corner\n"
         << "theme=" << ThemeKey(o.theme) << "\n"
         << "# volume: 0-100; muted: 0 or 1\n"
         << "volume=" << o.volume << "\n"
         << "muted=" << int(o.muted) << "\n"
         << "# hold_seconds: how long a toast stays, 0 = the theme's own\n"
         << "hold_seconds=" << o.hold_seconds << "\n"
-        << "# cinematic_intensity: 0-100, the light of card_cinematic's platinum\n"
+        << "# cinematic_intensity: 0-100, the light of the card's platinum trophy\n"
         << "cinematic_intensity=" << o.cinematic_intensity << "\n"
         << "# grade_label: 1 writes the grade's name before the second line\n"
         << "grade_label=" << int(o.grade_label) << "\n"
         << "# platinum_animation: 0 shows the platinum trophy's own artwork instead of an animation\n"
         << "platinum_animation=" << int(o.platinum_animation) << "\n"
-        << "# Texts, empty for the English ones: the card's second line, the banner's first line,\n"
-        << "# and the grade names grade_label writes.\n"
-        << "text_unlocked=" << o.text_unlocked << "\n"
-        << "text_banner=" << o.text_banner << "\n";
+        << "# Texts, empty for the built-in ones: the unlock message and the grade names.\n"
+        << "text_unlocked=" << o.text_unlocked << "\n";
     for (int g = 1; g < 5; ++g) out << "name_" << kGradeFileNames[g] << "=" << o.grade_names[g] << "\n";
     return out.str();
 }
 
 std::string UnlockedText(const Options& o) {
     return o.text_unlocked.empty() ? BbOverlayText::L("Trophy unlocked!") : o.text_unlocked;
-}
-
-std::string BannerText(const Options& o, bool preview) {
-    if (!o.text_banner.empty()) return o.text_banner;
-    return BbOverlayText::L(preview ? "Achievement preview" : "Achievement unlocked");
 }
 
 std::string GradeName(const Options& o, int grade) {
@@ -208,14 +200,6 @@ Frame Evaluate(const Timeline& tl, float settle, float ms) {
     if (ms >= tl.enter) return {Phase::Hold, 1.0f, 0.0f, 0.0f, badge};
     const float p = ms / tl.enter, e = EaseOutCubic(p);
     return {Phase::Enter, e, 1.0f - e, (1.0f - EaseOutBack(p)) * settle, badge};
-}
-
-BannerFrame EvaluateBanner(const Timeline& tl, float ms) {
-    ms = std::max(ms, 0.0f);
-    if (ms >= tl.Total()) return {true, 0.0f, 1.0f};
-    const float appear = tl.enter > 0.0f ? Clamp01(ms / tl.enter) : 1.0f;
-    const float disappear = tl.exit > 0.0f ? Clamp01((tl.Total() - ms) / tl.exit) : 1.0f;
-    return {false, std::min(appear, disappear), appear};
 }
 
 } // namespace BbToast

@@ -685,7 +685,6 @@ void TrophyNotificationsTab() {
     PageTitle(L("Trophy notifications"));
     auto o = BbToast::GetOptions();
     bool changed = false;
-    // The four looks, all in sight: one row each.
     for (int i = 0; i < int(Theme::Count); ++i)
         if (ChoiceRow(BbToast::ThemeLabel(Theme(i)), o.theme == Theme(i)) && o.theme != Theme(i)) {
             o.theme = Theme(i);
@@ -702,16 +701,14 @@ void TrophyNotificationsTab() {
     changed |= ImGui::SliderFloat("##toast_hold", &o.hold_seconds, 0.0f, 20.0f,
                                   o.hold_seconds < 0.05f ? L("Theme default") : L("%.1f s"));
     if (o.hold_seconds < 0.05f) o.hold_seconds = 0.0f;
-    if (o.theme == Theme::CardCinematic) {
+    if (o.theme == Theme::Card) {
         RowLabel(L("Platinum light"), ImGui::GetFrameHeight());
         ImGui::SetNextItemWidth(-FLT_MIN);
         changed |= ImGui::SliderInt("##toast_intensity", &o.cinematic_intensity, 0, 100, "%d%%");
     }
-    if (o.theme != Theme::Original) {
-        changed |= Toggle(L("Animate the platinum"), &o.platinum_animation);
-        Hint(L("Off: the platinum shows its own picture, like the other trophies."));
-        changed |= Toggle(L("Write the grade"), &o.grade_label);
-    }
+    changed |= Toggle(L("Animate the platinum"), &o.platinum_animation);
+    Hint(L("Off: the platinum shows its own picture, like the other trophies."));
+    changed |= Toggle(L("Write the grade"), &o.grade_label);
     if (changed) BbToast::SetOptions(o);
     CloseRows();
 
@@ -1196,49 +1193,6 @@ void FpsCounter() {
     ImGui::End();
 }
 
-// The notifications' Original theme (BbToast draws the other themes and keeps the queue): the
-// green banner at the bottom. alpha: opacity; appear: 0 -> 1 as it fades in and rises.
-void TrophyBanner(int id, const char* first_line, float alpha, float appear) {
-    const auto entry = BbTrophies::Find(id);
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float w = std::min(590.0f * base_scale, viewport->WorkSize.x - 24.0f * base_scale);
-    const float h = 92.0f * base_scale;
-    const float slide = (1.0f - appear) * 28.0f * base_scale;
-    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * .5f - w * .5f,
-                                   viewport->WorkPos.y + viewport->WorkSize.y - h -
-                                       30.0f * base_scale + slide));
-    ImGui::SetNextWindowSize(ImVec2(w, h));
-    ImGui::SetNextWindowBgAlpha(.96f * alpha);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Px(6.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, Vec(Ink::Surface));
-    ImGui::Begin("##trophy_toast", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
-                     ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
-                     ImGuiWindowFlags_NoFocusOnAppearing);
-    ImDrawList* draw = ImGui::GetWindowDrawList();
-    const ImVec2 pos = ImGui::GetWindowPos();
-    const float icon = 72.0f * base_scale;
-    const ImVec2 center(pos.x + 49.0f * base_scale, pos.y + h * .5f);
-    draw->AddCircleFilled(center, icon * .5f, IM_COL32(40, 124, 141, int(255 * alpha)));
-    draw->AddCircle(center, icon * .49f, GradeColor(entry.grade, alpha), 0,
-                    2.0f * base_scale);
-    TrophyGlyph(draw, center, 45.0f * base_scale, alpha);
-    const float text_x = pos.x + 103.0f * base_scale;
-    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.03f,
-                  ImVec2(text_x, pos.y + 19.0f * base_scale),
-                  IM_COL32(255, 255, 255, int(255 * alpha)), first_line);
-    const std::string title = entry.score >= 0 ?
-        std::to_string(entry.score) + "G - " + entry.name : entry.name;
-    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.12f,
-                  ImVec2(text_x, pos.y + 49.0f * base_scale),
-                  IM_COL32(255, 255, 255, int(255 * alpha)), title.c_str(), nullptr,
-                  w - (text_x - pos.x) - 18.0f * base_scale);
-    ImGui::End();
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar(2);
-}
-
 // The ImGui style and fonts of the guide (Init; also the offscreen preview, tools/overlay_preview.cpp).
 void ConfigureContext() {
     ImGuiIO& io = ImGui::GetIO();
@@ -1314,7 +1268,7 @@ void ConfigureContext() {
 #endif
     // Trophy notifications: their fonts, options, pictures and sounds (decoded now, not at the
     // first toast).
-    BbToast::Start(io.Fonts, &IconRef, &PrefetchIcon, &TrophyBanner);
+    BbToast::Start(io.Fonts, &IconRef, &PrefetchIcon);
 }
 
 // One frame's windows, between NewFrame and Render (Render; also the offscreen preview).

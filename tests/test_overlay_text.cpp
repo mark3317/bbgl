@@ -36,12 +36,10 @@ int main(int argc, char** argv) {
     assert(std::string(L("future label")) == "future label");
     BbToast::Options options;
     assert(BbToast::UnlockedText(options) == (ru ? "Трофей получен!" : "Trophy unlocked!"));
-    assert(BbToast::BannerText(options, true) == (ru ? "Проверка уведомления" : "Achievement preview"));
+    assert(std::string(L(BbToast::ThemeLabel(BbToast::Theme::Card))) == (ru ? "Карточка" : "Card"));
     options.text_unlocked = "My custom text";
-    options.text_banner = "My banner";
     options.grade_names[1] = "My bronze";
     assert(BbToast::UnlockedText(options) == "My custom text");
-    assert(BbToast::BannerText(options, false) == "My banner");
     assert(BbToast::GradeName(options, 1) == "My bronze");
     std::cout << "overlay language, format strings and custom notification text: PASS\n";
 }

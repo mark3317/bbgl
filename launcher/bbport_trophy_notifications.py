@@ -7,10 +7,10 @@ import re
 from tempfile import NamedTemporaryFile
 
 
-THEMES = ('original', 'card', 'card_cinematic', 'corner')
-DEFAULTS = {'theme': 'original', 'volume': 80, 'muted': False, 'hold_seconds': 0.0,
+THEMES = ('card_cinematic', 'corner')
+DEFAULTS = {'theme': THEMES[0], 'volume': 80, 'muted': False, 'hold_seconds': 0.0,
             'cinematic_intensity': 70, 'grade_label': False, 'platinum_animation': True}
-TEXT_KEYS = ('text_unlocked', 'text_banner', 'name_bronze', 'name_silver', 'name_gold', 'name_platinum')
+TEXT_KEYS = ('text_unlocked', 'name_bronze', 'name_silver', 'name_gold', 'name_platinum')
 
 
 class ProfileInUse(OSError):
@@ -19,6 +19,8 @@ class ProfileInUse(OSError):
 
 def _value(key, value):
     if key == 'theme':
+        if value in ('original', 'card'):
+            return DEFAULTS['theme']
         if value in THEMES:
             return value
     elif isinstance(DEFAULTS[key], bool):

@@ -1,10 +1,10 @@
-Bloodborne Game Launcher 1.4.3 — mark3317
+Bloodborne Game Launcher 1.5.0 — mark3317
 
 Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
 For P2P co-op, connect every PC to the same VPN or LAN.
 Choose Local network, Tailscale or Radmin; check connectivity, then Play.
 Players may join later using the game bells. All players need the same BBGL release.
-BBSC-GL 1.4.2 is included. The current guest admission completes before the next summon.
+BBSC-GL 1.5.0 is included. Guests can join a Chalice Dungeon room after its boss is defeated.
 Party runs locally on each PC and exchanges co-op data directly between players.
 No separate server, account, mod download or invite code is required for this path.
 A complete main-story co-op playthrough and the transition to NG+ have been tested in game.
@@ -13,7 +13,7 @@ Each player keeps their own Chalices and altars. Root Chalices use native random
 Guests can help clear the owner’s dungeon and earn their own eligible rewards.
 Additional rites, unusual reward cases and larger-party combinations need broader coverage.
 
-Trophies are local to the selected save profile. The launcher and the in-game overlay share notification settings.
+Trophies are local to the selected save profile. The launcher and the in-game overlay share two notification styles and their settings.
 Open Mods from the sidebar, or press Insert / L3 + R3 in game for the overlay.
 
 Frame rates are listed from 30 to 144 FPS, followed by Unlocked. The default is 120 FPS.
@@ -28,5 +28,5 @@ Use the profile-folder button in the launcher. Custom save folders stay where se
 Keep your profile and user mods when updating; never distribute your working installation as a release.
 Game files and saves are not included in the ZIP.
 
-See README.md, README.ru.md and docs/release-1.4.3.md.
+See README.md, README.ru.md and docs/release-1.5.0.md.
 Updates: https://github.com/mark3317/bbgl/releases

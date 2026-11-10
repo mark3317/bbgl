@@ -1,10 +1,10 @@
-Bloodborne Game Launcher 1.5.6 — mark3317
+Bloodborne Game Launcher 1.5.7 — mark3317
 
 Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
 For P2P co-op, connect every PC to the same VPN or LAN.
 Choose Local network, Tailscale or Radmin; check connectivity, then Play.
 Players may join later using the game bells. All players need the same BBGL release.
-BBSC-GL 1.5.6 is included. Guests can join a Chalice Dungeon room after its boss is defeated.
+BBSC-GL 1.5.7 is included. Guests can join a Chalice Dungeon room after its boss is defeated.
 Party runs locally on each PC and exchanges co-op data directly between players.
 No separate server, account, mod download or invite code is required for this path.
 A complete main-story co-op playthrough and the transition to NG+ have been tested in game.
@@ -28,5 +28,5 @@ Use the profile-folder button in the launcher. Custom save folders stay where se
 Keep your profile and user mods when updating; never distribute your working installation as a release.
 Game files and saves are not included in the ZIP.
 
-See README.md, README.ru.md and docs/release-1.5.6.md.
+See README.md, README.ru.md and docs/release-1.5.7.md.
 Updates: https://github.com/mark3317/bbgl/releases

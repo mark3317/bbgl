@@ -12,7 +12,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-**BBGL 1.5.5** includes BBSC-GL 1.5.5. In Nightmare of Mensis, the world snapshot sets the Abyss lift position before map events start. After loading, the original lift event controls its position. [Release notes](docs/release-1.5.5.md).
+**BBGL 1.5.6** includes BBSC-GL 1.5.6. When Ludwig’s arena loads, BBSC-GL checks the local and global defeat flags. If the flags disagree, the fog entrance uses the game’s global victory flag. Targeted tests passed. In-game verification is pending. [Release notes](docs/release-1.5.6.md).
 
 ## Party and peer-to-peer networking
 
@@ -56,7 +56,7 @@ The interface supports English and Russian. The screenshots show the cooperative
 
 ## Start playing
 
-1. Download `bbgl-1.5.5-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
+1. Download `bbgl-1.5.6-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
 2. Run **Bloodborne.exe**. Use the built-in download button in setup or select an existing Bloodborne **CUSA03173, update 1.09** folder. Game files are not included in the launcher archive.
 3. For co-op, connect every PC to the same VPN or LAN. Choose **Local network**, **Tailscale** or **Radmin**; installed VPNs appear in the list and missing ones have installation buttons. Check connectivity, then start the game. Players can join later. No server or invite code is required.
 4. Use the in-game co-op bells to gather your party. Keep everyone on the same BBGL release.

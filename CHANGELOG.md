@@ -1,3 +1,10 @@
+## 1.5.10 — 2026-11-11
+
+- Bundle Pig Invasion as an optional mod, disabled by default. Preserve prior user choices.
+- Include BBSC-GL 1.5.10: native Blank item context and collision restoration after in-place respawn.
+- Improve mod-table layout and remove the test suffix from the profile-folder label.
+- See [release notes](docs/release-1.5.10.md) for validation limits and open gameplay checks.
+
 # BBGL changelog
 
 ## 1.5.9

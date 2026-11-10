@@ -66,6 +66,13 @@ class ModWorkspaceTests(unittest.TestCase):
                     launch.assert_not_called()
                     self.assertEqual(warnings_emitted, [True, True])
                 backend._network_mods = rows[1:]
+                mod_names = ['Diamond Sword', 'Меч охотника — улучшенные модели оружия и доспехов для совместного прохождения',
+                             'Тёмные доспехи охотника']
+                mods_dir = root / 'mods'
+                for name in mod_names:
+                    (mods_dir / name / 'parts').mkdir(parents=True)
+                backend.app['mods_dir'] = str(mods_dir)
+                backend.refresh_addons()
                 engine = QQmlApplicationEngine()
                 engine.rootContext().setContextProperty('launcher', backend)
                 warnings = []
@@ -100,17 +107,28 @@ class ModWorkspaceTests(unittest.TestCase):
                     self.assertEqual(rail_mods.y(), trophy.y() + trophy.height())
                     click(rail_mods)
                     self.assertEqual(window.property('page'), 'Mods')
+                    table = find('installedModsTable')
+                    up = [item for item in items(table) if item.objectName() == 'moveModUp']
+                    down = [item for item in items(table) if item.objectName() == 'moveModDown']
+                    self.assertEqual([item.isEnabled() for item in up], [False, True, True])
+                    self.assertEqual([item.isEnabled() for item in down], [True, True, False])
+                    for upper, lower in zip(up, down):
+                        self.assertEqual(upper.mapToScene(QPoint()).x(), lower.mapToScene(QPoint()).x())
+                        self.assertLess(upper.mapToScene(QPoint()).y(), lower.mapToScene(QPoint()).y())
+                    click(up[1])
+                    self.assertEqual([mod['name'] for mod in backend.contentMods], [mod_names[1], mod_names[0], mod_names[2]])
+                    click(find('moveModDown'))
+                    self.assertEqual([mod['name'] for mod in backend.contentMods], mod_names)
                     QTest.mouseMove(window, QPoint(window.width() - 15, window.height() - 15))
                     QTest.qWait(100)
                     target = ROOT / 'out/mods-ui-preview.png'
                     self.assertTrue(window.grabWindow().save(str(target)))
-                    table = find('installedModsTable')
                     self.assertTrue(table.isVisible())
                     mods_switch = find('modsEnabledSwitch')
                     self.assertTrue(mods_switch.property('checked'))
                     click(mods_switch)
                     self.assertFalse(backend.modsEnabled)
-                    self.assertTrue(backend.modTableRows[0]['enabled'])
+                    self.assertTrue(backend.modTableRows[1]['enabled'])
                     backend.setValue('mods_enabled', True)
                     self.assertTrue(mods_switch.property('checked'))
                     for width in (1280, 1050):

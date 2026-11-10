@@ -181,7 +181,7 @@ FIELDS = {
     # Launch shortcuts live on Home; the update
     # toggle has its own row with "Check now" in Main.qml.
     'Advanced': [
-        row('test_profile_dir', 'Profile folder (test)', 'folder',
+        row('test_profile_dir', 'Profile folder', 'folder',
             hint='Open a separate launcher with settings and co-op data in this folder. New folders start with a fresh profile. The current window keeps its profile.'),
         row('ui_language', 'Launcher language', 'choice', [('', ('System default',))] + core.UI_LANGUAGES),
         row('draw_pipe', 'Draw pipeline', 'choice', core.DRAW_PIPE),

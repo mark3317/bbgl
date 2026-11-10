@@ -33,6 +33,22 @@ class ModTests(unittest.TestCase):
         (folder / file).write_bytes(contents)
         return root
 
+    def test_optional_bundled_mods_stay_off_until_selected(self):
+        for name in ('Diamond Sword', 'Pig Invasion', 'User Mod'):
+            self.mod(name)
+        config = self.root / 'mods.json'
+        self.assertEqual(mods.selected(self.moddir, config), ['User Mod'])
+        for settings in ({}, {'order': ['User Mod'], 'disabled': []}):
+            config.write_text(json.dumps(settings))
+            self.assertEqual(mods.selected(self.moddir, config), ['User Mod'])
+            self.assertIn('Pig Invasion', mods.disabled_mods(settings))
+        config.write_text(json.dumps({'order': ['Pig Invasion', 'User Mod'], 'disabled': []}))
+        self.assertEqual(mods.selected(self.moddir, config), ['Pig Invasion', 'User Mod'])
+        config.write_text(json.dumps({'order': ['Pig Invasion'], 'disabled': ['Pig Invasion']}))
+        self.assertEqual(mods.selected(self.moddir, config), ['User Mod'])
+        config.write_text(json.dumps({'enabled': ['Pig Invasion']}))
+        self.assertEqual(mods.selected(self.moddir, config), ['Pig Invasion', 'User Mod'])
+
     def test_merge_replacement_new_file_and_directory_listing(self):
         a = self.mod('A')
         self.mod('A', b'new', 'new.dcx')

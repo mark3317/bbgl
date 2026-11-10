@@ -99,10 +99,13 @@ def discover(root):
                   key=lambda name: (name.casefold(), name))
 
 
+OPTIONAL_BUNDLED_MODS = frozenset({'Diamond Sword', 'Pig Invasion'})
+
+
 def selected(root, config):
     available = discover(root)
     if not config or not Path(config).is_file():
-        return [n for n in available if n != 'Diamond Sword']
+        return [n for n in available if n not in OPTIONAL_BUNDLED_MODS]
     settings = json.loads(Path(config).read_text(encoding='utf-8'))
     disabled_names = settings.get('disabled', [])
     if not isinstance(disabled_names, list) or not all(isinstance(n, str) for n in disabled_names):
@@ -117,10 +120,11 @@ def selected(root, config):
 
 
 def disabled_mods(settings):
-    """Keep the bundled sword opt-in; a previously saved selection remains explicit."""
+    """Keep optional bundled mods opt-in; preserve previously saved selections."""
     disabled = set(settings.get('disabled', []))
-    if 'Diamond Sword' not in settings.get('order', []) and 'Diamond Sword' not in settings.get('enabled', []):
-        disabled.add('Diamond Sword')
+    for name in OPTIONAL_BUNDLED_MODS:
+        if name not in settings.get('order', []) and name not in settings.get('enabled', []):
+            disabled.add(name)
     return disabled
 
 

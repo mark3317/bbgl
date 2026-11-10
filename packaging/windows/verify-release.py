@@ -13,7 +13,8 @@ def verify(root):
                  'coop/party/chalices.py', 'coop/party/retirement.py', 'coop/party/dream_hints.py',
                  'coop/SOURCE.json', 'launcher/assets/button-prompts/manifest.json',
                  'licenses/BBSC-LICENSE.txt', 'mods/Diamond Sword/bbgl-delta.json',
-                 'mods/Diamond Sword/SOURCE.txt'):
+                 'mods/Diamond Sword/SOURCE.txt', 'mods/Pig Invasion/bbgl-delta.json',
+                 'mods/Pig Invasion/SOURCE.txt'):
         if not (root / name).is_file():
             raise ValueError(f'Missing release file: {name}')
     if sorted(p.name for p in root.glob('*.exe')) != ['Bloodborne.exe']:
@@ -31,6 +32,12 @@ def verify(root):
         for name, expected in manifest['files'].items():
             if hashlib.sha256((folder / name).read_bytes()).hexdigest() != expected:
                 raise ValueError(f'Bundle checksum mismatch: {kind}/{name}')
+    for name in ('Diamond Sword', 'Pig Invasion'):
+        folder = root / 'mods' / name
+        delta = json.loads((folder / 'bbgl-delta.json').read_text(encoding='utf-8'))
+        for entry in delta['files']:
+            if not (folder / entry['patch']).is_file():
+                raise ValueError(f'Missing delta: {name}/{entry["patch"]}')
     prompts = root / 'launcher/assets/button-prompts'
     ready = json.loads((prompts / 'manifest.json').read_text(encoding='utf-8'))['files']
     for name, digest in ready.items():

@@ -1,5 +1,7 @@
 # Bloodborne Game Launcher (BBGL)
 
+**BBGL 1.5.10** includes BBSC-GL 1.5.10 and optional Pig Invasion (disabled by default). Enable it in Mods; the first launch prepares 2529 files. See [release notes](docs/release-1.5.10.md) for changes and gameplay coverage.
+
 **English** · [Русский](README.ru.md) · [Download BBGL](https://github.com/mark3317/bbgl/releases/latest) · [Report a problem](https://github.com/mark3317/bbgl/issues)
 
 **Bloodborne for Windows, focused on convenience and playing through the game with friends.** BBGL is a fork of [yharnam-pc](https://github.com/Jgamrot/yharnam-pc), created to make getting into the game easier, especially in co-op. Game downloading is built into the launcher, and the modified **[BBSC-GL](https://github.com/mark3317/bbsc-gl)** distributed P2P co-op client is bundled. After downloading BBGL, you do not need to find separate mod, loader or server packages and match their versions yourself.
@@ -12,7 +14,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-**BBGL 1.5.8** includes BBSC-GL 1.5.8. After a full party wipe, BBSC-GL resets temporary encounter flags for story, DLC and Chalice Dungeon bosses. Chalice resets use the active ritual and arena. Late snapshots preserve the new attempt’s local flags. Targeted tests passed. In-game verification of retries is pending. [Release notes](docs/release-1.5.8.md).
+The current published release fixes Silencing Blank item context and restores collision after in-place respawn. Collision was confirmed in a host gameplay retest. Visual Blank verification, full Pig Invasion coverage and group-death checks with two or three updated clients remain open. The network-pool exhaustion disconnect remains unresolved. [Release notes](docs/release-1.5.10.md).
 
 ## Party and peer-to-peer networking
 
@@ -56,7 +58,7 @@ The interface supports English and Russian. The screenshots show the cooperative
 
 ## Start playing
 
-1. Download `bbgl-1.5.8-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
+1. Download `bbgl-1.5.10-windows-x64.zip` from Releases and extract it. Open the **Bloodborne Game Launcher** folder.
 2. Run **Bloodborne.exe**. Use the built-in download button in setup or select an existing Bloodborne **CUSA03173, update 1.09** folder. Game files are not included in the launcher archive.
 3. For co-op, connect every PC to the same VPN or LAN. Choose **Local network**, **Tailscale** or **Radmin**; installed VPNs appear in the list and missing ones have installation buttons. Check connectivity, then start the game. Players can join later. No server or invite code is required.
 4. Use the in-game co-op bells to gather your party. Keep everyone on the same BBGL release.
@@ -67,6 +69,6 @@ Windows x64 and a compatible Vulkan driver are required. For graphics, hardware,
 
 [Build BBGL](BUILDING.md) · [Changes](CHANGELOG.md) · [Credits and licences](THIRD_PARTY.md)
 
-`main` is the release source; `develop` is ongoing work. BBSC-GL is pinned as a submodule. Internal `bbport` / `bbsc` executable names and protocol identifiers are retained for compatibility.
+Use tag `v1.5.10` for the published release source; `develop` is ongoing work. This documentation update leaves `main` code at 1.5.8. BBSC-GL is pinned as a submodule. Internal `bbport` / `bbsc` executable names and protocol identifiers are retained for compatibility.
 
 Based on yharnam-pc / bbport and [BBSC by CLS_AMG and contributors](https://github.com/CLSAMG22/BBSC). Their licences and attribution remain included. Bloodborne belongs to FromSoftware and Sony Interactive Entertainment; this is an independent fan project.

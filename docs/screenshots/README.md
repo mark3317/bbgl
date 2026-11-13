@@ -1,6 +1,6 @@
-# Скриншоты BBGL 1.5.8
+# Скриншоты BBGL 1.5.10
 
-Сняты 10.11.2026 из текущего QML-интерфейса. Для обновления:
+Сняты 11.11.2026 из текущего QML-интерфейса. Для обновления:
 
 ```powershell
 out/qt-venv/Scripts/python.exe tools/capture_release_screenshots.py

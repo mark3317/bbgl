@@ -9,7 +9,7 @@
 
 Распакуйте ZIP и запустите `Bloodborne.exe`. Обновите всех участников до 1.5.10. Личные настройки и сохранения сохраняйте отдельно. Pig Invasion не включается автоматически в новых профилях или при добавлении к прежнему списку модов; ранее сделанный пользователем выбор сохраняется.
 
-Проверки исходников и оригинальных фрагментов игры пройдены. Визуальная проверка Бланка и полноценное прохождение Pig Invasion в игре остаются открытыми. Зафиксированное отключение по исчерпанию сетевого пула не исправлялось этим выпуском. Подготовка релиза не означает публикацию или установку.
+Проверки исходников и оригинальных фрагментов игры пройдены. Визуальная проверка Бланка и полноценное прохождение Pig Invasion в игре остаются открытыми. Зафиксированное отключение по исчерпанию сетевого пула не исправлялось этим выпуском. BBGL и BBSC-GL 1.5.10 опубликованы 11.11.2026 (МСК); публикация повторно проверена 13.11. Архивы, контрольные суммы и запуск лаунчера на русском и английском проверены в релизном прогоне. Установка опубликованного выпуска на устройства отдельно не подтверждена.
 
 ## English
 
@@ -20,6 +20,6 @@
 
 Extract the ZIP and run `Bloodborne.exe`. Update every player to 1.5.10. Keep personal settings and saves separate. Pig Invasion stays off in fresh profiles and when added to an existing mod list; previously saved user selections are preserved.
 
-Source checks and original-code fixtures passed. Visual Silencing Blank verification and full Pig Invasion gameplay coverage remain pending. The recorded network-pool exhaustion disconnect is not fixed in this release. Preparation does not publish or install the release.
+Source checks and original-code fixtures passed. Visual Silencing Blank verification and full Pig Invasion gameplay coverage remain pending. The recorded network-pool exhaustion disconnect is not fixed in this release. BBGL and BBSC-GL 1.5.10 were published on 11 November 2026 (Moscow time), rechecked on 13 November. Archives, checksums and launcher startup in English and Russian were verified during the release run. Installation of the published release on devices is not separately confirmed.
 
 [BBSC-GL 1.5.10](https://github.com/mark3317/bbsc-gl/releases/tag/v1.5.10)

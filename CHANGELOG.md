@@ -1,3 +1,5 @@
+# BBGL changelog
+
 ## 1.5.10 — 2026-11-11
 
 - Bundle Pig Invasion as an optional mod, disabled by default. Preserve prior user choices.
@@ -5,7 +7,8 @@
 - Improve mod-table layout and remove the test suffix from the profile-folder label.
 - See [release notes](docs/release-1.5.10.md) for validation limits and open gameplay checks.
 
-# BBGL changelog
+BBGL and BBSC-GL 1.5.10 are published. Publication was rechecked on
+13 November; device installation is not separately confirmed.
 
 ## 1.5.9
 
@@ -34,6 +37,20 @@
 - В Менсисе снимок мира задаёт положение лифта в Бездну до запуска событий карты. После загрузки положением управляет штатное событие лифта.
 
 [Описание релиза](docs/release-1.5.5.md).
+
+## 1.5.4
+
+- Гостевой вход через существующий туман до начала боя хостом; восстановление тумана Людвига и сброс попытки Миколаша.
+- Запасной путь запросов Party через соединение хоста и освобождение резерва после сорванного призыва.
+
+[Описание выпуска](docs/release-1.5.4.md).
+
+## 1.5.3
+
+- Очистка состояния прошлой сессии Party при запуске, восстановление связи между гостями и счётчик состава хоста.
+- Расширенная диагностика призыва, видимости и смерти; процент загрузки обновления в лаунчере.
+
+[Описание выпуска](docs/release-1.5.3.md).
 
 ## 1.5.0
 

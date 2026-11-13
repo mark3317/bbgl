@@ -14,7 +14,7 @@ BBGL brings installation, configuration and launching into one interface. Guided
 
 **The entire main story is playable in co-op, from the beginning through the finale, with a working transition to NG+. A complete playthrough and the move into the next cycle have been tested in-game and confirmed by the user. Chalice dungeons work in co-op, including randomly generated Root Chalices.**
 
-**BBGL 1.5.10** includes BBSC-GL 1.5.10. The mod waits for known party members during boss deaths, rechecks readiness when presence or the roster changes, and rejects death messages from earlier visits. Targeted tests passed. In-game verification is pending. [Release notes](docs/release-1.5.10.md).
+The current published release fixes Silencing Blank item context and restores collision after in-place respawn. Collision was confirmed in a host gameplay retest. Visual Blank verification, full Pig Invasion coverage and group-death checks with two or three updated clients remain open. The network-pool exhaustion disconnect remains unresolved. [Release notes](docs/release-1.5.10.md).
 
 ## Party and peer-to-peer networking
 

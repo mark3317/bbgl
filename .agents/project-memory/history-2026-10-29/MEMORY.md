@@ -1,0 +1,3 @@
+- [BBSC item design rules](bbsc-items-design-decisions.md) — guests pick up their own items in the host's world; no home giving if possible; talk gifts own; retro only key items; block repeats
+- [BBSC handoff state 2026-10-29](bbsc-handoff-state.md) — read BBSC docs/HANDOFF.md; PC user_dir left on testHost (not ddd); T4 stages 1-2 + own Dream (d90fe64) built, not deployed/pushed
+- [BBSC dev loop on mark-pc](bbsc-dev-on-mark-pc.md) — coopdev.ps1 locally + scp/ssh local_pc when not in the VM; build/collect/analysis recipe

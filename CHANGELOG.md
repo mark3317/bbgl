@@ -1,5 +1,10 @@
 # BBGL changelog
 
+## 1.6.0 — 2026-11-15
+
+- Bundle BBSC-GL 1.6.0 with shared Gehrman placement, personal altar and NG+ protection, expanded boss resets and native ladder recovery.
+- See [release notes](docs/release-1.6.0.md) for gameplay coverage and the open NETWORK issue.
+
 ## 1.5.10 — 2026-11-11
 
 - Bundle Pig Invasion as an optional mod, disabled by default. Preserve prior user choices.

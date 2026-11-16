@@ -5,14 +5,14 @@ Use Windows x64, Visual Studio C++ Build Tools (with Clang), Windows Python 3.10
 ```sh
 git clone https://github.com/mark3317/bbgl.git
 cd bbgl
-git checkout develop
+git checkout v1.6.1
 git submodule update --init gpu/third_party/fsr-vulkan gpu/third_party/imgui third_party/LibAtrac9 gpu/third_party/magic_enum gpu/third_party/miniz gpu/third_party/xbyak mods-src/BBSC
 bash packaging/windows/build-coop-package.sh
 ```
 
 The command builds BBSC-GL from `mods-src/BBSC`, builds the port, freezes the launcher and assembles the P2P runtime. FSR-Vulkan is pinned from the [BBGL dependency fork](https://github.com/mark3317/UniversalScalers-Vulkan), which includes the frame-resource lifetime fix used by this release. The current co-op path needs no separate game server, shadNet account or invitation. Historical server build scripts are not part of this release path.
 
-Staging is recreated at `out/stage/Bloodborne Game Launcher`. The release files are `dist/bbgl-1.5.10-windows-x64.zip` and its `.zip.sha256`. Keep the staging path separate from installed launchers and keep player settings, saves, accounts, logs and game files outside the package.
+Staging is recreated at `out/stage/Bloodborne Game Launcher`. The release files are `dist/bbgl-1.6.1-windows-x64.zip` and its `.zip.sha256`. Keep the staging path separate from installed launchers and keep player settings, saves, accounts, logs and game files outside the package.
 
 Button prompts and the optional Diamond Sword use binary deltas from `bundled-mods`. Packaging uses prepared button prompts from `out/vendor/ready-prompts`. If the cache is empty, set `BB_PROMPT_GAME_DIR` to your own original 1.09 game folder to prepare the prompts. Diamond Sword and all cheats are disabled by default. Detailed logging, research, profiling and Vulkan validation are opt-in. See the [logging policy](docs/LOGGING.md).
 
@@ -24,6 +24,8 @@ Commit the intended BBSC changes before updating the parent gitlink. `coop/SOURC
 
 When building a Git for Windows checkout from MSYS2, use the same line-ending configuration in both environments. If Git for Windows reports a clean checkout but MSYS2 reports only CRLF differences in BBSC dependencies, run the build with `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.autocrlf GIT_CONFIG_VALUE_0=true` in the MSYS2 command environment. Verify that both Git clients report a clean BBSC checkout and that `source_dirty` is false in the final ZIP.
 
-`develop` holds ongoing work. `main` holds release source. BBGL 1.5.10 uses update tag `v1.5.10` and bundles BBSC-GL 1.5.10.
+If MSYS2 Git stalls when collecting BBSC source metadata, set `BB_BUILD_GIT` to the absolute Windows path to Git for Windows before running the packaging command.
+
+`develop` holds ongoing work. The release tag pins the published source. BBGL 1.6.1 uses update tag `v1.6.1` and bundles BBSC-GL 1.6.1.
 
 Pig Invasion is bundled as 2529 binary deltas and is disabled by default. Enable it in Mods. First activation may take several minutes; all co-op players should use matching mods. Game archives are not shipped.

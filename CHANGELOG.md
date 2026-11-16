@@ -1,5 +1,17 @@
 # BBGL changelog
 
+## 1.6.1 — 2026-11-17
+
+- Install and toggle BB PC Remaster from Image effects. Hide the model detail selector while the pack is enabled.
+- Use the same model detail labels and order in the launcher and the in-game settings.
+- Add an offline command to extinguish non-Chalice lamps from the overlay.
+- Bundle BBSC-GL 1.6.1 with character-bound guest progress and updates to respawn and boss encounters. [Release notes](docs/release-1.6.1.md).
+
+## 1.6.0 — 2026-11-15
+
+- Bundle BBSC-GL 1.6.0 with shared Gehrman placement, personal altar and NG+ protection, expanded boss resets and native ladder recovery.
+- See [release notes](docs/release-1.6.0.md) for gameplay coverage and the open NETWORK issue.
+
 ## 1.5.10 — 2026-11-11
 
 - Bundle Pig Invasion as an optional mod, disabled by default. Preserve prior user choices.

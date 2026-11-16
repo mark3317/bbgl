@@ -55,8 +55,8 @@ EFFECTS = [
     ("debug_camera", "Свободная камера (Cross + L3 / Space + Z)", False),
     ("debug_menu", "Debug menu (левый touchpad / Tab; нужны шрифты)", False),
 ]
-MODEL_LOD = [("Как в игре", "0"), ("Максимальная (-2)", "-2"), ("Ниже (1)", "1"),
-             ("Минимальная (2)", "2")]
+MODEL_LOD = [("Максимальная", "-2"), ("Стандартная", "0"),
+             ("Низкая", "1"), ("Минимальная", "2")]
 # 120 and 144: 90 FPS++ with its values for that rate (scripts/patches.py SCALED_FPS).
 FPS_MODES = [("120 (рекомендуется)", "120"), ("144", "144"), ("90", "90"), ("60", "60"),
              ("Без ограничения (патч; может зависнуть в конце заставки Викарии Амелии)", "uncap"),
@@ -423,8 +423,10 @@ class LauncherWindow(Adw.ApplicationWindow):
 
         effects = Adw.PreferencesGroup(title=tr("Эффекты игры"),
                                        description=tr("Патчи игры, применяются при запуске"))
-        self.lod_row = combo_row(tr("Детализация моделей"), None, MODEL_LOD,
-                                 self.ini.get("model_lod", "0"))
+        lod = self.ini.get("model_lod")
+        if not any(lod == value for _, value in MODEL_LOD):
+            lod = INI_DEFAULTS["model_lod"]
+        self.lod_row = combo_row(tr("Детализация моделей"), None, MODEL_LOD, lod)
         effects.add(self.lod_row)
         self.effect_rows = {}
         for key, title, default in EFFECTS:

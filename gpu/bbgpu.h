@@ -39,6 +39,13 @@ int bbgpu_text_input_poll(char *out_utf8, uint64_t size);
 int bbgpu_overlay_captures_input(void);
 /* Bind the verified, writable ChrDbg bytes after startup patches have been applied. */
 void bbgpu_overlay_bind_cheat_flags(unsigned char *flags);
+typedef enum {
+    BB_LAMP_RESET_READY,
+    BB_LAMP_RESET_PENDING,
+    BB_LAMP_RESET_DONE,
+} BbLampResetStatus;
+/* The overlay passes 0 to read status or 1 to queue a single reset. */
+void bbgpu_overlay_bind_lamp_reset(BbLampResetStatus (*action)(int request));
 /* Local trophy notifications. IDs are supplied by the game's trophy API, not PSN. */
 void bbgpu_trophy_configure(const char *game_dir, const char *user_dir, int32_t language);
 void bbgpu_trophy_load(const int64_t *timestamps, uint32_t count);

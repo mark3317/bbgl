@@ -415,6 +415,42 @@ RU = {
     'Lets the in-game menu change the upscaling preset without a restart, at some cost in speed.':
         'Позволяет менять пресет масштабирования в меню игры без перезапуска, ценой небольшой потери скорости.',
     'Model detail': 'Детализация моделей',
+    'Choose': 'Выбрать',
+    'Download Remaster 1.10 and PATCH 1.13, then choose both archives.':
+        'Скачайте Remaster 1.10 и PATCH 1.13, затем выберите оба архива.',
+    'High-resolution textures. Applies at the next game start.':
+        'Текстуры высокого разрешения. Применяется при запуске игры.',
+    'Download · %1 GiB': 'Скачать · %1 ГиБ',
+    'Choose archives…': 'Выбрать архивы…',
+    'Choose the Remaster 1.10 and PATCH 1.13 archives': 'Выберите архивы Remaster 1.10 и PATCH 1.13',
+    'Archives (*.7z *.zip *.rar)': 'Архивы (*.7z *.zip *.rar)',
+    'Download both archives on Nexus Mods, then choose them here.':
+        'Скачайте Remaster 1.10 и PATCH 1.13 на Nexus Mods, затем выберите оба архива здесь.',
+    'Choose the BB PC Remaster 1.10 main archive and PATCH 1.13 from Nexus Mods.':
+        'Выберите основной архив BB PC Remaster 1.10 и архив PATCH 1.13 с Nexus Mods.',
+    'Archives ready. Select BB PC Remaster to install.': 'Архивы готовы. Выберите BB PC Remaster для установки.',
+    'Preparing BB PC Remaster…': 'Подготовка BB PC Remaster…',
+    'Downloading BB PC Remaster 1.10…': 'Загрузка BB PC Remaster 1.10…',
+    'Downloading PATCH 1.13…': 'Загрузка PATCH 1.13…',
+    'Installing BB PC Remaster 1.10…': 'Установка BB PC Remaster 1.10…',
+    'Applying PATCH 1.13…': 'Установка PATCH 1.13…',
+    'BB PC Remaster installed. Applies at the next game start.': 'BB PC Remaster установлен. Вступит в силу при следующем запуске игры.',
+    'BB PC Remaster operation cancelled.': 'Операция с BB PC Remaster отменена.',
+    'BB PC Remaster is already being prepared in another launcher.': 'BB PC Remaster уже подготавливается в другом окне лаунчера.',
+    'Nexus Mods requires a valid Premium key for direct downloads. Download the archives on Nexus Mods or try again.':
+        'Для прямой загрузки нужен ключ Nexus Mods Premium. Скачайте архивы на Nexus Mods или повторите попытку.',
+    'Nexus Mods did not provide a download link.': 'Nexus Mods не выдал ссылку для загрузки.',
+    'Nexus Mods returned an unexpected download range.': 'Nexus Mods вернул неожиданный диапазон для докачки.',
+    'The archive size does not match the Nexus Mods download.': 'Размер архива не совпадает с размером файла на Nexus Mods.',
+    'The download was incomplete. Try again to resume it.': 'Загрузка прервалась. Повторите попытку для докачки.',
+    'Nexus Mods download interrupted. Try again to resume it.': 'Загрузка с Nexus Mods прервалась. Повторите попытку для докачки.',
+    'The BB PC Remaster archive contains unsupported files.': 'Архив BB PC Remaster содержит неподдерживаемые файлы.',
+    'Could not read the BB PC Remaster archive.': 'Не удалось прочитать архив BB PC Remaster.',
+    'Could not unpack BB PC Remaster. Check the archives and free disk space.':
+        'Не удалось распаковать BB PC Remaster. Проверьте архивы и свободное место на диске.',
+    'The BB PC Remaster installation folder is a link.': 'Папка установки BB PC Remaster является ссылкой.',
+    'The BB PC Remaster archive has no game files.': 'В архиве BB PC Remaster нет файлов игры.',
+    'Open Nexus Mods': 'Открыть Nexus Mods',
     'How soon distant models switch to simpler versions. Highest costs GPU time.':
         'Расстояние, на котором модели заменяются упрощёнными. «Максимальная» нагружает видеокарту.',
     'Video memory pressure target': 'Порог использования видеопамяти',

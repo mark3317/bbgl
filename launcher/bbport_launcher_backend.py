@@ -17,7 +17,7 @@ import urllib.request
 import webbrowser
 import zipfile
 
-from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer
+from PySide6.QtCore import QObject, Property, QStandardPaths, Signal, Slot, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QFileDialog as _QFileDialog, QMessageBox as _QMessageBox
 
@@ -30,6 +30,7 @@ import bbport_qml_ru
 import bbport_launcher_win as core
 import bbport_startup
 import bbport_game_download
+import bbport_remaster as remaster
 import bbport_trophy_notifications as trophy_notifications
 from bbport_readiness import check_readiness, trophy_snapshot
 
@@ -248,6 +249,7 @@ SEARCH_TERMS = {
     'ui_language': 'launcher language', 'mods_enabled': 'load mods',
 }
 SEARCH_ACTIONS = [
+    ('Visuals', 'Image effects', 'BB PC Remaster', 'textures текстуры'),
     ('Controls', 'Button prompts', 'Xbox and PlayStation prompts', 'button controller'),
     ('Visuals', 'Upscaling', 'Download FSR 4 assets', 'fsr shader'),
     ('Game & Saves', 'Game files', 'Download game', 'game files setup'),
@@ -313,6 +315,9 @@ class LauncherBackend(QObject):
     setupFailed = Signal(str)
     gameDownloadChanged = Signal()
     _gameDownloadProgress = Signal(float, str)
+    remasterChanged = Signal()
+    _remasterProgress = Signal(float, str)
+    _remasterFinished = Signal(str, str)
     coopChanged = Signal()
     coopNetworksChanged = Signal()
     _coopNetworksDone = Signal(list, list)
@@ -378,6 +383,14 @@ class LauncherBackend(QObject):
         self._game_download_status = ''
         self._game_download_cancel = threading.Event()
         self._gameDownloadProgress.connect(self._show_game_download_progress)
+        self._remaster_job = ''
+        self._remaster_progress = 0.0
+        self._remaster_status = ''
+        self._remaster_download_failed = False
+        self._remaster_cancel = threading.Event()
+        self._remasterProgress.connect(self._show_remaster_progress)
+        self._remasterFinished.connect(self._finish_remaster)
+        self.changed.connect(self.remasterChanged)
         self.workerNotice.connect(self._set_notice)
         self.updateAvailable.connect(self._offer_update)
         self.gpuDetected.connect(self._set_gpu_status)
@@ -503,6 +516,126 @@ class LauncherBackend(QObject):
                 self._gameDownloadProgress.emit(self._game_download_progress, str(error))
                 self.setupFailed.emit(str(error))
         threading.Thread(target=work, daemon=True).start()
+
+    @Property(float, constant=True)
+    def remasterSizeGiB(self):
+        return remaster.TOTAL_BYTES / 2**30
+
+    @Property(bool, notify=remasterChanged)
+    def remasterSelected(self):
+        return core.remaster_layer(self.app) is not None
+
+    @Property(bool, notify=remasterChanged)
+    def remasterInstalled(self):
+        return remaster.installed(core.remaster_directory(self.app)) is not None
+
+    @Property(bool, notify=remasterChanged)
+    def remasterBusy(self):
+        return bool(self._remaster_job)
+
+    @Property(bool, notify=remasterChanged)
+    def remasterDownloadFailed(self):
+        return self._remaster_download_failed
+
+    @Property(float, notify=remasterChanged)
+    def remasterProgress(self):
+        return self._remaster_progress
+
+    @Property(str, notify=remasterChanged)
+    def remasterStatus(self):
+        return T(self._remaster_status)
+
+    @Slot()
+    def refreshRemaster(self):
+        self.remasterChanged.emit()
+
+    @Slot()
+    def openRemasterNexus(self):
+        webbrowser.open(remaster.PAGE)
+        self._remaster_download_failed = False
+        self._show_remaster_progress(0.0, '')
+
+    @Slot()
+    def downloadRemaster(self):
+        if self.remasterBusy or self.remasterInstalled:
+            return
+        root = core.remaster_directory(self.app)
+        cached = remaster.cached_archives(root)
+        if cached:
+            start = remaster.DOWNLOAD_PORTION
+            self._start_remaster('install', lambda progress, cancel: remaster.install(root, cached, progress, cancel, start), start)
+            return
+        api_key = os.environ.get('BB_NEXUS_API_KEY', '').strip()
+        if not api_key:
+            self.openRemasterNexus()
+            return
+
+        def download_and_install(progress, cancel):
+            remaster.download(root, api_key, progress, cancel)
+            if not remaster.installed(root):
+                archives = remaster.cached_archives(root)
+                if not archives:
+                    raise ValueError('The download was incomplete. Try again to resume it.')
+                remaster.install(root, archives, progress, cancel, remaster.DOWNLOAD_PORTION)
+
+        self._start_remaster('download', download_and_install)
+
+    @Slot()
+    def importRemaster(self):
+        if self.remasterBusy or self.remasterInstalled:
+            return
+        folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+        paths, _ = QFileDialog.getOpenFileNames(None, 'Choose the Remaster 1.10 and PATCH 1.13 archives',
+                                              folder, 'Archives (*.7z *.zip *.rar)')
+        if not paths:
+            return
+        try:
+            archives = remaster.match_archives(paths)
+        except (OSError, ValueError) as error:
+            self._show_remaster_progress(0.0, str(error))
+            return
+        root = core.remaster_directory(self.app)
+        self._start_remaster('install', lambda progress, cancel: remaster.install(root, archives, progress, cancel))
+
+    @Slot(bool)
+    def setRemasterEnabled(self, enabled):
+        if self.remasterBusy or (enabled and not self.remasterInstalled):
+            return
+        self.app['remaster_enabled'] = enabled
+        if enabled:
+            self.ini['model_lod'] = '-2'
+        self._write()
+
+    def _start_remaster(self, job, operation, start=0.0):
+        self._remaster_job = job
+        self._remaster_cancel.clear()
+        self._show_remaster_progress(start, 'Preparing BB PC Remaster…')
+
+        def work():
+            try:
+                operation(self._remasterProgress.emit, self._remaster_cancel)
+            except Exception as error:
+                self._remasterFinished.emit(job, str(error))
+            else:
+                self._remasterFinished.emit(job, '')
+
+        threading.Thread(target=work, daemon=True).start()
+
+    @Slot()
+    def cancelRemaster(self):
+        self._remaster_cancel.set()
+
+    @Slot(float, str)
+    def _show_remaster_progress(self, fraction, status):
+        self._remaster_progress = fraction
+        self._remaster_status = status
+        self.remasterChanged.emit()
+
+    @Slot(str, str)
+    def _finish_remaster(self, job, error):
+        self._remaster_job = ''
+        self._remaster_download_failed = job == 'download' and bool(error)
+        self._show_remaster_progress(0.0 if error else 1.0, error)
 
     # --- First-run setup and start-up routing -------------------------------------------------
 
@@ -925,7 +1058,8 @@ class LauncherBackend(QObject):
                 if not keys:
                     candidates = [('', section)]
                 for key, label in candidates:
-                    if key.startswith('bbsc_scale_') and self is not None and not self._field_visible(key):
+                    if self is not None and ((key.startswith('bbsc_scale_') and not self._field_visible(key)) or
+                                             (key == 'model_lod' and self.remasterSelected)):
                         continue
                     add(category, section, label, key)
         for category, section, label, terms in SEARCH_ACTIONS:
@@ -1004,6 +1138,10 @@ class LauncherBackend(QObject):
     def setValue(self, key, value):
         if self._mods_downloading and key in ('mods_dir', 'mods_enabled'):
             return
+        if key == 'mods_dir' and self.remasterBusy:
+            return
+        if key == 'model_lod':
+            self.app['remaster_enabled'] = False
         party_setting = key in ('coop_connection', 'coop_host_address', 'coop_custom_address',
                                 'coop_peer_addresses', 'coop_name')
         if party_setting:

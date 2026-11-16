@@ -84,6 +84,8 @@ int active_tab = HuntTab;
 bool rail_focused_last = false, page_focused_last = false;
 bool dirty = false; // settings changed while open: saved on close
 unsigned char* cheat_flags = nullptr; // guarded by imgui_mutex
+BbLampResetStatus (*lamp_reset_action)(int request) = nullptr; // guarded by imgui_mutex
+bool lamp_reset_confirmation = false;
 
 consteval int CheatEffect(std::string_view key) {
     for (int e = 0; e < BbSettings::EffectCount; ++e) {
@@ -258,6 +260,7 @@ void SetOpen(bool value) {
     // WindowSDL owns the silver hardware cursor, also used by native menus.
     if (value) {
         active_tab = HuntTab;
+        lamp_reset_confirmation = false;
         menu_opened_ms = ClockMs();
         // The pointer shows at once where the mouse is, not only after it next moves.
         if (SDL_Window* window = SDL_GetMouseFocus()) {
@@ -561,6 +564,32 @@ void GameplayTab() {
     ImGui::EndDisabled();
     Checkbox(L("No stamina use"), s.effects[CheatEffect("cheat_no_stamina")]);
     Checkbox(L("No stamina use out of combat"), s.effects[CheatEffect("cheat_stamina_out_of_combat")]);
+
+    Section(L("Lamps"));
+    const auto status = lamp_reset_action ? lamp_reset_action(0) : BB_LAMP_RESET_READY;
+    const bool can_reset = lamp_reset_action && status != BB_LAMP_RESET_PENDING;
+    if (!can_reset) lamp_reset_confirmation = false;
+    ImGui::BeginDisabled(!can_reset || lamp_reset_confirmation);
+    const bool show_confirmation = ImGui::Button(L("Extinguish all lamps"));
+    ImGui::EndDisabled();
+    if (!lamp_reset_action)
+        Note(L("Lamp reset is available in supported offline games."));
+    else if (status == BB_LAMP_RESET_PENDING)
+        Note(L("Lamp reset queued. Reload or travel outside the Hunter's Dream."));
+    else if (status == BB_LAMP_RESET_DONE)
+        Note(L("Story and DLC lamps were reset."));
+
+    if (show_confirmation) lamp_reset_confirmation = true;
+    if (lamp_reset_confirmation) {
+        Note(L("This resets story and DLC lamps once, the next time you load an area outside the Hunter's Dream. Chalice lamps keep their state."));
+        if (show_confirmation) ImGui::SetKeyboardFocusHere();
+        if (ImGui::Button(L("Cancel"))) lamp_reset_confirmation = false;
+        ImGui::SameLine();
+        if (ImGui::Button(L("Queue lamp reset"))) {
+            lamp_reset_action(1);
+            lamp_reset_confirmation = false;
+        }
+    }
 }
 
 std::string UnlockDate(std::int64_t timestamp) {
@@ -1323,6 +1352,11 @@ void DrawWindows(float display_height) {
 }
 
 } // namespace
+
+void BindLampReset(BbLampResetStatus (*action)(int request)) {
+    std::scoped_lock lock{imgui_mutex};
+    lamp_reset_action = action;
+}
 
 void BindCheatFlags(unsigned char* flags) {
     std::scoped_lock lock{imgui_mutex};

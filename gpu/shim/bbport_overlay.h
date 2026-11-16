@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include "../bbgpu.h"
 #include "common/types.h"
 #include "video_core/renderer_vulkan/vk_common.h"
 
@@ -44,6 +45,7 @@ bool CapturesInput();
 
 /// Loader startup: connect the game's debug flags to the Extras switches.
 void BindCheatFlags(unsigned char* flags);
+void BindLampReset(BbLampResetStatus (*action)(int request));
 
 /// Window thread: the game's text dialog (sceImeDialog). Shown as a box on screen until
 /// `active` is false; typing goes to the window (sdl_window), the box only displays it.

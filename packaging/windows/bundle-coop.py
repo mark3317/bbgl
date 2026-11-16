@@ -1,6 +1,7 @@
 """Assemble the bundled BBSC client and in-process Party runtime from mods-src/BBSC."""
 import json
 import hashlib
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,9 +18,10 @@ def main():
     runtime.mkdir(parents=True, exist_ok=True)
     for name in ('engine.py', 'dynamic.py', 'compat.py', 'chalices.py', 'retirement.py', 'party_workers.py', 'protobuf.py', 'schema.json', 'ss_info_template.xml', 'run_log.py', 'dream_hints.py'):
         shutil.copy2(FORK / 'party' / name, runtime / name)
-    revision = subprocess.check_output(['git', '-C', str(FORK), 'rev-parse', 'HEAD'], text=True).strip()
+    git = os.environ.get('BB_BUILD_GIT', 'git')
+    revision = subprocess.check_output([git, '-C', str(FORK), 'rev-parse', 'HEAD'], text=True).strip()
     version = json.loads((FORK / 'emulator/mod/mod.json').read_text(encoding='utf-8'))['version']
-    dirty = bool(subprocess.check_output(['git', '-C', str(FORK), 'status', '--porcelain',
+    dirty = bool(subprocess.check_output([git, '-C', str(FORK), 'status', '--porcelain',
         '--untracked-files=normal'], text=True).strip())
     (client / 'bundle.json').write_text(json.dumps({'version': version, 'transport': 'p2p',
         'source': f'https://github.com/mark3317/bbsc-gl/tree/{revision}', 'source_dirty': dirty,

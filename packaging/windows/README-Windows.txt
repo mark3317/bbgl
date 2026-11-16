@@ -1,10 +1,10 @@
-Bloodborne Game Launcher 1.6.0 — mark3317
+Bloodborne Game Launcher 1.6.1 — mark3317
 
 Run Bloodborne.exe and select your own Bloodborne CUSA03173, update 1.09.
 For P2P co-op, connect every PC to the same VPN or LAN.
 Choose Local network, Tailscale or Radmin; check connectivity, then Play.
 Players may join later using the game bells. All players need the same BBGL release.
-BBSC-GL 1.6.0 is included. Update all players to 1.6.0 for coordinated boss-death recovery.
+BBSC-GL 1.6.1 is included. Update all players to 1.6.1.
 Party runs locally on each PC and exchanges co-op data directly between players.
 No separate server, account, mod download or invite code is required for this path.
 A complete main-story co-op playthrough and the transition to NG+ have been tested in game.
@@ -28,7 +28,10 @@ Use the profile-folder button in the launcher. Custom save folders stay where se
 Keep your profile and user mods when updating; never distribute your working installation as a release.
 Game files and saves are not included in the ZIP.
 
-See README.md, README.ru.md and docs/release-1.6.0.md.
+Optional BB PC Remaster: Settings > Visuals > Image effects. Download or choose both
+archives, then enable the pack. See docs/MODS.md for archive versions.
+
+See README.md, README.ru.md and docs/release-1.6.1.md.
 Updates: https://github.com/mark3317/bbgl/releases
 
 Pig Invasion is bundled as 2529 binary deltas and is disabled by default. Enable it in Mods. First activation may take several minutes; all co-op players should use matching mods. Game archives are not shipped.

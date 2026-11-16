@@ -32,7 +32,7 @@ ComboBox {
     }
     delegate: ItemDelegate {
         width: control.popup.availableWidth
-        height: Math.max(36, contentItem.implicitHeight + 12)
+        height: Math.max(36, contentItem.paintedHeight + topPadding + bottomPadding)
         text: modelData.text || ""
         highlighted: control.highlightedIndex === index
         contentItem: Text {

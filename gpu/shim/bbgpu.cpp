@@ -348,6 +348,10 @@ extern "C" void bbgpu_overlay_bind_cheat_flags(unsigned char* flags) {
     BbOverlay::BindCheatFlags(flags);
 }
 
+extern "C" void bbgpu_overlay_bind_lamp_reset(BbLampResetStatus (*action)(int request)) {
+    BbOverlay::BindLampReset(action);
+}
+
 extern "C" void bbgpu_trophy_configure(const char* game_dir, const char* user_dir, int32_t language) {
     BbTrophies::Configure(game_dir ? game_dir : "", user_dir ? user_dir : "", language);
 }

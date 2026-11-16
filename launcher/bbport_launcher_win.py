@@ -44,8 +44,8 @@ PATCH_VERSION = '01.09'
 MAX_LOG_LINES = 6000
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 # This fork's build; the release tag includes this version.
-VERSION = '1.6.0'
-CURRENT_RELEASE_TAG = 'v1.6.0'
+VERSION = '1.6.1'
+CURRENT_RELEASE_TAG = 'v1.6.1'
 HERO_ART = PORT_DIR / 'launcher' / 'art' / 'hero.png'
 STRIP_ART = PORT_DIR / 'launcher' / 'art' / 'strip.png'
 RELEASES_API = 'https://api.github.com/repos/mark3317/bbgl/releases/latest'
@@ -267,7 +267,7 @@ INI_DEFAULTS = {'upscaler': 'off', 'preset': '2', 'sharpen': '1', 'sharpness': '
 from bbport_coop_settings import SETTINGS as COOP_SETTINGS
 
 APP_DEFAULTS = {'ui_language': '', 'test_profile_dir': '', 'game_dir': str(PORT_DIR / 'game'), 'user_dir': '', 'dlc_dir': '',
-                'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': 'auto',
+                'mods_dir': '', 'mods_enabled': True, 'remaster_enabled': False, 'patches_dir': '', 'language': 'auto',
                 'voice_language': 'auto',
                 'player_name': '', 'fullscreen': True, 'fullscreen_mode': 'borderless', 'display': '',
                 'hdr': False, 'present_mode': 'Mailbox',
@@ -336,8 +336,8 @@ HUD_POSITIONS = [('100', ('Screen edges', 'У краёв экрана')), ('75',
 
 LIVE = [('auto', ('Auto (by graphics card)', 'Авто (по видеокарте)')), ('0', ('Off (faster)', 'Выключена (быстрее)')),
         ('1', ('On (change without restarting)', 'Включена (без перезапуска)'))]
-LODS = [('0', ('As in the game', 'Как в игре')), ('-2', ('Highest (−2)', 'Максимальная (−2)')),
-        ('1', ('Lower (1)', 'Ниже (1)')), ('2', ('Lowest (2)', 'Минимальная (2)'))]
+LODS = [('-2', ('Highest', 'Максимальная')), ('0', ('Standard', 'Стандартная')),
+        ('1', ('Low', 'Низкая')), ('2', ('Lowest', 'Минимальная'))]
 # 120 and 144: 90 FPS++ with its values for that rate (scripts/patches.py SCALED_FPS). Unlocked froze
 # at the end of Vicar Amelia's intro; settings saved before 120 was the default keep it
 # (app_settings).
@@ -414,6 +414,8 @@ GRAPHICS_PRESET_INFO = {
 
 def graphics_preset_of(ini, app):
     """Quality preset identity ignores independent upscaling/frame-generation choices."""
+    if remaster_layer(app):
+        return 'custom'
     preferred = app.get('graphics_preset', 'high')
     if preferred == 'balanced':  # Legacy name; quality values are identical to high.
         preferred = 'high'
@@ -435,6 +437,7 @@ def apply_graphics_preset(name, ini, app):
     for key, value in GRAPHICS_PRESETS[name].items():
         (app if key in APP_DEFAULTS else ini)[key] = value
     app['graphics_preset'] = name
+    app['remaster_enabled'] = False
 
 
 def recommended_graphics_preset(gpu):
@@ -615,6 +618,18 @@ def install_prompt_pack(choice, source, mods_dir):
     return target
 
 
+def remaster_directory(s):
+    from bbport_remaster import directory
+    return directory(s.get('mods_dir') or PORT_DIR / 'mods')
+
+
+def remaster_layer(s):
+    if s.get('remaster_enabled') is True:
+        from bbport_remaster import installed
+        return installed(remaster_directory(s))
+    return None
+
+
 def game_environment(s):
     env = dict(os.environ)
     from bbport_paths import profile_p2p_port
@@ -644,6 +659,12 @@ def game_environment(s):
     env['BB_MODS_DIR'] = s['mods_dir'] or str(PORT_DIR / 'mods')
     env['BB_MODS_CONFIG'] = str(DATA_DIR / 'mods.json')
     env['BB_MODS_ENABLED'] = '1' if s['mods_enabled'] else '0'
+    remaster = remaster_layer(s)
+    if remaster:
+        env['BB_REMASTER_LAYER'] = str(remaster.resolve())
+    else:
+        env.pop('BB_REMASTER_LAYER', None)
+    env.pop('BB_NEXUS_API_KEY', None)
     env['BB_PATCHES_DIR'] = s['patches_dir'] or str(DATA_DIR / 'patches')
     env['BB_PATCHES_CONFIG'] = str(DATA_DIR / 'patches.json')
     env['BB_UI_LANGUAGE'] = s.get('ui_language') or windows_language()
@@ -891,7 +912,8 @@ class Launcher:
         box = self.ttk.Combobox(parent, values=[_(*text) for _v, text in options],
                                state='normal' if key == 'output_res' else 'readonly', width=width)
         if var.get() not in values and key != 'output_res':
-            var.set(APP_DEFAULTS[key] if key == 'fps_mode' else values[0])
+            defaults = {'fps_mode': APP_DEFAULTS['fps_mode'], 'model_lod': INI_DEFAULTS['model_lod']}
+            var.set(defaults.get(key, values[0]))
 
         def show(*_args):
             current = var.get()

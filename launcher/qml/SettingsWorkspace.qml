@@ -205,11 +205,19 @@ Item {
                 id: detailColumn
                 width: detailScroll.width - 14; spacing: 0
 
+                RemasterSettingsRow {
+                    width: detailColumn.width
+                    visible: is("Visuals", "Image effects")
+                }
+
                 Repeater {
                     id: fieldRepeater
                     // settingsRevision: rebuilt after a preset rewrites several rows.
                     model: launcher.settingsRevision < 0 || is("Co-op", "Seamless co-op") ? [] : launcher.sectionFields(workspace.category, workspace.section)
-                    delegate: FieldRow { width: detailColumn.width; field: modelData }
+                    delegate: FieldRow {
+                        width: detailColumn.width; field: modelData
+                        visible: settingKey !== "model_lod" || !launcher.remasterSelected
+                    }
                 }
 
                 // Actions beside the task that calls for them.

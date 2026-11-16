@@ -292,6 +292,9 @@ def main():
     icons = prompt_layer(PORT, buttons)
     if icons:
         generated.append(str(icons))
+    remaster = env.get('BB_REMASTER_LAYER')
+    if remaster:
+        generated.insert(0, remaster)
     game = Path(run_script('mods.py', game, '--out', out,
                            '--mods-dir', env.get('BB_MODS_DIR', data / 'mods'),
                            '--config', env.get('BB_MODS_CONFIG', data / 'mods.json'),

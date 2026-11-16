@@ -15,7 +15,7 @@ BLOCK = 1024 * 1024
 
 
 @contextlib.contextmanager
-def installation_lock(path):
+def installation_lock(path, conflict='Another game installation is already running.'):
     """The OS releases this lock even when the launcher is terminated."""
     with Path(path).open('a+b') as handle:
         if Path(path).stat().st_size == 0:
@@ -30,7 +30,7 @@ def installation_lock(path):
                 import fcntl
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
-            raise OSError('Another game installation is already running.') from error
+            raise OSError(conflict) from error
         try:
             yield
         finally:

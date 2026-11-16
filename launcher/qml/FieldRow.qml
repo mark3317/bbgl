@@ -55,7 +55,7 @@ Item {
             target: launcher
             function onChanged() { if (!editor.activeFocus) editor.text = String(launcher.value(fieldRow.settingKey)) }
         }
-        visible: field.kind !== "toggle" && field.kind !== "choice"
+        visible: field.kind !== "toggle" && field.kind !== "choice" && field.kind !== "display"
         x: isFolder ? 2 : parent.width - width
         y: isFolder ? folderInputY : (parent.height - height) / 2
         width: isFolder ? parent.width - 194 : fieldRow.controlWidth
